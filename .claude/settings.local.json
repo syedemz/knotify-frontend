@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python C:/Users/syede/Claude-Master/knotify-frontend/scripts/create-issues.py)"
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-# Coding Principles — test-project-new
+# Coding Principles — knotify-frontend
 
 Used together with `C:\Users\syede\Claude-Master\engineeringprinciples.md`. If sections below are empty, the workspace engineeringprinciples apply by default. Fill these in only when this project needs principles that differ from or extend the workspace defaults.
 
@@ -17,42 +17,40 @@ The rules in this file have been checked for conflicts with the workspace `engin
 - Components must be **lean**: rendering + minimal local state. Anything beyond that (data shaping, formatting, validation, side-effect logic) belongs in a helper.
 - Props must be explicitly typed (see TypeScript section) and destructured at the top of the component.
 - One component per file. File name matches the component name (PascalCase, `.tsx`).
-- **Catalog components are mandatory.** Screens MUST import the following from `@/components` for the roles they cover: `Button`, `IconButton`, `TouchableArea`, `TextInput`, `FormField`, `Chip`, `ChipRow`, `Card`, `Screen`. Screens MAY NOT import `TouchableOpacity`, `Pressable`, `TextInput` (as the `react-native` primitive), `Switch`, or `Modal` directly from `react-native`. New variants are added to the catalog component, never inlined in a screen. See **Component Catalog** below.
+- **Every UI element is a reusable component under `@/components`, from its first use.** No "inline it for now and extract later" phase. Screens compose components; they do not lay out primitives. See **Component Catalog** below.
+- Screens MAY NOT import the following visual primitives from `react-native`: `Text`, `TextInput`, `Image`, `Button`, `Pressable`, `TouchableOpacity`, `TouchableHighlight`, `TouchableWithoutFeedback`, `Switch`, `Modal`. Enforced by ESLint (`no-restricted-imports`) scoped to `src/features/*/screens/**`. See **Component Catalog** below for the reasoning and the enforcement details.
 
 ### Component Catalog
 
-The reusable component catalog under `src/components/` is the only way screens build interactive UI. The catalog is closed-API by design.
+The reusable component catalog under `src/components/` is the only way screens build UI. The catalog is **open-ended by design** — every UI element is a component from the first time it appears, not on the second or third occurrence. This is the **component-first mandate** codified in `architecture.md §2a`, which overrides any prior "rule of two / rule of three" language you may have seen in a copy of this file from another project.
 
-**Catalog (9 components):**
+Components accept **configurable-appearance props** (color, size, spacing, padding, radius, background, weight, alignment, shadow, etc.) so a screen can vary appearance per instance without inlining styling. Configurable props are **theme-token-keyed** — see Rule 2 — which is what keeps `theme.md`'s single-source-of-truth invariant alive under the more permissive API.
 
-- `Button` — every text button. Variants: `primary`, `secondary`, `ghost`.
-- `IconButton` — icon-only 44×44 tap target.
-- `TouchableArea` — generic tappable container for cards / list rows.
-- `TextInput` — single- or multi-line text input.
-- `FormField` — label + input + inline error wrapper.
-- `Chip` — display-only pill (icon + label).
-- `ChipRow` — wrapping flex row of Chips.
-- `Card` — visual container. Variants: `standard`, `muted`.
-- `Screen` — outer wrapper with safe-area + horizontal page padding.
+**Rules:**
 
-**Rules (A+ discipline):**
-
-1. **Closed prop surfaces.** Every catalog component has a documented `Props` interface. Adding a prop requires (a) a second screen demonstrating the need, (b) TSDoc on the new prop, (c) a corresponding `theme.md` §9 update if it changes visuals.
-2. **No `style` / `containerStyle` / `textStyle` / `contentContainerStyle` prop on any catalog component.** Ever. Composition uses Rule 3 or wrapping `<View>`s.
-3. **Typed spacing-scale props added reactively.** When wrapping a catalog component in `<View style={{ marginTop: … }}>` is repeated in ≥3 screens, the component may add `marginTop?: keyof Theme['spacing']`. Raw numbers stay forbidden.
-4. **Variants are string-literal unions, not strings.** `variant: 'primary' | 'secondary' | 'ghost'`, never `variant: string`.
-5. **Screens never import `TouchableOpacity`, `Pressable`, `TextInput`, `Switch`, or `Modal` from `react-native`.** Enforced by ESLint (`no-restricted-imports`) scoped to `src/screens/**`.
-6. **Composition through children, not config.** No `extraSlot`, `rightAccessory`, or other slot-like props. Compose in JSX.
-7. **No magic defaults.** Required props have no `?`. Optional defaults are documented in TSDoc. No prop default depends on another prop.
+1. **Rule of one.** Every UI element is a component in `src/components/` from its first use. No approval process, no minimum-screens threshold, no "extract later". First use → new component.
+2. **Configurable-appearance props are theme-token-keyed, not raw.** A component that exposes `padding` types it as `padding?: keyof Theme['spacing']`, not `padding?: number`. A `color` prop types as `color?: keyof Theme['colors']['text']` (or the appropriate colors sub-map), not `color?: string`. A `radius` prop types as `radius?: keyof Theme['radii']`. Variant props are string-literal unions (`variant?: 'primary' | 'secondary' | 'ghost'`), never `string`. Size props are string-literal unions (`size?: 'sm' | 'md' | 'lg'`) that internally map to concrete spacing / typography tokens. See `architecture.md §2a.3` for the canonical prop-shape reference.
+3. **No `style` / `containerStyle` / `textStyle` / `contentContainerStyle` prop on any component.** Ever. A `style` passthrough is the one hole that lets raw hexes and raw pixel values back in — it stays closed. If a component genuinely needs a variant its current props cannot express, add a new prop (typed per Rule 2), not a `style` escape hatch.
+4. **Sensible defaults documented in TSDoc.** Every optional prop has an explicit default. Defaults are chosen so a component with no props renders correctly against the reference screenshots. No prop default depends on another prop.
+5. **Required props have no `?`.** No magic defaults for required semantics.
+6. **Prop names are visual, not implementation-y.** `paddingX` over `horizontalPadding`. `bg` over `backgroundColorRole`. `gap` over `childrenSpacing`.
+7. **Screens never import visual primitives from `react-native`.** Blocked list: `Text`, `TextInput`, `Image`, `Button`, `Pressable`, `TouchableOpacity`, `TouchableHighlight`, `TouchableWithoutFeedback`, `Switch`, `Modal`. Enforced by ESLint (`no-restricted-imports`) scoped to `src/features/*/screens/**`. `View`, `FlatList`, `ScrollView`, `KeyboardAvoidingView`, and `Platform` remain importable for structural layout only — no visual styling on them (see Rule 8).
+8. **Screens carry no visual styling.** A screen file must pass all of the following greps:
+   - `StyleSheet.create(` → zero hits (screens have no local `StyleSheet`).
+   - Hex literals (`#[0-9a-fA-F]{3,8}`) → zero hits.
+   - Style-object keys `backgroundColor`, `borderRadius`, `borderWidth`, `padding`, `fontSize`, `fontWeight`, `shadow*` → zero hits.
+   - Layout-only style keys (`flexDirection`, `justifyContent`, `alignItems`, `gap`, `flex`) are permitted on structural `<View>`s only, and even those should prefer a `Row` / `Column` / `Box` component when the same layout recurs.
 
 **Adding a new component:**
 
-- Demonstrate ≥2-screen need (rule of two, not rule of three — this is stricter).
-- TSDoc on every exported symbol.
-- Add a `theme.md` §9 entry annotated as "Implemented as …".
-- Test file at `__tests__/components/<Name>.test.tsx` covering every variant, every interactive prop, disabled/loading states, `accessibilityLabel`, `onPress`, light + dark theme.
+1. Create the component in `src/components/` immediately on first use.
+2. Give it a closed API of configurable-appearance props per Rule 2 (theme-token-keyed types; no `style` passthrough).
+3. Write its TSDoc on every exported symbol including every prop.
+4. Write its test file at `__tests__/components/<Name>.test.tsx` covering every variant, every interactive prop, disabled / loading states, `accessibilityLabel`, `onPress`, and light + dark theme.
+5. Add or update its entry in `theme.md §9`, annotated as "Implemented as `<ComponentName>` with props `<...>`".
+6. Export it from `src/components/index.ts`.
 
-**Legacy footnote:** `LoginScreen.tsx`, `RegisterScreen.tsx`, and `LandingScreen.tsx` predate this rule. They use inline patterns and carry a file-top `eslint-disable no-restricted-imports` directive. They conform incrementally when touched for unrelated work. New code does not get the same grace.
+All six steps land in the same PR that first uses the component. No "wait and see", no "we'll test later".
 
 ### Styling
 
@@ -66,8 +64,8 @@ The full design system — color palette, semantic color roles, typography, spac
   - `src/theme/typography.ts` — font families, font sizes, font weights, text-style presets
   - `src/theme/ThemeProvider.tsx` — `useTheme()` context provider
   - `src/theme/index.ts` — re-exports for clean imports
-  - `src/theme/commonStyles.ts` — `createCommonStyles(theme)` factory for shared layout fragments. Rule-of-two threshold; layout only.
-- Rationale: a change to a color edits exactly one file (`theme.ts`); a change to a font edits exactly one file (`typography.ts`). The split exists because colors and fonts are different concerns with different change cadences and different consumers — but each domain still has a single source of truth, in the spirit of "edit in one place." A single combined `styles/styles.ts` is **not** used. Shared layout fragments live in `commonStyles.ts`; catalog-component styles live inside each component file; screen-specific layout stays in the screen's local `createStyles`.
+  - `src/theme/commonStyles.ts` — `createCommonStyles(theme)` factory for layout fragments shared *inside components* (never used by screens). Consumed by `Row`, `Column`, `Box`, `Screen`, etc.
+- Rationale: a change to a color edits exactly one file (`theme.ts`); a change to a font edits exactly one file (`typography.ts`). The split exists because colors and fonts are different concerns with different change cadences and different consumers — but each domain still has a single source of truth, in the spirit of "edit in one place." A single combined `styles/styles.ts` is **not** used. Shared layout fragments live in `commonStyles.ts`; **all component styles live inside each component file**. Screens do not have local `createStyles` — screens are pure component composition (Component Catalog Rules 7 and 8). If a layout pattern recurs across a screen, it becomes a `Row` / `Column` / `Box` / `Section` component; it does not become a `StyleSheet.create` block in the screen.
 - **No raw color hexes, font names, font sizes, spacing numbers, or border-radius numbers anywhere outside the theme files.** Components consume them via `useTheme()` and `textStyles.*`.
 
 ### Hooks
@@ -191,5 +189,5 @@ The workspace TDD rules apply in full. Project-specific extensions:
 - Every helper in `Helper/` has its own unit test file.
 - Tests use **Jest + React Native Testing Library**, written in TypeScript (`.test.tsx` / `.test.ts`).
 - A component's test suite covers, at minimum: render without crash, prop variations, user interaction (where applicable), and any conditional rendering branches. Pure styling concerns fall under the workspace visual-work carve-out and are not unit-tested.
-- **Catalog components are tested centrally and exhaustively.** A screen's test suite does NOT re-assert the visual rendering of a catalog component it uses — it asserts only the wiring (correct props passed, `onPress` invokes the right handler, conditional rendering branches). This is the testing-effort reduction that mandatory components deliver.
-- A screen that uses ONLY catalog components and `commonStyles.ts` (no local `createStyles`) requires only wiring tests. A screen with screen-specific layout still tests render-without-crash + prop variations as before.
+- **Components are tested centrally and exhaustively** — every component under `src/components/`, no exceptions. A screen's test suite does NOT re-assert the visual rendering of a component it uses — it asserts only the wiring (correct props passed, `onPress` invokes the right handler, conditional rendering branches). This is the testing-effort reduction that the component-first mandate delivers.
+- **Every screen is a pure-composition screen** (per Component Catalog Rule 8: no local `StyleSheet.create`, no visual styling). So every screen's test suite is a wiring test — render, prop variations, user interaction, conditional branches. There is no second class of "screens with local layout" that requires visual assertions.
