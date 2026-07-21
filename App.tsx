@@ -3,10 +3,15 @@ import { View, Text, StyleSheet } from "react-native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { NavigationContainer } from "@react-navigation/native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider } from "@/theme";
 import { LanguageProvider } from "@/state/i18n/LanguageProvider";
 import { QueryProvider } from "@/state/query/QueryProvider";
 import { AuthProvider } from "@/state/auth/AuthProvider";
+import { RootNavigator } from "@/navigation/RootNavigator";
+import { linking } from "@/navigation/linking";
 import { env } from "@/config/env";
 import { worker } from "@/services/api/mocks/handlers";
 
@@ -63,8 +68,14 @@ const ALL_FONTS = {
  * 3. Surface a readable error screen if font loading fails instead of falling
  *    back to system fonts silently.
  * 4. Compose providers in the canonical order (§7.2, §7.3, §15.6):
- *      fonts loaded → ThemeProvider → LanguageProvider → QueryProvider →
- *      AuthProvider → RootNavigator (story 1.9)
+ *      GestureHandlerRootView → SafeAreaProvider → fonts loaded →
+ *      ThemeProvider → LanguageProvider → QueryProvider → AuthProvider →
+ *      NavigationContainer → RootNavigator
+ *
+ * `GestureHandlerRootView` is required at the outermost position by
+ * `@gorhom/bottom-sheet` (installed in story 1.6; TODO(app-root) resolved).
+ * `SafeAreaProvider` from `react-native-safe-area-context` provides the
+ * safe-area insets used by `Screen` and `AppTabs`.
  */
 export default function App() {
   const [fontsLoaded, fontError] = useFonts(ALL_FONTS);
@@ -97,29 +108,32 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <QueryProvider>
-          <AuthProvider>
-            {/*
-             * TODO(1.9): Mount RootNavigator here once navigation/
-             * scaffolding is complete (story 1.9).
-             */}
-            <View style={styles.placeholder}>
-              <Text style={styles.placeholderText}>knotify — phase 1 scaffold</Text>
-              <StatusBar style="auto" />
-            </View>
-          </AuthProvider>
-        </QueryProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <QueryProvider>
+              <AuthProvider>
+                <NavigationContainer linking={linking}>
+                  <RootNavigator />
+                </NavigationContainer>
+              </AuthProvider>
+            </QueryProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+      <StatusBar style="auto" />
+    </GestureHandlerRootView>
   );
 }
 
-// Minimal static styles for the pre-theme error and placeholder screens.
+// Minimal static styles for the pre-theme error screen and the root container.
 // These intentionally do not use theme tokens because ThemeProvider may not
 // be mounted when the error state is reached.
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   errorContainer: {
     flex: 1,
     alignItems: "center",
@@ -138,15 +152,5 @@ const styles = StyleSheet.create({
     color: "#4A4F58",
     textAlign: "center",
     lineHeight: 20,
-  },
-  placeholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  placeholderText: {
-    fontSize: 16,
-    color: "#0E1116",
   },
 });
