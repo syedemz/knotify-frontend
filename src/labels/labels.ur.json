@@ -1,0 +1,19 @@
+{
+  "common": {
+    "notImplemented": "ابھی نافذ نہیں کیا گیا",
+    "loading": "لوڈ ہو رہا ہے…",
+    "error": "کچھ غلط ہو گیا",
+    "retry": "دوبارہ کوشش کریں"
+  },
+  "auth": {
+    "login": {
+      "title": "لاگ ان کریں"
+    },
+    "forgotPassword": {
+      "title": "پاس ورڈ بھول گئے"
+    },
+    "resetPassword": {
+      "title": "پاس ورڈ دوبارہ سیٹ کریں"
+    }
+  }
+}

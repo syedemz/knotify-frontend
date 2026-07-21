@@ -1,0 +1,19 @@
+{
+  "common": {
+    "notImplemented": "Not implemented yet",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Retry"
+  },
+  "auth": {
+    "login": {
+      "title": "Log in"
+    },
+    "forgotPassword": {
+      "title": "Forgot password"
+    },
+    "resetPassword": {
+      "title": "Reset password"
+    }
+  }
+}
