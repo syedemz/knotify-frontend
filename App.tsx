@@ -4,6 +4,14 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider } from "@/theme";
+import { env } from "@/config/env";
+import { worker } from "@/services/api/mocks/handlers";
+
+// Start MSW before any component renders so every fetch() call is intercepted.
+// Gated by EXPO_PUBLIC_API_MODE=mock — live builds are unaffected.
+if (env.isMock) {
+  worker.listen({ onUnhandledRequest: "warn" });
+}
 
 // Keep the splash screen visible while fonts are loading.
 SplashScreen.preventAutoHideAsync();

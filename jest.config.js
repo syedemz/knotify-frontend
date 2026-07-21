@@ -16,6 +16,10 @@ module.exports = {
     "!src/**/*.d.ts",
     "!src/**/index.ts",
     "!src/theme/index.ts",
+    // handlers.ts imports msw/native which is ESM-only and cannot be
+    // instrumented by Babel/Jest in the CJS runtime. Coverage for the
+    // MSW worker setup is verified by reading the module, not by execution.
+    "!src/services/api/mocks/handlers.ts",
   ],
   coverageThreshold: {
     global: {

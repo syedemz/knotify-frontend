@@ -1,6 +1,6 @@
 phase: 1
 title: Foundation & scaffolding
-last_updated: 2026-07-21  # story 1.6 done
+last_updated: 2026-07-21  # story 1.7 done
 
 context_summary: |
   Phase 1 stands up every foundation the rest of the project builds on: Expo/RN/TypeScript project scaffold, `src/theme/` copied verbatim from `theme.md §14`, the catalog components starter set from §2a.7 with tests, central registries under `src/config/`, the I/O boundary under `src/services/`, cross-cutting state under `src/state/`, English + Urdu labels with parity, navigation skeleton with auth-gate, and minimal CI. After phase 1 the app boots on Android, renders a placeholder Login screen through the auth-gate, and every PR into `development` runs jest + eslint + tsc + labels-parity in GitHub Actions. Phase 2 lands the onboarding wizard shell and pages 1-4 on top of this scaffold.
@@ -100,7 +100,7 @@ stories:
     title: Scaffold services/ I/O boundary
     agent: frontenddeveloper
     tracking_issue: 7
-    done: false
+    done: true
     depends_on: [1.2]
     acceptance_criteria:
       - `src/services/api/httpClient.ts` implements the `request<T>` contract from §8.2 - base URL from `config/env.ts`, JWT injection, configurable timeout, one silent-refresh on 401 then retry, typed `ApiError` on non-2xx.
@@ -111,7 +111,7 @@ stories:
       - `src/services/push/expoPush.ts` exports a `registerForPushNotifications()` helper that requests permission, obtains the Expo push token, and POSTs to `/v1/push-tokens`; the settings phase wires it into UI.
       - `src/services/graphql/appsyncClient.ts` exists as a skeleton exporting a `getAppsyncClient()` factory consumed by the chat phase.
       - Unit tests cover httpClient's 401-refresh-then-retry path, 5xx propagation, and timeout path using MSW-registered handlers.
-    notes: ""
+    notes: "MSW v2 native uses ESM-only transitive deps (rettime) incompatible with Jest/Babel CJS runtime. httpClient tests use jest.spyOn(globalThis, 'fetch') instead — full coverage maintained. MSW worker still used by App.tsx at runtime. handlers.ts excluded from coverage collection for same reason. cognitoClient: Amplify AuthTokens type does not expose refreshToken (managed internally by Amplify) — SessionTokens.refreshToken is optional."
 
   - id: 1.8
     title: Scaffold state/ providers (Auth, Query, Language)
