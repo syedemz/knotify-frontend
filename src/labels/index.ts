@@ -1,26 +1,49 @@
 import en from "./labels.en.json";
 import ur from "./labels.ur.json";
-import type { SupportedLocale } from "@/theme/useLocalizedFontFamily";
 import type { LabelKey } from "./labels.types";
 
 // ---------------------------------------------------------------------------
-// Stub locale context
+// Module-level locale store
 // ---------------------------------------------------------------------------
 
 /**
- * Stub that returns the active locale until `LanguageProvider` is wired in
- * story 1.8. The returned value controls which translation bundle `t()` reads.
- *
- * @returns `'en'` — hard-coded until story 1.8 replaces this stub.
- *
- * TODO(1.8): Replace the body of this function with
- * `useContext(LanguageContext).locale` once `LanguageProvider` is implemented.
- * The call-site signature of `t()` will remain identical — only this internal
- * data source changes.
+ * Supported locale codes. Kept as a local alias to avoid a circular
+ * import with `state/i18n/LanguageProvider` (which imports `t()` from here).
+ * The string literal union is identical to `LanguageProvider.SupportedLocale`.
  */
-function getActiveLocale(): SupportedLocale {
-  // Stub: returns English until LanguageProvider (story 1.8) is available.
-  return "en";
+type ActiveLocale = "en" | "ur";
+
+/**
+ * Module-level active locale.
+ *
+ * Initialised to `'en'`. `LanguageProvider` calls `setActiveLocale()` on
+ * mount (after hydrating from AsyncStorage) and on every locale change, so
+ * `t()` always returns the correct translation without requiring hooks.
+ */
+let _activeLocale: ActiveLocale = "en";
+
+/**
+ * Updates the module-level locale used by `t()`.
+ *
+ * Called by `LanguageProvider` whenever the active locale changes. This
+ * avoids a circular dependency between the label resolver and the provider:
+ * `LanguageProvider` imports `setActiveLocale` from here (one direction only).
+ *
+ * @param locale - The new active locale.
+ */
+export function setActiveLocale(locale: ActiveLocale): void {
+  _activeLocale = locale;
+}
+
+/**
+ * Returns the current active locale as set by `LanguageProvider`.
+ *
+ * Exported for testing; application code should use `t()` directly.
+ *
+ * @returns The current {@link ActiveLocale}.
+ */
+export function getActiveLocale(): ActiveLocale {
+  return _activeLocale;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,7 +51,7 @@ function getActiveLocale(): SupportedLocale {
 // ---------------------------------------------------------------------------
 
 /** The translation bundles keyed by locale. */
-const bundles: Record<SupportedLocale, Record<string, unknown>> = {
+const bundles: Record<ActiveLocale, Record<string, unknown>> = {
   en: en as Record<string, unknown>,
   ur: ur as Record<string, unknown>,
 };
@@ -61,7 +84,8 @@ function resolvePath(obj: Record<string, unknown>, path: string): string | undef
  * Returns the translated string for `key` in the active locale.
  *
  * Resolution order:
- * 1. Active-locale bundle (from `getActiveLocale()`).
+ * 1. Active-locale bundle (from the locale set by `LanguageProvider` via
+ *    `setActiveLocale()`).
  * 2. English bundle — fallback when the active-locale translation is missing
  *    or empty.
  *
@@ -80,7 +104,7 @@ function resolvePath(obj: Record<string, unknown>, path: string): string | undef
  * ```
  */
 export function t(key: LabelKey): string {
-  const locale = getActiveLocale();
+  const locale = _activeLocale;
   const localeBundle = bundles[locale];
   const translated = resolvePath(localeBundle, key);
   if (translated !== undefined && translated.length > 0) {

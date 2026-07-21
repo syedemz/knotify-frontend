@@ -11,6 +11,15 @@ module.exports = {
     "**/__tests__/**/*.{ts,tsx}",
     "**/?(*.)+(spec|test).{ts,tsx}",
   ],
+  // Automatically mock native modules that require device APIs unavailable in
+  // the Jest environment. Each entry maps the module to its automatic mock.
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    // Provide the official in-memory mock for AsyncStorage so any test that
+    // transitively imports LanguageProvider does not hit the native NativeModule.
+    "^@react-native-async-storage/async-storage$":
+      "@react-native-async-storage/async-storage/jest/async-storage-mock.js",
+  },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
     "!src/**/*.d.ts",

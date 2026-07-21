@@ -5,11 +5,13 @@
  * - Every key in labels.en.json exists in labels.ur.json and vice versa.
  * - t() returns the locale-specific string when present.
  * - t() falls back to English when the Urdu translation is missing or empty.
+ * - setActiveLocale() switches the module-level locale used by t().
+ * - getActiveLocale() reflects the current locale.
  */
 
 import en from "@/labels/labels.en.json";
 import ur from "@/labels/labels.ur.json";
-import { t } from "@/labels";
+import { t, setActiveLocale, getActiveLocale } from "@/labels";
 
 // ---------------------------------------------------------------------------
 // Parity helpers
@@ -59,14 +61,16 @@ describe("labels parity", () => {
 });
 
 // ---------------------------------------------------------------------------
-// t() resolver tests (stub locale = 'en')
-//
-// The stub getActiveLocale() always returns 'en' until story 1.8 wires the
-// real LanguageProvider. These tests confirm every baseline key resolves.
+// t() resolver tests — locale = 'en' (module default)
 // ---------------------------------------------------------------------------
 
 describe("t() resolver", () => {
-  describe("given locale is 'en' (stub default)", () => {
+  beforeEach(() => {
+    // Reset to English before each test in this group.
+    setActiveLocale("en");
+  });
+
+  describe("given locale is 'en'", () => {
     it("when resolving 'common.notImplemented', then returns the English string", () => {
       expect(t("common.notImplemented")).toBe("Not implemented yet");
     });
@@ -95,6 +99,14 @@ describe("t() resolver", () => {
       expect(t("auth.resetPassword.title")).toBe("Reset password");
     });
 
+    it("when resolving 'language.changeTitle', then returns the English string", () => {
+      expect(t("language.changeTitle")).toBe("Restart required");
+    });
+
+    it("when resolving 'language.restart', then returns the English string", () => {
+      expect(t("language.restart")).toBe("Restart");
+    });
+
     it("given all baseline keys, when t() resolves each, then never returns an empty string", () => {
       const allEnKeys = collectPaths(en as Record<string, unknown>);
       const empty = allEnKeys.filter(
@@ -111,10 +123,30 @@ describe("t() resolver", () => {
     });
   });
 
+  describe("given locale switched to 'ur' via setActiveLocale()", () => {
+    beforeEach(() => {
+      setActiveLocale("ur");
+    });
+
+    it("then getActiveLocale() returns 'ur'", () => {
+      expect(getActiveLocale()).toBe("ur");
+    });
+
+    it("when resolving 'common.loading', then returns the Urdu string", () => {
+      expect(t("common.loading")).toBe("لوڈ ہو رہا ہے…");
+    });
+
+    it("when resolving 'auth.login.title', then returns the Urdu string", () => {
+      expect(t("auth.login.title")).toBe("لاگ ان کریں");
+    });
+
+    it("when resolving 'language.cancel', then returns the Urdu string", () => {
+      expect(t("language.cancel")).toBe("منسوخ کریں");
+    });
+  });
+
   describe("fallback contract", () => {
     it("given an Urdu translation exists for every key, when comparing to English, then no key is empty in either bundle", () => {
-      // Validates the runtime fallback CONTRACT: English values are never empty,
-      // ensuring t() always has something to fall back to.
       const allEnKeys = collectPaths(en as Record<string, unknown>);
       const allUrKeys = collectPaths(ur as Record<string, unknown>);
 
@@ -143,9 +175,6 @@ describe("t() resolver", () => {
     });
 
     it("given the EN bundle, when any key is resolved, then the fallback path always returns a non-empty string", () => {
-      // The fallback in t() is: resolvePath(bundles.en, key).
-      // We verify that every valid LabelKey produces a non-empty English value —
-      // confirming the fallback can never silently return undefined.
       const allEnKeys = collectPaths(en as Record<string, unknown>);
       for (const key of allEnKeys) {
         const result = t(key as Parameters<typeof t>[0]);

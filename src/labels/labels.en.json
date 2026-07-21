@@ -15,5 +15,11 @@
     "resetPassword": {
       "title": "Reset password"
     }
+  },
+  "language": {
+    "changeTitle": "Restart required",
+    "changeBody": "The app will restart to apply the new layout. Continue?",
+    "cancel": "Cancel",
+    "restart": "Restart"
   }
 }

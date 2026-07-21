@@ -4,6 +4,9 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider } from "@/theme";
+import { LanguageProvider } from "@/state/i18n/LanguageProvider";
+import { QueryProvider } from "@/state/query/QueryProvider";
+import { AuthProvider } from "@/state/auth/AuthProvider";
 import { env } from "@/config/env";
 import { worker } from "@/services/api/mocks/handlers";
 
@@ -59,12 +62,9 @@ const ALL_FONTS = {
  * 2. Hold the splash screen visible until fonts are ready.
  * 3. Surface a readable error screen if font loading fails instead of falling
  *    back to system fonts silently.
- * 4. Mount `ThemeProvider` as the outermost wrapper so every descendant can
- *    call `useTheme()`.
- *
- * Provider composition order (story 1.8 will expand this):
- *   fonts loaded → ThemeProvider → (LanguageProvider) → (QueryProvider) →
- *   (AuthProvider) → RootNavigator
+ * 4. Compose providers in the canonical order (§7.2, §7.3, §15.6):
+ *      fonts loaded → ThemeProvider → LanguageProvider → QueryProvider →
+ *      AuthProvider → RootNavigator (story 1.9)
  */
 export default function App() {
   const [fontsLoaded, fontError] = useFonts(ALL_FONTS);
@@ -98,14 +98,20 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      {/*
-       * TODO(1.8): Wrap with LanguageProvider, QueryProvider, AuthProvider here.
-       * TODO(1.9): Mount RootNavigator here (replaces placeholder below).
-       */}
-      <View style={styles.placeholder}>
-        <Text style={styles.placeholderText}>knotify — phase 1 scaffold</Text>
-        <StatusBar style="auto" />
-      </View>
+      <LanguageProvider>
+        <QueryProvider>
+          <AuthProvider>
+            {/*
+             * TODO(1.9): Mount RootNavigator here once navigation/
+             * scaffolding is complete (story 1.9).
+             */}
+            <View style={styles.placeholder}>
+              <Text style={styles.placeholderText}>knotify — phase 1 scaffold</Text>
+              <StatusBar style="auto" />
+            </View>
+          </AuthProvider>
+        </QueryProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }
