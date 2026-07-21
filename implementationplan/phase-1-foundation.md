@@ -43,7 +43,7 @@ stories:
     title: Scaffold labels/ with English + Urdu parity and typed t() resolver
     agent: frontenddeveloper
     tracking_issue: 3
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - `src/labels/labels.en.json` exists with the baseline key set required by the placeholder screens shipped in this phase. Baseline keys include `common.notImplemented`, `common.loading`, `common.error`, `common.retry`, `auth.login.title`, `auth.forgotPassword.title`, `auth.resetPassword.title`. Additional keys are added by later phases as needed (each new key must ship with an Urdu translation in the same PR to keep parity green).
