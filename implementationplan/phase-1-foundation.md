@@ -1,6 +1,6 @@
 phase: 1
 title: Foundation & scaffolding
-last_updated: 2026-07-20
+last_updated: 2026-07-21
 
 context_summary: |
   Phase 1 stands up every foundation the rest of the project builds on: Expo/RN/TypeScript project scaffold, `src/theme/` copied verbatim from `theme.md §14`, the catalog components starter set from §2a.7 with tests, central registries under `src/config/`, the I/O boundary under `src/services/`, cross-cutting state under `src/state/`, English + Urdu labels with parity, navigation skeleton with auth-gate, and minimal CI. After phase 1 the app boots on Android, renders a placeholder Login screen through the auth-gate, and every PR into `development` runs jest + eslint + tsc + labels-parity in GitHub Actions. Phase 2 lands the onboarding wizard shell and pages 1-4 on top of this scaffold.
@@ -10,7 +10,7 @@ stories:
     title: Bootstrap Expo/RN/TS project with theme, typography, and font loading
     agent: frontenddeveloper
     tracking_issue: 1
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - Project is scaffolded via `npx create-expo-app@latest . --template blank-typescript` on Expo SDK 56; `package.json` versions match `architecture.md §16.1` (Expo `~56.0.x`, RN `0.85.x`, React `19.2.x`, TS `~6.0.3`). Node runtime `>= 20.19.4`.
