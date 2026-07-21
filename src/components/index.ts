@@ -37,3 +37,34 @@ export type { TouchableAreaProps } from "./TouchableArea";
 
 export { Chip } from "./Chip";
 export type { ChipProps, ChipVariant } from "./Chip";
+
+// Catalog — inputs (story 1.5)
+export { TextInput } from "./TextInput";
+export type { TextInputProps } from "./TextInput";
+
+export { PasswordInput } from "./PasswordInput";
+export type { PasswordInputProps } from "./PasswordInput";
+
+export { SearchInput } from "./SearchInput";
+export type { SearchInputProps, SearchInputSize } from "./SearchInput";
+
+export { FormField } from "./FormField";
+export type { FormFieldProps } from "./FormField";
+
+export { Select } from "./Select";
+export type { SelectProps, SelectOption } from "./Select";
+
+export { Slider } from "./Slider";
+export type { SliderProps } from "./Slider";
+
+export { Switch } from "./Switch";
+export type { SwitchProps } from "./Switch";
+
+export { Checkbox } from "./Checkbox";
+export type { CheckboxProps } from "./Checkbox";
+
+export { RadioGroup } from "./RadioGroup";
+export type { RadioGroupProps, RadioOption } from "./RadioGroup";
+
+export { DatePicker } from "./DatePicker";
+export type { DatePickerProps } from "./DatePicker";
