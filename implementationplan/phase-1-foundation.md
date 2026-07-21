@@ -28,7 +28,7 @@ stories:
     title: Scaffold central registries under src/config/
     agent: frontenddeveloper
     tracking_issue: 2
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - `src/config/env.ts` reads `EXPO_PUBLIC_ENV` (defaulting to `dev`), loads the corresponding `backendConfig.<env>.json`, validates required fields at import time, and exports a typed `env` object; missing values throw a readable startup error listing them.
