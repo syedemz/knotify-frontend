@@ -6,14 +6,20 @@
     "node": ">=20.19.4"
   },
   "dependencies": {
+    "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-native-community/slider": "5.2.0",
     "expo": "~56.0.16",
     "expo-font": "~56.0.7",
+    "expo-image": "~56.0.11",
     "expo-splash-screen": "~56.0.13",
     "expo-status-bar": "~56.0.4",
+    "lucide-react-native": "^1.25.0",
     "react": "19.2.7",
-    "react-native": "0.85.3"
+    "react-native": "0.85.3",
+    "react-native-gesture-handler": "~2.31.1",
+    "react-native-reanimated": "4.3.1",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",

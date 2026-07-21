@@ -1,6 +1,6 @@
 phase: 1
 title: Foundation & scaffolding
-last_updated: 2026-07-21  # story 1.5 done
+last_updated: 2026-07-21  # story 1.6 done
 
 context_summary: |
   Phase 1 stands up every foundation the rest of the project builds on: Expo/RN/TypeScript project scaffold, `src/theme/` copied verbatim from `theme.md §14`, the catalog components starter set from §2a.7 with tests, central registries under `src/config/`, the I/O boundary under `src/services/`, cross-cutting state under `src/state/`, English + Urdu labels with parity, navigation skeleton with auth-gate, and minimal CI. After phase 1 the app boots on Android, renders a placeholder Login screen through the auth-gate, and every PR into `development` runs jest + eslint + tsc + labels-parity in GitHub Actions. Phase 2 lands the onboarding wizard shell and pages 1-4 on top of this scaffold.
@@ -86,7 +86,7 @@ stories:
     title: Catalog - containers, state UI, overlays, media
     agent: frontenddeveloper
     tracking_issue: 6
-    done: false
+    done: true
     depends_on: [1.1]
     acceptance_criteria:
       - Components exist under `src/components/`: `Card`, `Section`, `ListRow`, `ListRowSelectable`, `EmptyState`, `LoadingState`, `ErrorState`, `Modal`, `BottomSheet`, `Toast`, `Snackbar`, `Avatar`, `Image`, `Icon`, `Badge`, `NotificationDot`, `Illustration`.
