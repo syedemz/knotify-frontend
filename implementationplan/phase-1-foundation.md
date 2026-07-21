@@ -57,7 +57,7 @@ stories:
     title: Catalog - layout, typography, buttons
     agent: frontenddeveloper
     tracking_issue: 4
-    done: false
+    done: true
     depends_on: [1.1]
     acceptance_criteria:
       - Components exist under `src/components/`: `Screen`, `Box`, `Row`, `Column`, `Spacer`, `Divider`, `Text`, `Heading`, `Button`, `IconButton`, `PillButton`, `TouchableArea`, `Chip`.
