@@ -1,6 +1,6 @@
 phase: 1
 title: Foundation & scaffolding
-last_updated: 2026-07-21  # story 1.9 done
+last_updated: 2026-07-21  # story 1.10 done — phase 1 complete
 
 context_summary: |
   Phase 1 stands up every foundation the rest of the project builds on: Expo/RN/TypeScript project scaffold, `src/theme/` copied verbatim from `theme.md §14`, the catalog components starter set from §2a.7 with tests, central registries under `src/config/`, the I/O boundary under `src/services/`, cross-cutting state under `src/state/`, English + Urdu labels with parity, navigation skeleton with auth-gate, and minimal CI. After phase 1 the app boots on Android, renders a placeholder Login screen through the auth-gate, and every PR into `development` runs jest + eslint + tsc + labels-parity in GitHub Actions. Phase 2 lands the onboarding wizard shell and pages 1-4 on top of this scaffold.
@@ -151,7 +151,7 @@ stories:
     title: Minimal CI on GitHub Actions
     agent: backenddeveloper
     tracking_issue: 10
-    done: false
+    done: true
     depends_on: [1.1, 1.3]
     acceptance_criteria:
       - `.github/workflows/ci.yml` runs on every pull request targeting `development` and `main`.
