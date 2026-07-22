@@ -1,0 +1,40 @@
+### New gaps introduced by the resolutions
+
+#### A. HIGH — Story 2.2 uses `OnboardingRouteName` without defining it (chicken-and-egg with 2.3)
+
+- Story 2.2 AC line for `pageMap.ts` says: `export PAGE_MAP: Readonly<Record<OnboardingRouteName, number>>` — but `OnboardingRouteName` is currently defined in `src/navigation/types.ts` as the keys of `OnboardingStackParamList`, and story 2.3 (which depends on 2.2) is what renames those keys.
+- If 2.2 tries to import `OnboardingRouteName` from `src/navigation/types.ts`, it gets the OLD short names (`Page01`..`Page31`) — PAGE_MAP would type-check against the wrong union, or fail to type-check at all.
+- FIX: Story 2.2 should DEFINE `OnboardingRouteName` locally in `pageMap.ts` as `type OnboardingRouteName = keyof typeof PAGE_MAP`, and story 2.3's `src/navigation/types.ts` update should IMPORT that type from `pageMap.ts` (making pageMap.ts the single source of truth for route names, matching its role as source of truth for page numbers). Add an AC to 2.2: "exports `type OnboardingRouteName = keyof typeof PAGE_MAP`". Add an AC to 2.3: "`OnboardingStackParamList` keys are typed against `OnboardingRouteName` imported from `pageMap.ts`, not string-literal duplicated."
+
+#### B. HIGH — Story 2.3 does not wire `useCheckpointResume` into `OnboardingStack.initialRouteName`
+
+- Story 2.2 builds `useCheckpointResume`, but nothing in story 2.3 mounts it. Current `OnboardingStack.tsx` has no dynamic `initialRouteName` — the stack always starts at whatever route is first-registered.
+- Without wiring, checkpoint-resume is dead code: a user with `secondCheckpoint` set who kills the app and returns lands on page 1 instead of page 15.
+- FIX: Add an AC to story 2.3: "`OnboardingStack` reads `useCheckpointResume()` at render and passes its return value as `<Stack.Navigator initialRouteName={...}>`. Add a wiring test that mocks `useCheckpointResume` to return each of the three possible values and asserts the stack mounts the corresponding screen first."
+
+#### C. HIGH — Story 2.3 does not explicitly update `__tests__/navigation/OnboardingStack.test.tsx`
+
+- Grep found existing test at `__tests__/navigation/OnboardingStack.test.tsx` references the OLD short route names (`Page01`..`Page31`). Renaming routes without updating this test breaks CI.
+- Story 2.3 mentions updating `auth-gate.test.tsx` but not `OnboardingStack.test.tsx`.
+- FIX: Add an AC to story 2.3: "`__tests__/navigation/OnboardingStack.test.tsx` is updated to reference the new semantic route names; the PAGE_MAP-equality test from story 2.3's first AC is added here or in a new test file."
+
+#### D. MEDIUM — Story 2.5 does not gate navigation on successful secure-store write
+
+- Story 2.5 acceptance criteria step 1 says "Persist the password to `expo-secure-store`" then step 3 says "Navigate to `Page03ConfirmCodeScreen`" — but nothing says what happens if the secure-store write throws (device out of space, keychain locked, corrupted state).
+- Consequence: user reaches page 3, page 3 can't read the password, `bootstrapMissing` fires — but the Cognito user is already created. User is now in a broken state (account exists, no way to sign in without password reset).
+- FIX: Add to story 2.5 AC: "The secure-store write is awaited BEFORE `cognitoClient.signUp` is called (so a keychain failure is caught before creating the Cognito user). If the write throws, render `onboarding.email.errors.secureStorageUnavailable` and do NOT call signUp. Add a label for it." Also add the label to the enumeration.
+
+#### E. MEDIUM — Story 2.5 does not specify OS password-manager hints
+
+- Password field on page 2 should trigger iOS/Android password-manager save prompts (so users don't lose the password they just picked). Requires `textContentType='newPassword'` (iOS), `autoComplete='password-new'` (Android), and matching `textContentType='emailAddress'` / `autoComplete='email'` on the email field.
+- Missing from AC — easy to overlook, hard to add after the fact (users will already have signed up without saved passwords).
+- FIX: Add to story 2.5 AC: "Email `TextInput` sets `textContentType='emailAddress'` and `autoComplete='email'`. Password `TextInput` sets `textContentType='newPassword'` and `autoComplete='password-new'` so OS password managers offer to save the new credential."
+
+#### F. MEDIUM — Story 2.6 does not require the Continue button to disable during the confirmSignUp → signIn chain
+
+- Story 2.6 chains `confirmSignUp` → read secure-store → `signIn` → delete secure-store → navigate. That's ~1-3 seconds of network. Double-tap during that window would trigger two `confirmSignUp` calls, the second failing with a code-already-used error, causing a confusing UX.
+- FIX: Add to story 2.6 AC: "During the confirmSignUp+signIn chain, `WizardFooter` Continue button renders with `loading={true} disabled={true}`. The button re-enables only on error (not on success — success navigates away)."
+
+### Verdict
+
+All 6 findings are small tweaks to individual story AC — no architecture changes, no new stories, no dependency-graph churn. Recommend addressing inline before dispatch (would take ~5 minutes of PRD editing); alternatively they can be surfaced to the subagent as adjustments during dispatch, but AC-in-PRD is cleaner for auditability.

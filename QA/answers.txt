@@ -1,0 +1,148 @@
+
+
+==================================================
+BLOCKER 1 — Cognito password strategy is undefined
+==================================================
+
+I would prefer that on page 2, under the email , we also add a password field which are then sent to the cognito
+
+
+==================================================
+BLOCKER 2 — Route names don't match
+==================================================
+
+
+FIX: Keep the route names ("Page01WelcomeScreen.tsx") same as the semantic file names because
+in the future if i have to debug manually , it might be very hard to follow the routes if they have such short names
+
+==================================================
+BLOCKER 3 — A type ("UserProfileWritable") doesn't exist yet
+==================================================
+
+
+FIX: Add a small task to story 2.2 — "also create src/types/api/UserProfile.ts
+with the fields listed in architecture §7.4." One extra file, five minutes.
+
+
+==================================================
+BLOCKER 4 — The "Helper" folder doesn't exist yet
+==================================================
+
+
+
+FIX: Add an explicit line to story 2.5's acceptance criteria — "create
+src/Helper/validationHelper.ts with an isValidEmail function and
+isSixDigitCode function; create src/Helper/errorHelper.ts with a function
+that turns Cognito errors into user-friendly label keys."
+
+
+==================================================
+BLOCKER 5 — Nobody listed what text strings the screens need
+==================================================
+
+FIX: Under each of stories 2.4, 2.5, 2.6, 2.7, list the exact label keys
+that story is expected to add. E.g., story 2.4 adds:
+  - onboarding.welcome.title = "Knotify"
+  - onboarding.welcome.continueEmail = "Continue with email"
+  - onboarding.welcome.continueGoogle = "Continue with Google"
+And so on.
+
+
+==================================================
+HIGH 6 — After email-confirmation, user isn't signed in yet
+==================================================
+
+
+FIX:(b) verify that the auth-gate is smart enough to let unauthenticated
+users stay in the onboarding flow. Read RootNavigator.tsx to see which is
+already true.
+
+
+==================================================
+MEDIUM 7 — "Which page number is this?" is not defined
+==================================================
+
+FIX: Use a static lookup table (safer). Add an acceptance criterion: "create
+src/features/onboarding/pageMap.ts that maps every route name to its number,
+and throw a clear error on unknown route names."
+
+
+==================================================
+MEDIUM 8 — "Post-8" and "post-14" wording is fuzzy
+==================================================
+
+FIX: Rewrite the acceptance criterion with exact page numbers:
+  - firstCheckpoint → resume at Page09
+  - secondCheckpoint → resume at Page15
+  - no checkpoint → start at Page01
+
+
+==================================================
+MEDIUM 9 — Testing pattern for the sign-up code is new
+==================================================
+
+
+FIX: Add explicit language to story 2.5 that says option (b) is the pattern.
+
+
+==================================================
+MEDIUM 10 — The language provider ALREADY shows the reload dialog
+==================================================
+
+FIX: Tighten story 2.4 to say "the language sheet just calls setLocale and
+closes. Do NOT render your own confirmation — that's already handled."
+
+
+==================================================
+LOW 11 — Stale TODO comment in BottomSheet
+==================================================.
+
+FIX: Delete the comment. Small five-second cleanup that can piggyback on
+story 2.4 (the first phase-2 story that uses BottomSheet).
+
+
+==================================================
+LOW 12 — Draft "schemaVersion" migration policy
+==================================================
+
+FIX: Add a comment in draftSchema.ts: "migration policy for schemaVersion
+bumps is deferred until we actually bump the version."
+
+
+==================================================
+LOW 13 — muzzscreenshots folder is referenced but missing
+==================================================
+
+
+FIX: Yes i have the screenshots, i will move them into the repo
+
+
+==================================================
+INFO 14 — "Continue with Google" button is intentionally dead
+==================================================
+
+Just confirming: the Google button on page 1 is supposed to be visible but
+do nothing. Not a bug, not an oversight — an explicit decision per the
+architecture. Ship it as-is; wire it up in a future feature.
+
+
+==================================================
+INFO 15 — Onboarding draft is intentionally local-only
+==================================================
+
+yes that is correct
+
+
+==================================================
+RECOMMENDED ORDER OF WORK
+==================================================
+
+Do the stories one at a time, in this order:
+  1. Story 2.1 — build the wizard chrome (header/progress/footer)
+  2. Story 2.2 — build the draft-store and checkpoint hooks
+  3. Story 2.3 — wire pages 1-4 into the navigation stack
+  4. Story 2.4 — page 1 (welcome + language sheet)
+  5. Story 2.5 — page 2 (email + sign-up)
+  6. Story 2.6 — page 3 (confirm code)
+  7. Story 2.7 — page 4 (get-started)
+
