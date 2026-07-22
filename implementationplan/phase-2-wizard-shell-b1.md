@@ -38,6 +38,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: []
+    tracking_issue: 74
     acceptance_criteria:
       - `WizardHeader`, `WizardProgress`, `WizardFooter` exist under `src/components/` with theme-token props per architecture §2a.3 (no `style` prop, no raw numeric values — configurable appearance is `SpacingKey`/`RadiusKey`/`TextColor`/`BgColor` unions).
       - `WizardProgress` renders a `current / total` progress bar where `total` is `31` (constant, sourced from a named export in `src/features/onboarding/pageMap.ts` — see story 2.2 — so a future bump of the page count changes exactly one file).
@@ -53,6 +54,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: []
+    tracking_issue: 75
     acceptance_criteria:
       - Creates `src/types/api/UserProfile.ts` with `UserProfile` (all DB-exposed fields per architecture §7.4) and `UserProfileWritable = Omit<UserProfile, 'age' | 'user_id' | 'created_at' | 'updated_at' | 'deleted_at' | 'profile_complete_verified'>`. Includes a JSDoc note that `preference_vector` MUST NOT appear in `UserProfile` (stripped by backend per architecture §7.4).
       - `src/features/onboarding/draftSchema.ts` defines the `OnboardingDraft` type per architecture §11.2.4: `schemaVersion: 1`, `lastCheckpoint: 'firstCheckpoint' | 'secondCheckpoint' | null`, `currentPage: number`, `fields: Partial<UserProfileWritable>`, `siblings: SiblingDraft[]` (SiblingDraft defined here as `{ name: string; age: number | null; maritalStatus: string | null }` scaffold), `photoPreviewUris: string[]`, `notificationPermissionStatus: 'granted' | 'denied' | 'undetermined' | null`, `locationPermissionStatus: 'granted' | 'denied' | 'undetermined' | null`, `timestamps: { createdAt: string; updatedAt: string }`. File-level comment documents: "Migration policy for schemaVersion bumps is deferred; the current schema is version 1 and no bump handler exists yet. When bumping, decide before merge whether to migrate, discard, or prompt."
@@ -71,6 +73,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [2.1, 2.2]
+    tracking_issue: 76
     acceptance_criteria:
       - `src/navigation/OnboardingStack.tsx` renames every one of its 31 routes from short names (`Page01`, `Page02`, …) to the exact 31 semantic names defined by `PAGE_MAP` in `src/features/onboarding/pageMap.ts` (from story 2.2). The list, in order: `Page01WelcomeScreen`, `Page02EmailScreen`, `Page03ConfirmCodeScreen`, `Page04GetStartedScreen`, `Page05SexScreen`, `Page06NameScreen`, `Page07BirthdayScreen`, `Page08FirstCheckpointScreen`, `Page09ReligionSubsectScreen`, `Page10ProfessionalCategoryScreen`, `Page11WorkDetailsScreen`, `Page12EducationLevelScreen`, `Page13EducationCredentialsScreen`, `Page14SecondCheckpointScreen`, `Page15ResidenceCountryScreen`, `Page16ResidenceCityScreen`, `Page17FamilyResidenceScreen`, `Page18ParentsScreen`, `Page19SiblingsScreen`, `Page20MarriageTimelineScreen`, `Page21OwnReligiousLevelScreen`, `Page22PartnersReligiousLevelScreen`, `Page23MaritalStatusScreen`, `Page24MoveAbroadScreen`, `Page25Preferences1Screen`, `Page26Preferences2Screen`, `Page27RelationScreen`, `Page28PhotosScreen`, `Page29PhoneScreen`, `Page30FaceVerifyIntroScreen`, `Page31FaceCaptureScreen`. If any placeholder-screen filename differs from its new route name, rename the file to match. The list here MUST match `PAGE_MAP` exactly — enforce with a unit test that iterates the stack's registered routes and asserts equality with `Object.keys(PAGE_MAP)`.
       - `src/navigation/types.ts` `OnboardingStackParamList` keys are typed against `OnboardingRouteName` imported from `src/features/onboarding/pageMap.ts` (defined in story 2.2) — not string-literal duplicated. This guarantees `types.ts` and `pageMap.ts` cannot drift.
@@ -91,6 +94,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [2.3]
+    tracking_issue: 77
     acceptance_criteria:
       - Reference: `muzzscreenshots/1.jpeg`.
       - `src/features/onboarding/screens/Page01WelcomeScreen.tsx` renders `images.onboarding.background` (full-screen bg), `images.onboarding.logo` (centered), the title "Knotify" (no tagline), and two buttons stacked vertically labeled "Continue with email" and "Continue with Google" — all from the labels registry.
@@ -114,6 +118,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [2.3]
+    tracking_issue: 78
     acceptance_criteria:
       - Reference: `muzzscreenshots/2.jpeg`.
       - Creates `src/Helper/` folder (does not exist yet — architecture §5 mandates PascalCase singular `Helper/`).
@@ -163,6 +168,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [2.5]
+    tracking_issue: 79
     acceptance_criteria:
       - Reference: `muzzscreenshots/3.jpeg`.
       - `src/features/onboarding/screens/Page03ConfirmCodeScreen.tsx` renders a `Screen` + `WizardHeader hideProgress` + catalog `TextInput` (6-digit code) + `WizardFooter` Continue button.
@@ -202,6 +208,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [2.3]
+    tracking_issue: 80
     acceptance_criteria:
       - Reference: `muzzscreenshots/4.jpeg`.
       - `src/features/onboarding/screens/Page04GetStartedScreen.tsx` renders `Screen` + `WizardHeader hideProgress` + `images.onboarding.banner` (centrally aligned via catalog `Image`) + a `WizardFooter` Continue button labeled "Get started" (always enabled).
