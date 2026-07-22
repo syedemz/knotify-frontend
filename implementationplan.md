@@ -12,7 +12,7 @@ phases:
 - phase: 2
   title: Wizard shell + pages 1-4 (B1)
   file: implementationplan/phase-2-wizard-shell-b1.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 3
