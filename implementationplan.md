@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-07-19
+last_updated: 2026-07-21
 
 phases:
 
@@ -7,7 +7,7 @@ phases:
   title: Foundation & scaffolding
   file: implementationplan/phase-1-foundation.md
   ready: true
-  done: false
+  done: true
 
 - phase: 2
   title: Wizard shell + pages 1-4 (B1)

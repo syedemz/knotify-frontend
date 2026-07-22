@@ -1,2 +1,37 @@
 # Local helper scripts (not part of the project source)
 scripts/
+
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native build artifacts
+android/
+ios/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# macOS
+.DS_Store
+
+# Jest coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/

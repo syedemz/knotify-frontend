@@ -1,6 +1,6 @@
 phase: 1
 title: Foundation & scaffolding
-last_updated: 2026-07-20
+last_updated: 2026-07-21  # story 1.10 done — phase 1 complete
 
 context_summary: |
   Phase 1 stands up every foundation the rest of the project builds on: Expo/RN/TypeScript project scaffold, `src/theme/` copied verbatim from `theme.md §14`, the catalog components starter set from §2a.7 with tests, central registries under `src/config/`, the I/O boundary under `src/services/`, cross-cutting state under `src/state/`, English + Urdu labels with parity, navigation skeleton with auth-gate, and minimal CI. After phase 1 the app boots on Android, renders a placeholder Login screen through the auth-gate, and every PR into `development` runs jest + eslint + tsc + labels-parity in GitHub Actions. Phase 2 lands the onboarding wizard shell and pages 1-4 on top of this scaffold.
@@ -10,7 +10,7 @@ stories:
     title: Bootstrap Expo/RN/TS project with theme, typography, and font loading
     agent: frontenddeveloper
     tracking_issue: 1
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - Project is scaffolded via `npx create-expo-app@latest . --template blank-typescript` on Expo SDK 56; `package.json` versions match `architecture.md §16.1` (Expo `~56.0.x`, RN `0.85.x`, React `19.2.x`, TS `~6.0.3`). Node runtime `>= 20.19.4`.
@@ -28,7 +28,7 @@ stories:
     title: Scaffold central registries under src/config/
     agent: frontenddeveloper
     tracking_issue: 2
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - `src/config/env.ts` reads `EXPO_PUBLIC_ENV` (defaulting to `dev`), loads the corresponding `backendConfig.<env>.json`, validates required fields at import time, and exports a typed `env` object; missing values throw a readable startup error listing them.
@@ -43,7 +43,7 @@ stories:
     title: Scaffold labels/ with English + Urdu parity and typed t() resolver
     agent: frontenddeveloper
     tracking_issue: 3
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - `src/labels/labels.en.json` exists with the baseline key set required by the placeholder screens shipped in this phase. Baseline keys include `common.notImplemented`, `common.loading`, `common.error`, `common.retry`, `auth.login.title`, `auth.forgotPassword.title`, `auth.resetPassword.title`. Additional keys are added by later phases as needed (each new key must ship with an Urdu translation in the same PR to keep parity green).
@@ -57,7 +57,7 @@ stories:
     title: Catalog - layout, typography, buttons
     agent: frontenddeveloper
     tracking_issue: 4
-    done: false
+    done: true
     depends_on: [1.1]
     acceptance_criteria:
       - Components exist under `src/components/`: `Screen`, `Box`, `Row`, `Column`, `Spacer`, `Divider`, `Text`, `Heading`, `Button`, `IconButton`, `PillButton`, `TouchableArea`, `Chip`.
@@ -72,7 +72,7 @@ stories:
     title: Catalog - inputs
     agent: frontenddeveloper
     tracking_issue: 5
-    done: false
+    done: true
     depends_on: [1.1]
     acceptance_criteria:
       - Components exist under `src/components/`: `TextInput`, `PasswordInput`, `SearchInput`, `FormField`, `Select`, `Slider`, `Switch`, `Checkbox`, `RadioGroup`, `DatePicker`.
@@ -86,7 +86,7 @@ stories:
     title: Catalog - containers, state UI, overlays, media
     agent: frontenddeveloper
     tracking_issue: 6
-    done: false
+    done: true
     depends_on: [1.1]
     acceptance_criteria:
       - Components exist under `src/components/`: `Card`, `Section`, `ListRow`, `ListRowSelectable`, `EmptyState`, `LoadingState`, `ErrorState`, `Modal`, `BottomSheet`, `Toast`, `Snackbar`, `Avatar`, `Image`, `Icon`, `Badge`, `NotificationDot`, `Illustration`.
@@ -100,7 +100,7 @@ stories:
     title: Scaffold services/ I/O boundary
     agent: frontenddeveloper
     tracking_issue: 7
-    done: false
+    done: true
     depends_on: [1.2]
     acceptance_criteria:
       - `src/services/api/httpClient.ts` implements the `request<T>` contract from §8.2 - base URL from `config/env.ts`, JWT injection, configurable timeout, one silent-refresh on 401 then retry, typed `ApiError` on non-2xx.
@@ -111,13 +111,13 @@ stories:
       - `src/services/push/expoPush.ts` exports a `registerForPushNotifications()` helper that requests permission, obtains the Expo push token, and POSTs to `/v1/push-tokens`; the settings phase wires it into UI.
       - `src/services/graphql/appsyncClient.ts` exists as a skeleton exporting a `getAppsyncClient()` factory consumed by the chat phase.
       - Unit tests cover httpClient's 401-refresh-then-retry path, 5xx propagation, and timeout path using MSW-registered handlers.
-    notes: ""
+    notes: "MSW v2 native uses ESM-only transitive deps (rettime) incompatible with Jest/Babel CJS runtime. httpClient tests use jest.spyOn(globalThis, 'fetch') instead — full coverage maintained. MSW worker still used by App.tsx at runtime. handlers.ts excluded from coverage collection for same reason. cognitoClient: Amplify AuthTokens type does not expose refreshToken (managed internally by Amplify) — SessionTokens.refreshToken is optional."
 
   - id: 1.8
     title: Scaffold state/ providers (Auth, Query, Language)
     agent: frontenddeveloper
     tracking_issue: 8
-    done: false
+    done: true
     depends_on: [1.3, 1.7]
     acceptance_criteria:
       - `src/state/auth/AuthProvider.tsx` exposes `useAuth()` returning `{ status, session, profileComplete, signIn, signOut, refresh }` per §7.2; on mount, silently swaps an existing refresh token for an access token before children render.
@@ -135,7 +135,7 @@ stories:
     title: Scaffold navigation/ skeleton with auth-gate
     agent: frontenddeveloper
     tracking_issue: 9
-    done: false
+    done: true
     depends_on: [1.4, 1.8]
     acceptance_criteria:
       - `src/navigation/RootNavigator.tsx` reads `useAuth()` and renders one of loading splash, `AuthStack`, `OnboardingStack`, or `AppTabs` per §6.2.
@@ -151,7 +151,7 @@ stories:
     title: Minimal CI on GitHub Actions
     agent: backenddeveloper
     tracking_issue: 10
-    done: false
+    done: true
     depends_on: [1.1, 1.3]
     acceptance_criteria:
       - `.github/workflows/ci.yml` runs on every pull request targeting `development` and `main`.
