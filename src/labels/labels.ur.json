@@ -29,5 +29,14 @@
       "chat": "چیٹ",
       "menu": "مینو"
     }
+  },
+  "wizard": {
+    "header": {
+      "back": "واپس"
+    },
+    "footer": {
+      "continue": "جاری رکھیں",
+      "back": "واپس"
+    }
   }
 }

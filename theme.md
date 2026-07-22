@@ -592,6 +592,32 @@ These are the canonical implementations. The agent must match them.
 
 **Implemented as `<PremiumSection />` with props `{ title, children, icon? }`. Wraps a `<Card bg="premium" />` with a heading row. Do not compose this pattern outside the premium feature area.**
 
+### 9.16 Wizard Progress Bar (story 2.1)
+
+- Full-width horizontal bar; fill grows from left as the wizard advances.
+- Fill color: `accent.primary`; unfilled track: `bg.muted`.
+- Track height: `spacing.xs` (4px) by default.
+- Accessible: `accessibilityRole="progressbar"`, `accessibilityValue={{ min: 1, max: 31, now: current }}`.
+
+**Implemented as `<WizardProgress />` with props `{ current, trackHeight?: SpacingKey, trackBg?: BgKey, fillColor?: AccentKey }`. `TOTAL_PAGES = 31` sourced from `src/features/onboarding/pageMap.ts`.**
+
+### 9.17 Wizard Header (story 2.1)
+
+- Contains a back `<IconButton>` (ChevronLeft icon, 48px touch target) and, unless hidden, the `<WizardProgress>` bar.
+- Back button label: `wizard.header.back` from the labels registry.
+- `hideProgress` hides the progress bar (used by pages 1-4 per §6.3).
+
+**Implemented as `<WizardHeader />` with props `{ currentPage?, hideProgress?, onBack, paddingY?: SpacingKey, paddingX?: SpacingKey, bg?: BgKey }`.**
+
+### 9.18 Wizard Footer (story 2.1)
+
+- Full-width primary `<Button>` labeled `wizard.footer.continue`.
+- Optional ghost `<Button>` labeled `wizard.footer.back` below, when `onBack` is provided.
+- Supports `disabled` and `loading` states on the Continue button.
+- Custom `continueLabel` override for pages that need different wording ("Get started", etc.).
+
+**Implemented as `<WizardFooter />` with props `{ onContinue, disabled?, loading?, onBack?, continueLabel?, padding?: SpacingKey, gap?: SpacingKey, bg?: BgKey }`.**
+
 ---
 
 ## 10. Iconography

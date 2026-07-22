@@ -19,6 +19,12 @@ module.exports = {
     // transitively imports LanguageProvider does not hit the native NativeModule.
     "^@react-native-async-storage/async-storage$":
       "@react-native-async-storage/async-storage/jest/async-storage-mock.js",
+    // lucide-react-native ships its main entry as an ESM .mjs file which the
+    // Babel/CJS Jest runtime cannot parse. Redirect to the CJS build so every
+    // test file that transitively imports a Lucide icon works without an
+    // individual jest.mock() call.
+    "^lucide-react-native$":
+      "<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

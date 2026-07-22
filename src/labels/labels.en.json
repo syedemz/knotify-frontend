@@ -29,5 +29,14 @@
       "chat": "Chat",
       "menu": "Menu"
     }
+  },
+  "wizard": {
+    "header": {
+      "back": "Back"
+    },
+    "footer": {
+      "continue": "Continue",
+      "back": "Back"
+    }
   }
 }
