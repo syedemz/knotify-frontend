@@ -1,6 +1,6 @@
 phase: 2
 title: Wizard shell + pages 1-4 (B1)
-last_updated: 2026-07-23 (story 2.5 complete)
+last_updated: 2026-07-23 (story 2.6 complete)
 
 context_summary: |
   Phase 2 delivers the onboarding wizard's structural spine (wizard chrome components, draft persistence, checkpoint hooks, page-number mapping) plus the first four pages: welcome (p1, with language toggle sheet), email + password (p2, Cognito signUp), confirm code (p3, Cognito confirmSignUp + auto-signIn), and get-started (p4). After this phase a user can create a Cognito account and reach page 4 authenticated; phases 3-11 (B2-B10) fill the remaining 27 pages page-by-page.
@@ -166,7 +166,7 @@ stories:
   - id: 2.6
     title: Page 3 — Confirm email code + Cognito confirmSignUp + auto-signIn
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [2.5]
     tracking_issue: 79
     acceptance_criteria:
