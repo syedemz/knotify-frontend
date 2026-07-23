@@ -1,6 +1,6 @@
 phase: 2
 title: Wizard shell + pages 1-4 (B1)
-last_updated: 2026-07-23 (story 2.2 complete)
+last_updated: 2026-07-23 (story 2.3 complete)
 
 context_summary: |
   Phase 2 delivers the onboarding wizard's structural spine (wizard chrome components, draft persistence, checkpoint hooks, page-number mapping) plus the first four pages: welcome (p1, with language toggle sheet), email + password (p2, Cognito signUp), confirm code (p3, Cognito confirmSignUp + auto-signIn), and get-started (p4). After this phase a user can create a Cognito account and reach page 4 authenticated; phases 3-11 (B2-B10) fill the remaining 27 pages page-by-page.
@@ -71,7 +71,7 @@ stories:
   - id: 2.3
     title: Rename OnboardingStack routes to semantic names, update RootNavigator auth-gate for unauth-during-signup, wire pages 1-4 with wizard chrome
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [2.1, 2.2]
     tracking_issue: 76
     acceptance_criteria:
