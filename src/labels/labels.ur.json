@@ -49,6 +49,25 @@
       "sheetTitle": "زبان",
       "optionEnglish": "انگریزی",
       "optionUrdu": "اردو"
+    },
+    "email": {
+      "emailLabel": "ای میل",
+      "emailPlaceholder": "آپ@مثال.com",
+      "passwordLabel": "پاس ورڈ",
+      "passwordPlaceholder": "کم از کم 12 حروف",
+      "errors": {
+        "invalidEmail": "براہ کرم ایک درست ای میل پتہ درج کریں۔",
+        "passwordTooShort": "پاس ورڈ کم از کم 12 حروف کا ہونا چاہیے۔",
+        "passwordMissingUpper": "پاس ورڈ میں ایک بڑا حرف ہونا چاہیے۔",
+        "passwordMissingLower": "پاس ورڈ میں ایک چھوٹا حرف ہونا چاہیے۔",
+        "passwordMissingNumber": "پاس ورڈ میں ایک عدد ہونا چاہیے۔",
+        "passwordMissingSymbol": "پاس ورڈ میں ایک علامت ہونی چاہیے۔",
+        "usernameExists": "اس ای میل کے ساتھ پہلے سے ایک اکاؤنٹ موجود ہے۔",
+        "invalidPassword": "پاس ورڈ ضروریات پر پورا نہیں اترتا۔",
+        "network": "ہم سرور تک نہیں پہنچ سکے۔ براہ کرم دوبارہ کوشش کریں۔",
+        "secureStorageUnavailable": "ہم آپ کے پاس ورڈ کو اس ڈیوائس پر محفوظ طریقے سے محفوظ نہیں کر سکے۔ براہ کرم دوبارہ کوشش کریں یا ایپ کو دوبارہ شروع کریں۔",
+        "generic": "کچھ غلط ہو گیا۔ براہ کرم دوبارہ کوشش کریں۔"
+      }
     }
   }
 }

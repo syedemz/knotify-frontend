@@ -5,6 +5,7 @@ import {
   View,
   KeyboardTypeOptions,
   ReturnKeyTypeOptions,
+  type TextInputProps as RNTextInputProps,
 } from "react-native";
 import { useTheme } from "@/theme";
 import { textStyles } from "@/theme/typography";
@@ -83,6 +84,18 @@ export interface TextInputProps {
    * @default false
    */
   autoFocus?: boolean;
+  /**
+   * iOS `textContentType` hint for the system keyboard and password managers.
+   *
+   * Forwarded directly to the underlying RN `TextInput`.
+   */
+  textContentType?: RNTextInputProps['textContentType'];
+  /**
+   * Cross-platform autofill / autocomplete hint.
+   *
+   * Forwarded directly to the underlying RN `TextInput`.
+   */
+  autoComplete?: RNTextInputProps['autoComplete'];
 }
 
 /**
@@ -119,6 +132,8 @@ export function TextInput({
   autoCapitalize = "sentences",
   accessibilityLabel,
   autoFocus = false,
+  textContentType,
+  autoComplete,
 }: TextInputProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -142,6 +157,8 @@ export function TextInput({
         autoCorrect={autoCorrect}
         autoCapitalize={autoCapitalize}
         autoFocus={autoFocus}
+        textContentType={textContentType}
+        autoComplete={autoComplete}
         style={styles.input}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

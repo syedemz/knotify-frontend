@@ -109,6 +109,31 @@ jest.mock("@/state/i18n/LanguageProvider", () => ({
   useLocale: () => ({ locale: "en", setLocale: jest.fn() }),
 }));
 
+// Mock cognitoClient — Page02EmailScreen (real content, story 2.5) imports cognitoClient.
+// Convention: mock the cognitoClient wrapper, not aws-amplify/auth (established in story 2.5).
+jest.mock("@/services/auth/cognitoClient", () => ({
+  cognitoClient: {
+    signUp: jest.fn(),
+    confirmSignUp: jest.fn(),
+    signIn: jest.fn(),
+    signOut: jest.fn(),
+    refreshSession: jest.fn(),
+  },
+}));
+
+// Mock useOnboardingDraft — Page02EmailScreen (story 2.5) calls useOnboardingDraft.
+jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
+  useOnboardingDraft: () => ({
+    update: jest.fn(),
+    advance: jest.fn(),
+    advanceWithCheckpoint: jest.fn(),
+    reset: jest.fn(),
+    getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 2 })),
+    setSiblings: jest.fn(),
+    isLoading: false,
+  }),
+}));
+
 // Mock expo-image — Page01WelcomeScreen uses ScreenBackground which wraps expo-image.
 jest.mock("expo-image", () => {
   const RN = require("react-native") as typeof import("react-native");

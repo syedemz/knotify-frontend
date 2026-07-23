@@ -28,6 +28,19 @@ export enum SecureStorageKey {
    * the user can resume after app restart.
    */
   onboardingDraft = 'onboarding.draft',
+  /**
+   * Bootstrap password captured on page 2 (email + password screen) so that
+   * page 3 (confirm-code screen) can auto-signIn immediately after
+   * `confirmSignUp` succeeds — without asking the user to re-enter their
+   * password.
+   *
+   * **Lifecycle:** written on page 2 (story 2.5) BEFORE `cognitoClient.signUp`
+   * is called; deleted on page 3 (story 2.6) immediately after
+   * `cognitoClient.signIn` succeeds. If the user drops off between pages 2
+   * and 3 the key persists — a future story will scrub it on app-launch resume
+   * when `lastCheckpoint === null` and `currentPage <= 3`.
+   */
+  OnboardingBootstrapPassword = 'onboarding.bootstrapPassword',
 }
 
 /**

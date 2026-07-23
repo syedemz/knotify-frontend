@@ -49,6 +49,25 @@
       "sheetTitle": "Language",
       "optionEnglish": "English",
       "optionUrdu": "Urdu"
+    },
+    "email": {
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 12 characters",
+      "errors": {
+        "invalidEmail": "Please enter a valid email address.",
+        "passwordTooShort": "Password must be at least 12 characters.",
+        "passwordMissingUpper": "Password must include an uppercase letter.",
+        "passwordMissingLower": "Password must include a lowercase letter.",
+        "passwordMissingNumber": "Password must include a number.",
+        "passwordMissingSymbol": "Password must include a symbol.",
+        "usernameExists": "An account with this email already exists.",
+        "invalidPassword": "Password doesn't meet requirements.",
+        "network": "We couldn't reach the server. Please try again.",
+        "secureStorageUnavailable": "We couldn't securely save your password on this device. Please try again or restart the app.",
+        "generic": "Something went wrong. Please try again."
+      }
     }
   }
 }

@@ -4,6 +4,7 @@ import {
   StyleSheet,
   TextInput as RNTextInput,
   View,
+  type TextInputProps as RNTextInputProps,
 } from "react-native";
 import { useTheme } from "@/theme";
 import { textStyles } from "@/theme/typography";
@@ -47,6 +48,35 @@ export interface PasswordInputProps {
    * Accessibility label used by screen readers.
    */
   accessibilityLabel?: string;
+  /**
+   * iOS `textContentType` hint for the system keyboard and password managers.
+   *
+   * Use `'newPassword'` on sign-up screens so iOS offers to generate and save
+   * a strong password. Forwarded directly to the underlying RN `TextInput`.
+   */
+  textContentType?: RNTextInputProps['textContentType'];
+  /**
+   * Cross-platform autofill / autocomplete hint.
+   *
+   * Use `'password-new'` on sign-up screens so Android password managers
+   * offer to save the newly created credential. Forwarded directly to the
+   * underlying RN `TextInput`.
+   */
+  autoComplete?: RNTextInputProps['autoComplete'];
+  /**
+   * Auto-capitalisation mode.
+   *
+   * Defaults to `'none'` (appropriate for password fields).
+   * Forwarded directly to the underlying RN `TextInput`.
+   */
+  autoCapitalize?: RNTextInputProps['autoCapitalize'];
+  /**
+   * When true, disables autocorrect.
+   *
+   * Defaults to `false` (autocorrect disabled for password fields).
+   * Forwarded directly to the underlying RN `TextInput`.
+   */
+  autoCorrect?: boolean;
 }
 
 /**
@@ -73,6 +103,10 @@ export function PasswordInput({
   error = false,
   onSubmitEditing,
   accessibilityLabel,
+  textContentType,
+  autoComplete,
+  autoCapitalize = "none",
+  autoCorrect = false,
 }: PasswordInputProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -91,10 +125,12 @@ export function PasswordInput({
         placeholderTextColor={theme.colors.text.tertiary}
         secureTextEntry={secure}
         editable={!disabled}
-        autoCapitalize="none"
-        autoCorrect={false}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
         returnKeyType="done"
         onSubmitEditing={onSubmitEditing}
+        textContentType={textContentType}
+        autoComplete={autoComplete}
         style={styles.input}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

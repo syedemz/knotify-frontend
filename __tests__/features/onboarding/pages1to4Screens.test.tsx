@@ -3,7 +3,8 @@
  *
  * Page01WelcomeScreen: real content (story 2.4) — checks globe icon, title,
  * and CTA buttons.
- * Pages 2-4: still placeholder screens (story 2.3) — checks WizardHeader +
+ * Page02EmailScreen: real content (story 2.5) — checks email + password labels.
+ * Pages 3-4: still placeholder screens (story 2.3) — checks WizardHeader +
  * common.notImplemented text.
  */
 
@@ -90,6 +91,55 @@ jest.mock("@/state/i18n/LanguageProvider", () => ({
   useLocale: () => ({ locale: "en", setLocale: jest.fn() }),
 }));
 
+// ── Mocks required by Page02EmailScreen (story 2.5 real content) ─────────────
+
+jest.mock("@/services/auth/cognitoClient", () => ({
+  cognitoClient: {
+    signUp: jest.fn(),
+    confirmSignUp: jest.fn(),
+    signIn: jest.fn(),
+    signOut: jest.fn(),
+    refreshSession: jest.fn(),
+  },
+}));
+
+jest.mock("@/services/auth/secureStorage", () => ({
+  SecureStorageKey: {
+    accessToken: "auth.accessToken",
+    refreshToken: "auth.refreshToken",
+    idToken: "auth.idToken",
+    onboardingDraft: "onboarding.draft",
+    OnboardingBootstrapPassword: "onboarding.bootstrapPassword",
+  },
+  secureStorage: {
+    get: jest.fn(),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+    clearAuthTokens: jest.fn(),
+    getAccessToken: jest.fn(),
+    setAccessToken: jest.fn(),
+    getRefreshToken: jest.fn(),
+    setRefreshToken: jest.fn(),
+    getIdToken: jest.fn(),
+    setIdToken: jest.fn(),
+    getOnboardingDraft: jest.fn().mockResolvedValue(null),
+    setOnboardingDraft: jest.fn().mockResolvedValue(undefined),
+    clearOnboardingDraft: jest.fn(),
+  },
+}));
+
+jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
+  useOnboardingDraft: () => ({
+    update: jest.fn(),
+    advance: jest.fn(),
+    advanceWithCheckpoint: jest.fn(),
+    reset: jest.fn(),
+    getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 2 })),
+    setSiblings: jest.fn(),
+    isLoading: false,
+  }),
+}));
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Imports under test ────────────────────────────────────────────────────────
@@ -150,8 +200,11 @@ describe("Page01WelcomeScreen (story 2.4 real content)", () => {
 });
 
 // ── Page02EmailScreen ─────────────────────────────────────────────────────────
+// Real content shipped in story 2.5. Full wiring tests are in
+// Page02EmailScreen.test.tsx. These smoke-test the screen in this
+// multi-screen fixture.
 
-describe("Page02EmailScreen (story 2.3 placeholder)", () => {
+describe("Page02EmailScreen (story 2.5 real content)", () => {
   it("given Page02EmailScreen, then it mounts without throwing", () => {
     expect(() => renderScreen(Page02EmailScreen, "Page02EmailScreen")).not.toThrow();
   });
@@ -161,9 +214,14 @@ describe("Page02EmailScreen (story 2.3 placeholder)", () => {
     expect(screen.getByLabelText(t("wizard.header.back"))).toBeTruthy();
   });
 
-  it("given Page02EmailScreen, then common.notImplemented placeholder text is visible", () => {
+  it("given Page02EmailScreen, then Email label is visible", () => {
     renderScreen(Page02EmailScreen, "Page02EmailScreen");
-    expect(screen.getByText(t("common.notImplemented"))).toBeTruthy();
+    expect(screen.getByText(t("onboarding.email.emailLabel"))).toBeTruthy();
+  });
+
+  it("given Page02EmailScreen, then Password label is visible", () => {
+    renderScreen(Page02EmailScreen, "Page02EmailScreen");
+    expect(screen.getByText(t("onboarding.email.passwordLabel"))).toBeTruthy();
   });
 });
 
