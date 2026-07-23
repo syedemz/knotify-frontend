@@ -109,6 +109,10 @@
         "yearUnreasonable": "Please enter a valid birth year.",
         "invalid": "Please enter a valid date of birth."
       }
+    },
+    "firstCheckpoint": {
+      "title": "You're all set!",
+      "start": "Start"
     }
   }
 }

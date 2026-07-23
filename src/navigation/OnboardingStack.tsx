@@ -2,10 +2,9 @@
  * Onboarding wizard navigator.
  *
  * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
- * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-4
- * are real placeholder screens (created in story 2.3); pages 5-31 remain as
- * `EmptyState` placeholders — real screens land in stories 2.4-2.7 and
- * phases 3-11 (B2-B10).
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-8
+ * are real screens (phases 2-3, B1-B2); pages 9-31 remain as `EmptyState`
+ * placeholders — real screens land in phases 4-11 (B3-B10).
  *
  * `useCheckpointResume` is wired as `initialRouteName` so users who resume
  * an in-progress wizard skip already-completed pages.
@@ -25,6 +24,10 @@ import { Page01WelcomeScreen } from "@/features/onboarding/screens/Page01Welcome
 import { Page02EmailScreen } from "@/features/onboarding/screens/Page02EmailScreen";
 import { Page03ConfirmCodeScreen } from "@/features/onboarding/screens/Page03ConfirmCodeScreen";
 import { Page04GetStartedScreen } from "@/features/onboarding/screens/Page04GetStartedScreen";
+import { Page05SexScreen as Page05SexScreenImpl } from "@/features/onboarding/screens/Page05SexScreen";
+import { Page06NameScreen as Page06NameScreenImpl } from "@/features/onboarding/screens/Page06NameScreen";
+import { Page07BirthdayScreen as Page07BirthdayScreenImpl } from "@/features/onboarding/screens/Page07BirthdayScreen";
+import { Page08FirstCheckpointScreen as Page08FirstCheckpointScreenImpl } from "@/features/onboarding/screens/Page08FirstCheckpointScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -56,10 +59,11 @@ function makePlaceholderScreen(pageName: string) {
   return PlaceholderScreen;
 }
 
-const Page05SexScreen = makePlaceholderScreen("Page05SexScreen");
-const Page06NameScreen = makePlaceholderScreen("Page06NameScreen");
-const Page07BirthdayScreen = makePlaceholderScreen("Page07BirthdayScreen");
-const Page08FirstCheckpointScreen = makePlaceholderScreen("Page08FirstCheckpointScreen");
+// Pages 5-8 now have real screen components (phases 3B2, stories 3.1-3.4).
+const Page05SexScreen = Page05SexScreenImpl;
+const Page06NameScreen = Page06NameScreenImpl;
+const Page07BirthdayScreen = Page07BirthdayScreenImpl;
+const Page08FirstCheckpointScreen = Page08FirstCheckpointScreenImpl;
 const Page09ReligionSubsectScreen = makePlaceholderScreen("Page09ReligionSubsectScreen");
 const Page10ProfessionalCategoryScreen = makePlaceholderScreen("Page10ProfessionalCategoryScreen");
 const Page11WorkDetailsScreen = makePlaceholderScreen("Page11WorkDetailsScreen");
@@ -101,8 +105,8 @@ const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen")
  * - `'firstCheckpoint'`  → `Page09ReligionSubsectScreen`
  * - `null`               → `Page01WelcomeScreen`
  *
- * Pages 1-4 use real placeholder screens with `WizardHeader hideProgress`.
- * Pages 5-31 are `EmptyState` placeholders; real screens land in phases 3-11.
+ * Pages 1-8 use real screens (phases 2-3). Pages 9-31 are `EmptyState`
+ * placeholders; real screens land in phases 4-11.
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
