@@ -1,6 +1,6 @@
 phase: 3
 title: Identity - sex, name, birthday, first checkpoint (B2, pages 5-8)
-last_updated: 2026-07-23
+last_updated: 2026-07-23 (story 3.3)
 
 context_summary: |
   Phase 3 delivers the first identity fields (`sex`, `first_name`, `last_name`, `username`, `birthday`) and the first checkpoint marker. It also introduces the cross-platform DatePicker validation surface for birthday. After this phase the wizard progress bar becomes visible from page 5 onward, and the first-checkpoint boundary is durable across app kills so a resumed session lands directly on page 9.
@@ -27,7 +27,7 @@ stories:
   - id: 3.2
     title: Page 6 - Name inputs + client-side username generation
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 83
     acceptance_criteria:
@@ -42,7 +42,7 @@ stories:
   - id: 3.3
     title: Page 7 - Birthday DatePicker + age preview + validation
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 84
     acceptance_criteria:
