@@ -38,5 +38,17 @@
       "continue": "Continue",
       "back": "Back"
     }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Knotify",
+      "continueEmail": "Continue with email",
+      "continueGoogle": "Continue with Google"
+    },
+    "language": {
+      "sheetTitle": "Language",
+      "optionEnglish": "English",
+      "optionUrdu": "Urdu"
+    }
   }
 }

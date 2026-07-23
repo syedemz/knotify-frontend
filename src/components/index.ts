@@ -136,3 +136,7 @@ export type { WizardProgressProps } from "./WizardProgress";
 
 export { WizardFooter } from "./WizardFooter";
 export type { WizardFooterProps } from "./WizardFooter";
+
+// Catalog — welcome screen background (story 2.4)
+export { ScreenBackground } from "./ScreenBackground";
+export type { ScreenBackgroundProps } from "./ScreenBackground";

@@ -38,5 +38,17 @@
       "continue": "جاری رکھیں",
       "back": "واپس"
     }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "نوٹیفائی",
+      "continueEmail": "ای میل سے جاری رکھیں",
+      "continueGoogle": "گوگل سے جاری رکھیں"
+    },
+    "language": {
+      "sheetTitle": "زبان",
+      "optionEnglish": "انگریزی",
+      "optionUrdu": "اردو"
+    }
   }
 }

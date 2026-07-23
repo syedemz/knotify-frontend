@@ -56,11 +56,8 @@ export interface BottomSheetProps {
  * Draggable bottom sheet following §9.11 from `theme.md`.
  *
  * Wraps `@gorhom/bottom-sheet` with theme-token surface, handle, and padding.
- * Requires `GestureHandlerRootView` at the application root — see App.tsx.
- *
- * TODO(app-root): Wire `GestureHandlerRootView` at the App root before using
- * `BottomSheet` in a real screen. The component itself is complete; the root
- * wiring is deferred to the first screen that consumes it (per story notes).
+ * Requires `GestureHandlerRootView` at the application root — wired in App.tsx
+ * (story 1.9).
  *
  * @example
  * ```tsx

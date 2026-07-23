@@ -41,6 +41,7 @@ jest.mock("react-native-safe-area-context", () => {
       return Rct.createElement(ctx.Provider, { value: INSETS }, Rct.createElement(RN.View, null, props.children));
     },
     SafeAreaConsumer: function(props: any) { return props.children(INSETS); },
+    SafeAreaView: function(props: any) { return Rct.createElement(RN.View, null, props.children); },
     SafeAreaInsetsContext: ctx,
     useSafeAreaInsets: function() { return INSETS; },
     useSafeAreaFrame: function() { return { x: 0, y: 0, width: 375, height: 812 }; },
@@ -103,6 +104,25 @@ jest.mock("@/features/onboarding/hooks/useCheckpointResume", () => ({
   useCheckpointResume: (...args: any[]) => mockCheckpointResume(...args),
 }));
 
+// Mock useLocale — Page01WelcomeScreen (real content, story 2.4) calls useLocale().
+jest.mock("@/state/i18n/LanguageProvider", () => ({
+  useLocale: () => ({ locale: "en", setLocale: jest.fn() }),
+}));
+
+// Mock expo-image — Page01WelcomeScreen uses ScreenBackground which wraps expo-image.
+jest.mock("expo-image", () => {
+  const RN = require("react-native") as typeof import("react-native");
+  const Rct = require("react") as typeof import("react");
+  return {
+    Image: function(props: any) {
+      return Rct.createElement(RN.Image, {
+        source: props.source,
+        accessibilityLabel: props.accessibilityLabel ?? "",
+      });
+    },
+  };
+});
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Imports under test ────────────────────────────────────────────────────────
@@ -138,12 +158,11 @@ describe("OnboardingStack — basic render", () => {
     expect(() => renderOnboardingStack()).not.toThrow();
   });
 
-  it("given OnboardingStack renders with no checkpoint, then Page01WelcomeScreen placeholder content is visible", async () => {
+  it("given OnboardingStack renders with no checkpoint, then Page01WelcomeScreen title is visible", async () => {
     const { findByText } = renderOnboardingStack();
 
-    // Page01WelcomeScreen is a real screen in story 2.3 — it renders
-    // common.notImplemented as a placeholder until story 2.4 ships.
-    await expect(findByText(t("common.notImplemented"))).resolves.toBeTruthy();
+    // Page01WelcomeScreen has real content (story 2.4) — renders the 'Knotify' title.
+    await expect(findByText(t("onboarding.welcome.title"))).resolves.toBeTruthy();
   });
 });
 
@@ -241,10 +260,10 @@ describe("OnboardingStack — useCheckpointResume wiring", () => {
 // ── 4. Pages 1-4 concrete screens ────────────────────────────────────────────
 
 describe("OnboardingStack — pages 1-4 concrete screens", () => {
-  it("given Page01WelcomeScreen is the initial route, then common.notImplemented placeholder text is visible", async () => {
+  it("given Page01WelcomeScreen is the initial route, then Knotify title is visible", async () => {
     mockCheckpointResume.mockReturnValue("Page01WelcomeScreen");
     const { findByText } = renderOnboardingStack();
-    // Page01WelcomeScreen renders t('common.notImplemented') as a placeholder
-    await expect(findByText(t("common.notImplemented"))).resolves.toBeTruthy();
+    // Page01WelcomeScreen has real content (story 2.4) — renders 'Knotify' title.
+    await expect(findByText(t("onboarding.welcome.title"))).resolves.toBeTruthy();
   });
 });

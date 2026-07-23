@@ -1,13 +1,10 @@
 /**
- * Wiring tests for Pages 1-4 placeholder screen components (story 2.3).
+ * Wiring tests for Pages 1-4 screen components.
  *
- * Each screen renders `Screen` + `WizardHeader hideProgress` + a `Text`
- * placeholder. Tests verify:
- * - The screen mounts without throwing.
- * - WizardHeader is present (back button accessible via wizard.header.back label).
- * - The `common.notImplemented` placeholder text is visible.
- *
- * These are wiring tests only — real content ships in stories 2.4-2.7.
+ * Page01WelcomeScreen: real content (story 2.4) — checks globe icon, title,
+ * and CTA buttons.
+ * Pages 2-4: still placeholder screens (story 2.3) — checks WizardHeader +
+ * common.notImplemented text.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -75,6 +72,24 @@ jest.mock("react-native-reanimated", () => {
   return m;
 });
 
+jest.mock("expo-image", () => {
+  const RN = require("react-native") as typeof import("react-native");
+  const Rct = require("react") as typeof import("react");
+  return {
+    Image: function(props: any) {
+      return Rct.createElement(RN.Image, {
+        source: props.source,
+        accessibilityLabel: props.accessibilityLabel ?? "",
+        testID: "expo-image",
+      });
+    },
+  };
+});
+
+jest.mock("@/state/i18n/LanguageProvider", () => ({
+  useLocale: () => ({ locale: "en", setLocale: jest.fn() }),
+}));
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Imports under test ────────────────────────────────────────────────────────
@@ -88,9 +103,9 @@ import { Page04GetStartedScreen } from "@/features/onboarding/screens/Page04GetS
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Minimal navigation mock — only `goBack` is used by the placeholder screens. */
+/** Minimal navigation mock — `goBack` and `navigate` used by screens. */
 function mockNavigation() {
-  return { goBack: jest.fn() };
+  return { goBack: jest.fn(), navigate: jest.fn() };
 }
 
 /** Minimal route mock — no route params on placeholder screens. */
@@ -114,20 +129,23 @@ function renderScreen(
 }
 
 // ── Page01WelcomeScreen ───────────────────────────────────────────────────────
+// Real content shipped in story 2.4. Full wiring tests are in
+// Page01WelcomeScreen.test.tsx. These smoke-test the screen in this
+// multi-screen fixture.
 
-describe("Page01WelcomeScreen (story 2.3 placeholder)", () => {
+describe("Page01WelcomeScreen (story 2.4 real content)", () => {
   it("given Page01WelcomeScreen, then it mounts without throwing", () => {
     expect(() => renderScreen(Page01WelcomeScreen, "Page01WelcomeScreen")).not.toThrow();
   });
 
-  it("given Page01WelcomeScreen, then WizardHeader back button is accessible (hideProgress)", () => {
+  it("given Page01WelcomeScreen, then 'Knotify' title is visible", () => {
     renderScreen(Page01WelcomeScreen, "Page01WelcomeScreen");
-    expect(screen.getByLabelText(t("wizard.header.back"))).toBeTruthy();
+    expect(screen.getByText(t("onboarding.welcome.title"))).toBeTruthy();
   });
 
-  it("given Page01WelcomeScreen, then common.notImplemented placeholder text is visible", () => {
+  it("given Page01WelcomeScreen, then globe icon for language toggle is accessible", () => {
     renderScreen(Page01WelcomeScreen, "Page01WelcomeScreen");
-    expect(screen.getByText(t("common.notImplemented"))).toBeTruthy();
+    expect(screen.getByLabelText(t("onboarding.language.sheetTitle"))).toBeTruthy();
   });
 });
 
