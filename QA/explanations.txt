@@ -1,40 +1,330 @@
-### New gaps introduced by the resolutions
+PHASE 3 BRAINSTORM — LAYMAN EXPLANATIONS
+==========================================
 
-#### A. HIGH — Story 2.2 uses `OnboardingRouteName` without defining it (chicken-and-egg with 2.3)
+Phase 3 builds pages 5-8 of the onboarding wizard: the sex tile picker, the name form, the birthday picker, and the first checkpoint (the "you've made it this far, we'll remember your spot" marker at page 8). The plan was written on 2026-07-19, before phases 1 and 2 shipped. Now that they're merged, some parts of the plan reference tools that were built slightly differently than the plan expected, and a few parts of the plan never got specific enough to hand to a builder without guesswork. Here are the 10 issues, grouped by severity.
 
-- Story 2.2 AC line for `pageMap.ts` says: `export PAGE_MAP: Readonly<Record<OnboardingRouteName, number>>` — but `OnboardingRouteName` is currently defined in `src/navigation/types.ts` as the keys of `OnboardingStackParamList`, and story 2.3 (which depends on 2.2) is what renames those keys.
-- If 2.2 tries to import `OnboardingRouteName` from `src/navigation/types.ts`, it gets the OLD short names (`Page01`..`Page31`) — PAGE_MAP would type-check against the wrong union, or fail to type-check at all.
-- FIX: Story 2.2 should DEFINE `OnboardingRouteName` locally in `pageMap.ts` as `type OnboardingRouteName = keyof typeof PAGE_MAP`, and story 2.3's `src/navigation/types.ts` update should IMPORT that type from `pageMap.ts` (making pageMap.ts the single source of truth for route names, matching its role as source of truth for page numbers). Add an AC to 2.2: "exports `type OnboardingRouteName = keyof typeof PAGE_MAP`". Add an AC to 2.3: "`OnboardingStackParamList` keys are typed against `OnboardingRouteName` imported from `pageMap.ts`, not string-literal duplicated."
 
-#### B. HIGH — Story 2.3 does not wire `useCheckpointResume` into `OnboardingStack.initialRouteName`
+======================================================================
+BLOCKING PROBLEMS — the plan asks for something that literally can't work as written
+======================================================================
 
-- Story 2.2 builds `useCheckpointResume`, but nothing in story 2.3 mounts it. Current `OnboardingStack.tsx` has no dynamic `initialRouteName` — the stack always starts at whatever route is first-registered.
-- Without wiring, checkpoint-resume is dead code: a user with `secondCheckpoint` set who kills the app and returns lands on page 1 instead of page 15.
-- FIX: Add an AC to story 2.3: "`OnboardingStack` reads `useCheckpointResume()` at render and passes its return value as `<Stack.Navigator initialRouteName={...}>`. Add a wiring test that mocks `useCheckpointResume` to return each of the three possible values and asserts the stack mounts the corresponding screen first."
 
-#### C. HIGH — Story 2.3 does not explicitly update `__tests__/navigation/OnboardingStack.test.tsx`
+ISSUE F-1: Story 3.4 calls a function that doesn't exist by that name
+---------------------------------------------------------------------
 
-- Grep found existing test at `__tests__/navigation/OnboardingStack.test.tsx` references the OLD short route names (`Page01`..`Page31`). Renaming routes without updating this test breaks CI.
-- Story 2.3 mentions updating `auth-gate.test.tsx` but not `OnboardingStack.test.tsx`.
-- FIX: Add an AC to story 2.3: "`__tests__/navigation/OnboardingStack.test.tsx` is updated to reference the new semantic route names; the PAGE_MAP-equality test from story 2.3's first AC is added here or in a new test file."
+WHAT THE PLAN SAYS:
+"On the Start button, call useOnboardingDraft().advance(firstCheckpoint) — that sets the checkpoint and moves the wizard forward."
 
-#### D. MEDIUM — Story 2.5 does not gate navigation on successful secure-store write
+WHY THAT'S BROKEN:
+Back in phase 2, we built two separate tools inside useOnboardingDraft:
 
-- Story 2.5 acceptance criteria step 1 says "Persist the password to `expo-secure-store`" then step 3 says "Navigate to `Page03ConfirmCodeScreen`" — but nothing says what happens if the secure-store write throws (device out of space, keychain locked, corrupted state).
-- Consequence: user reaches page 3, page 3 can't read the password, `bootstrapMissing` fires — but the Cognito user is already created. User is now in a broken state (account exists, no way to sign in without password reset).
-- FIX: Add to story 2.5 AC: "The secure-store write is awaited BEFORE `cognitoClient.signUp` is called (so a keychain failure is caught before creating the Cognito user). If the write throws, render `onboarding.email.errors.secureStorageUnavailable` and do NOT call signUp. Add a label for it." Also add the label to the enumeration.
+  1. advance(pageNumber)                          — moves the wizard forward by one page. Takes a NUMBER.
+  2. advanceWithCheckpoint(pageNumber, marker)    — moves forward AND drops a checkpoint marker. Takes a number AND a marker.
 
-#### E. MEDIUM — Story 2.5 does not specify OS password-manager hints
+The plan is asking us to call the FIRST tool but pass it the argument for the SECOND. It's like asking a bartender: "make me a drink — bourbon." The word "bourbon" is a liquid name, not a drink order. If we do exactly what the plan says, we'd pass the string "firstCheckpoint" into a function expecting a page number, and the wizard would either crash or think it needs to jump to page NaN.
 
-- Password field on page 2 should trigger iOS/Android password-manager save prompts (so users don't lose the password they just picked). Requires `textContentType='newPassword'` (iOS), `autoComplete='password-new'` (Android), and matching `textContentType='emailAddress'` / `autoComplete='email'` on the email field.
-- Missing from AC — easy to overlook, hard to add after the fact (users will already have signed up without saved passwords).
-- FIX: Add to story 2.5 AC: "Email `TextInput` sets `textContentType='emailAddress'` and `autoComplete='email'`. Password `TextInput` sets `textContentType='newPassword'` and `autoComplete='password-new'` so OS password managers offer to save the new credential."
+ANALOGY:
+Imagine a two-button elevator. Button A is "go up one floor". Button B is "go up one floor AND remember you passed this landing so we can drop you back here if you get lost." The plan says "press Button A, and while pressing it, say the word 'landing'." Button A doesn't listen to words. You have to press Button B, and tell it which floor AND which landing.
 
-#### F. MEDIUM — Story 2.6 does not require the Continue button to disable during the confirmSignUp → signIn chain
+WHAT THE FIX LOOKS LIKE:
+Change the AC to: "call useOnboardingDraft().advanceWithCheckpoint(9, 'firstCheckpoint')" — 9 because Page 9 is what comes after Page 8, and 'firstCheckpoint' is the marker name we agreed on in phase 2.
 
-- Story 2.6 chains `confirmSignUp` → read secure-store → `signIn` → delete secure-store → navigate. That's ~1-3 seconds of network. Double-tap during that window would trigger two `confirmSignUp` calls, the second failing with a code-already-used error, causing a confusing UX.
-- FIX: Add to story 2.6 AC: "During the confirmSignUp+signIn chain, `WizardFooter` Continue button renders with `loading={true} disabled={true}`. The button re-enables only on error (not on success — success navigates away)."
+CONFIRM: is that the correct rewrite? [yes / no / different intent]
 
-### Verdict
 
-All 6 findings are small tweaks to individual story AC — no architecture changes, no new stories, no dependency-graph churn. Recommend addressing inline before dispatch (would take ~5 minutes of PRD editing); alternatively they can be surfaced to the subagent as adjustments during dispatch, but AC-in-PRD is cleaner for auditability.
+ISSUE F-2: Story 3.4 tries to navigate to a screen that doesn't exist by that name
+----------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+"After Start, navigate to Page09ReligionScreen."
+
+WHY THAT'S BROKEN:
+In phase 2 we built the routing table (PAGE_MAP) and named page 9 "Page09ReligionSubsectScreen" — because the page actually asks for religion AND subsect together, not just religion. The plan uses the shorter, older name.
+
+React Navigation's navigate() function is dumb about names — if you say "take me to Page09ReligionScreen" but the map only knows "Page09ReligionSubsectScreen", it silently fails or throws. Either way, the button does nothing useful.
+
+ANALOGY:
+You tell a taxi driver "take me to Franklin Street." The driver's map only knows "Franklin Avenue." He shrugs and stays put. The plan needs to use the name that's actually on the map.
+
+WHAT THE FIX LOOKS LIKE:
+Rename the target in the AC from Page09ReligionScreen to Page09ReligionSubsectScreen.
+
+CONFIRM: use the existing name Page09ReligionSubsectScreen? [yes / no — rename the route instead]
+
+
+======================================================================
+UNDER-SPECIFIED — the plan hand-waves in places where the builder needs a concrete rule
+======================================================================
+
+
+ISSUE F-3: Story 3.2's "sanitize" function has no definition, so username generation is guesswork
+-------------------------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+"Generate the username as: sanitize(first_name) + sanitize(last_name) + <4-digit alphanumeric>"
+
+WHY THAT'S BROKEN:
+"Sanitize" is jargon that could mean five different things, and each version produces a different username. The plan never picks one. And "4-digit alphanumeric" is similarly slippery.
+
+Say the user types first name "Marie-Claire" and last name "O'Brien". What's the username?
+
+  - Version A (lowercase + strip everything non-letter):    marieclaireobrien + 4 chars
+  - Version B (lowercase + keep letters and hyphens):       marie-claireo'brien + 4 chars   (has an apostrophe — Cognito might reject)
+  - Version C (preserve case + strip):                      MarieClaireOBrien + 4 chars
+  - Version D (strip diacritics too, so "Zoë" → "Zoe"):     zoe...
+
+And "4-digit alphanumeric" — is that:
+  - 4 digits (0-9), like "7291"?
+  - 4 characters from letters and numbers, like "a3f9"?
+  - Case-sensitive letters, like "aB3F"?
+
+Each variant is a different pattern the builder has to invent, and if they invent something the wrong way, we'll only find out much later when phase 11's final PATCH to the backend collides with Cognito's username rules or produces usernames the backend rejects.
+
+ANALOGY:
+The plan says "build a mailbox — paint it a nice color." "Nice" isn't a color. The painter has to pick — red, blue, teal? — and then you're stuck with whatever they picked. Better to say "paint it #1E88E5 blue."
+
+MY RECOMMENDATION:
+Create a new file Helper/usernameHelper.ts with two named, testable functions:
+  - sanitizeNamePart(s) → lowercase the input, strip everything that isn't a-z (so spaces, hyphens, apostrophes, accents all vanish)
+  - generateUsername(first, last) → sanitizeNamePart(first) + sanitizeNamePart(last) + 4 random chars from [a-z0-9]
+
+That gives us a Cognito-safe, deterministic pattern.
+
+QUESTIONS:
+  Q3a. Is lowercase + strip-non-letter the right rule for names, or do you want to preserve accents/case?
+  Q3b. Is [a-z0-9]{4} the right suffix, or do you specifically want [0-9]{4} (only digits) — which reads friendlier ("marieobrien7291")?
+  Q3c. Should the username helper live at Helper/usernameHelper.ts, or bundled into the existing Helper/validationHelper.ts?
+
+
+ISSUE F-4: Story 3.2 describes name validation rules but doesn't name the function that enforces them
+------------------------------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+"Validation rejects digits, special characters, leading/trailing whitespace; only letters, spaces, hyphens, apostrophes pass."
+
+WHY THAT'S UNDER-SPECIFIED:
+Phase 2 already gave us Helper/validationHelper.ts with tools named isValidEmail, isSixDigitCode, passwordMeetsCognitoPolicy. Story 3.2 wants a name validator with matching purpose, but the plan doesn't say what to call it or where to put it. That's a small thing but it matters — if the builder invents their own name ("validateName", "checkName", "nameOk"), we lose the consistent naming that makes the codebase easy to skim.
+
+ANALOGY:
+The plan says "add another light switch." The house already has switches labeled "kitchen", "hallway", "porch." You want the new one added to that same labeled panel, not stuck on a random wall with no label.
+
+MY RECOMMENDATION:
+Add "isValidName(s: string): boolean" to Helper/validationHelper.ts. Rules: only [A-Za-z], space, hyphen, apostrophe; no leading/trailing whitespace; length 1-35.
+
+QUESTION:
+  Q4. Is isValidName the right name, and validationHelper.ts the right home? [yes / different name / different file]
+
+
+ISSUE F-5: Story 3.3 mentions a function it forgot to list in the exports
+-------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+"Helper/dateHelper.ts exports isAtLeast18, isNotFuture, isYearReasonable, and validateBirthday."
+Then two lines later: "Live age preview below the picker calls dateHelper.age(iso)."
+
+WHY THAT'S BROKEN:
+The plan lists four exports and then uses a fifth (age) as if it existed. The builder will either invent age() themselves (and there's no AC constraining what it looks like — do we display "27 years", "27", "you are 27 years old"?), or they'll build only the four listed and the "live age preview" AC will be un-implementable.
+
+ANALOGY:
+The plan says "in the kitchen, install a fridge, oven, sink, and dishwasher." Later: "the coffee maker goes on the counter next to the fridge." Wait — was a coffee maker on the shopping list? The builder shows up with four items and now has to figure out what a coffee maker is on their own.
+
+WHAT THE FIX LOOKS LIKE:
+Add to Story 3.3's AC: "dateHelper also exports age(iso: string, today?: string): number returning the person's completed years." That way it's ordered, sized, and testable.
+
+CONFIRM: add age() to the exports list? [yes / no]
+
+
+ISSUE F-6: Story 3.3's validateBirthday can't be tested reliably
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+"validateBirthday(iso) returns a LabelKey or null."
+"Unit tests cover boundary cases at 17y364d, 18y0d, today, 1899, 1900."
+
+WHY THAT'S BROKEN:
+The two helper functions used INSIDE validateBirthday (isAtLeast18 and isNotFuture) each accept a "today" argument, which is how we test what happens on someone's 18th birthday exactly — we hand the function a pretend "today" of 2044-03-15 and a birthday of 2026-03-15 and check what it says.
+
+But the composite validateBirthday(iso) as written does NOT accept "today" — it presumably reads the real system clock. That means our boundary tests will be flaky: a test that runs today (2026-07-23) will produce a different answer than the same test run tomorrow, and the "18y0d" boundary test can only ever be correct on exactly one day per year.
+
+ANALOGY:
+You want to test "does this alarm clock go off at 7am?" The right test is: set the clock's belief about "now" to 6:59am and check that it stays quiet, then to 7:00am and check that it rings. If the alarm clock refuses to let you fake the time and only ever reads the real wall clock, you literally have to be there at 6:59am on test day. That's not a test — that's an ordeal.
+
+WHAT THE FIX LOOKS LIKE:
+Change the signature to validateBirthday(iso: string, today?: string): LabelKey | null. Default today to the real current date when not provided (so production code stays clean), but let tests inject any date they want.
+
+CONFIRM: make today an injectable parameter? [yes / no]
+
+
+ISSUE F-7: Story 3.1 says "read from options.gender" but there's no clear path to import it
+-------------------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+"Values Male and Female come from options.gender (never inlined in the screen)."
+
+WHY THAT'S UNDER-SPECIFIED:
+The gender list DOES exist — as a JSON file at src/config/options/gender.json containing ["Male", "Female"]. But there's no barrel file (an index.ts that gathers all option lists together) yet. So the screen has three ways it could import gender:
+
+  A. import gender from '@/config/options/gender.json'                       — direct file import
+  B. import { options } from '@/config/options'                              — barrel export, then options.gender
+  C. import { GENDER_OPTIONS } from '@/config/options/gender.ts'             — convert JSON to a typed const
+
+Option B matches how the plan phrases it ("options.gender"). The plan implies B exists but nothing has been built yet.
+
+ANALOGY:
+The plan says "grab the salt from the spice rack." There IS salt in the kitchen — but there's no spice rack yet, it's just sitting on a random shelf. Either build the spice rack, or change the instruction to "grab the salt from the shelf next to the fridge."
+
+MY RECOMMENDATION:
+Create src/config/options/index.ts that re-exports gender (and any other option lists we add later) as one object. This matches the "options.gender" phrasing and gives us a clean import pattern for future phases (options.religion, options.education, etc.).
+
+QUESTIONS:
+  Q7a. Create the options barrel now (option B)? Or defer and just direct-import the JSON (option A)?
+  Q7b. If barrel: should the values be typed as a const enum ('Male' | 'Female') for type safety, or stay as string[]?
+
+
+======================================================================
+SCOPE CREEP — the plan asks for something that has no consumer in this phase
+======================================================================
+
+
+ISSUE F-8: Story 3.1's "not sent as writable on retry navigation" clause has nothing to plug into
+-------------------------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+"Once sex is selected, the field is treated as immutable-after-set (recorded by Helper/immutableFieldHelper.ts predicate; not sent as writable on retry navigation to this page)."
+
+WHY THAT'S SCOPE CREEP:
+There are TWO things being asked here:
+
+  1. Build a predicate function that says "is this field immutable-after-first-write?" — for sex, the answer is yes.
+  2. Make sure that when we retry submitting the user's profile, the sex field isn't included as a writable field.
+
+The FIRST thing is small and belongs in phase 3 — it introduces the predicate and its unit tests.
+
+The SECOND thing requires there to be a "profile PATCH builder" that consumes the predicate and decides what fields to send to the backend. That builder doesn't exist yet. It gets built in phase 11 (the final PATCH page). So the "not sent as writable on retry navigation" clause has NOWHERE to attach in phase 3 — the only piece of code that would honor it doesn't exist yet.
+
+If we leave the clause in, the builder will either (a) build a placeholder PATCH filter with no consumer, which is dead code, or (b) invent some ad-hoc "don't send sex twice" logic in the screen itself, which is the wrong layer and will collide with whatever phase 11 does properly.
+
+ANALOGY:
+The plan says "install a smoke detector, and wire it to the fire sprinklers." Fine — but the sprinklers haven't been installed yet, they're in phase 11. So we should install the smoke detector, leave the wire coiled up, and finish the connection when the sprinklers arrive.
+
+MY RECOMMENDATION:
+Keep the predicate + its unit tests in phase 3. Strike the second clause. Add a note to phase 11's PRD: "PATCH-builder must call immutableFieldHelper.isImmutable() to skip immutable fields on retry submissions."
+
+CONFIRM: strike the second clause from Story 3.1 AC, defer PATCH-time filtering to phase 11? [yes / no — keep it in phase 3]
+
+
+======================================================================
+MISSING ACCEPTANCE CRITERIA — the plan forgot to say something that matters
+======================================================================
+
+
+ISSUE F-9: The plan never says "update the wizard's page pointer" as pages 5-8 advance
+--------------------------------------------------------------------------------------
+
+WHAT THE PLAN OMITS:
+Each screen (pages 5, 6, 7, 8) should call draft.advance(nextPageNumber) as the user moves forward, so the draft's currentPage field stays coherent. None of the ACs actually say this.
+
+WHY IT MATTERS:
+The draft has a currentPage field that phase 2 wired up. It's used by:
+  - the checkpoint-resume logic (which page do I mount when the user relaunches?)
+  - the progress-bar reads (which page is the user on?)
+
+If pages 5-8 navigate but forget to advance the draft, the progress bar and resume logic will lag behind or read stale values. It's the kind of bug that doesn't show up in a happy-path test but manifests as "why does the progress bar say 33% when I'm on page 7?" three weeks later.
+
+ANALOGY:
+Every time a train leaves a station, someone needs to update the station board. If page 5 → 6 doesn't update the board, the arrival board at the next station still says "Now approaching: Page 5" even though the train left an hour ago.
+
+WHAT THE FIX LOOKS LIKE:
+Two options:
+  A. Add a line to EACH story (3.1, 3.2, 3.3, 3.4) saying "on continue/select, call draft.advance(<next-page-number>) before navigation."
+  B. Add ONE shared "phase conventions" section at the top of the PRD saying "every screen calls draft.advance(nextPage) on continue" and don't repeat it per story.
+
+CONFIRM: add the ACs (and choose option A or B)? [A / B / no — page pointer is fine without updating]
+
+
+ISSUE F-10: The plan never verifies the draft's sex field is properly typed
+---------------------------------------------------------------------------
+
+WHAT THE PLAN OMITS:
+Story 3.1 will write "Male" or "Female" into the draft's sex field. But no AC says the sex field's TypeScript type should be 'Male' | 'Female' | undefined (a strict union). If it's currently typed loosely as string, the plan quietly widens the schema without anyone noticing.
+
+WHY IT MATTERS:
+Strict typing catches bugs. If sex is typed as string, then in phase 7 someone could accidentally write sex = "male" (lowercase) and TypeScript would say fine, but the backend would reject it. If sex is typed as 'Male' | 'Female', TypeScript catches the typo at write-time.
+
+ANALOGY:
+A shipping form has a "country" field. If the field is a free-text box, someone types "USA", "U.S.A.", "United States", "america" — chaos. If it's a dropdown limited to exact country names, the data stays clean. TypeScript is that dropdown for the codebase.
+
+WHAT THE FIX LOOKS LIKE:
+Add to Story 3.1 AC: "Verify OnboardingDraft.sex is typed 'Male' | 'Female' | undefined; if it's currently typed string, tighten it."
+
+CONFIRM: add the type-tightening AC? [yes / no]
+
+
+======================================================================
+UX AMBIGUITY (added during Q&A)
+======================================================================
+
+
+ISSUE F-11: Story 3.1 doesn't say what happens if the user back-navigates to page 5 after picking a sex
+--------------------------------------------------------------------------------------------------------
+
+WHAT THE PLAN OMITS:
+Story 3.1 says the sex tile auto-advances on tap. It also says the field is "immutable-after-set" — but that word is ambiguous between "immutable on the backend after the profile is saved" and "immutable in the UI the moment the user first taps it."
+
+Concrete scenario the plan doesn't handle:
+User taps Male → auto-advances to page 6 → hits the back button → arrives on page 5 again. Now what?
+
+Three reasonable behaviors:
+  A. Both tiles remain tappable. Tapping Female overwrites the draft's sex and auto-advances again.
+  B. The Male tile stays highlighted and locked; Female is grayed out. To fix a misclick the user must cancel onboarding entirely.
+  C. Both tappable, but changing the choice pops a confirmation dialog ("Are you sure? This can only be set once.").
+
+RESOLUTION (2026-07-23):
+Going with Option A — freely editable during onboarding. Rationale: a misclick shouldn't be punished with a full onboarding restart. The backend-side immutability (Question B in the earlier discussion) still applies once the profile is committed at phase 11's final PATCH — but during the onboarding form itself, the user can freely revise any field by back-navigating.
+
+WHAT THIS MEANS FOR THE PRD:
+  - Story 3.1 gets a new AC: "Back-navigating to page 5 leaves both tiles tappable. Tapping the opposite tile overwrites the draft's sex field and re-triggers auto-advance to page 6."
+  - Screen wiring test adds a case: seed the draft with sex=Male, mount the screen, tap Female, assert draft becomes sex=Female and navigation fires.
+
+  This also clarifies F-8: the immutableFieldHelper predicate is ONLY consulted at phase 11's PATCH-build time (deciding what to send to the backend). It's never consulted by page 5 itself. During the form, all fields are freely editable.
+
+
+======================================================================
+INFRA SPOT-CHECKS (no action needed — just noting these are fine)
+======================================================================
+
+- The DatePicker component exists with a clean API. Story 3.3 has no infra blocker.
+- All three images (banner, genderMale, genderFemale) are registered in images.ts. Ready to use.
+- useCheckpointResume already reads lastCheckpoint === 'firstCheckpoint' and returns the right route as the initial one. Story 3.4's "kill the app and reopen" test can piggyback on the pattern already used in OnboardingStack.test.tsx.
+- The checkpoint value is already non-regression-safe (once set to firstCheckpoint, back-navigation can't clear it to null). No new invariant needed.
+
+
+======================================================================
+SUMMARY OF DECISIONS YOU NEED TO MAKE
+======================================================================
+
+BLOCKING (both must be fixed):
+  1. F-1 — rewrite Story 3.4's AC to use advanceWithCheckpoint(9, 'firstCheckpoint')?         [yes / no]
+  2. F-2 — rename target route to Page09ReligionSubsectScreen?                                 [yes / no]
+
+UNDER-SPECIFIED:
+  3. F-3a — lowercase + strip-non-letter for sanitize?                                         [yes / preserve-case / preserve-diacritics]
+  3. F-3b — 4-char [a-z0-9] suffix, or 4-digit [0-9] suffix?                                   [a-z0-9 / 0-9]
+  3. F-3c — put helpers in Helper/usernameHelper.ts?                                           [yes / put in validationHelper.ts]
+  4. F-4  — add isValidName to validationHelper.ts?                                            [yes / different name]
+  5. F-5  — add age() to dateHelper's exports?                                                 [yes / no]
+  6. F-6  — make today an injectable parameter of validateBirthday?                            [yes / no]
+  7. F-7a — create src/config/options/index.ts barrel?                                         [yes / direct JSON import instead]
+  7. F-7b — type gender as ('Male' | 'Female') strict union?                                   [yes / plain string[]]
+
+SCOPE:
+  8. F-8  — strike the "not sent as writable on retry navigation" clause and defer to phase 11? [yes / no]
+
+MISSING ACs:
+  9. F-9  — add "call draft.advance(nextPage) on continue"; per-story (A) or shared section (B)?  [A / B / skip]
+  10. F-10 — add AC to verify OnboardingDraft.sex is typed 'Male' | 'Female' | undefined?        [yes / no]
+
+UX AMBIGUITY:
+  11. F-11 — sex tile behavior on back-navigation to page 5?                                    [RESOLVED: A — freely editable]
+
+Once you answer, I'll update the PRD, re-run /implement-phase 3, and the brainstorm will just append a "2026-07-23 <time> — questions resolved, no new findings" section.
