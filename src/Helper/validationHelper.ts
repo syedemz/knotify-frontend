@@ -134,3 +134,38 @@ export function passwordMeetsCognitoPolicy(input: string): PasswordPolicyResult 
 
   return { ok: missing.length === 0, missing };
 }
+
+// ── Name ───────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns `true` when `s` is a valid person-name string.
+ *
+ * Rules:
+ * - Allowed characters: `[A-Za-z]`, space (` `), hyphen (`-`), apostrophe (`'`).
+ * - No leading or trailing whitespace.
+ * - Length: 1–35 characters (inclusive).
+ *
+ * The check is intentionally ASCII-only. Diacritics and non-Latin scripts are
+ * handled separately by `usernameHelper.sanitizeNamePart` — validation here is
+ * for the raw user input stored as `first_name`/`last_name` on the profile.
+ *
+ * @param s - The string to validate.
+ * @returns `true` if `s` is a valid name.
+ *
+ * @example
+ * ```ts
+ * isValidName('Marie')        // true
+ * isValidName("O'Brien")      // true
+ * isValidName('Marie-Claire') // true
+ * isValidName(' Marie')       // false — leading space
+ * isValidName('Marie1')       // false — digit not allowed
+ * isValidName('')             // false — empty
+ * ```
+ */
+export function isValidName(s: string): boolean {
+  if (s.length === 0 || s.length > 35) return false;
+  // Reject leading or trailing whitespace
+  if (s !== s.trim()) return false;
+  // Only letters, spaces, hyphens, and apostrophes are allowed
+  return /^[A-Za-z' -]+$/.test(s);
+}

@@ -88,6 +88,16 @@
     "sex": {
       "male": "مرد",
       "female": "عورت"
+    },
+    "name": {
+      "title": "آپ کا نام کیا ہے؟",
+      "firstNameLabel": "پہلا نام",
+      "firstNamePlaceholder": "مثال: مریم",
+      "lastNameLabel": "آخری نام",
+      "lastNamePlaceholder": "مثال: احمد",
+      "errors": {
+        "invalidName": "صرف حروف، خالی جگہیں، ہائفن، اور اپوسٹروفی کی اجازت ہے (1–35 حروف)۔"
+      }
     }
   }
 }
