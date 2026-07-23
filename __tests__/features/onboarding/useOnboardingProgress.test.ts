@@ -39,6 +39,7 @@ describe('useOnboardingProgress', () => {
 
     it('returns the correct current value for every route in PAGE_MAP', () => {
       for (const [routeName, expectedPage] of Object.entries(PAGE_MAP)) {
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- useOnboardingProgress is a pure function despite its use* prefix
         const result = useOnboardingProgress(routeName, null);
         expect(result.current).toBe(expectedPage);
         expect(result.total).toBe(TOTAL_PAGES);
