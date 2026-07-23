@@ -84,6 +84,10 @@
     },
     "getStarted": {
       "button": "Get started"
+    },
+    "sex": {
+      "male": "Male",
+      "female": "Female"
     }
   }
 }

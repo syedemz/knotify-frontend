@@ -11,6 +11,31 @@
 import type { UserProfileWritable } from '@/types/api/UserProfile';
 
 /**
+ * Draft-local sex type.
+ *
+ * `UserProfile.sex` is `'Male' | 'Female' | null` (nullable in the DB for
+ * API responses). Inside the draft we only ever write `'Male'` or `'Female'`;
+ * `null` is not a valid draft value. Using a narrower type here catches any
+ * attempt to write `null` to the draft at compile-time.
+ */
+export type DraftSex = 'Male' | 'Female';
+
+/**
+ * Draft-local profile fields shape.
+ *
+ * Identical to `Partial<UserProfileWritable>` except that `sex` is narrowed
+ * from `'Male' | 'Female' | null` (its DB-column type) to `'Male' | 'Female'`
+ * (the only values that make sense inside the onboarding wizard draft).
+ *
+ * This satisfies the phase-3 acceptance criterion that `OnboardingDraft.sex`
+ * is typed `'Male' | 'Female' | undefined` — via `Partial<>` the field
+ * becomes optional, so the effective type is `'Male' | 'Female' | undefined`.
+ */
+export type DraftFields = Partial<Omit<UserProfileWritable, 'sex'>> & {
+  sex?: DraftSex;
+};
+
+/**
  * A single sibling entry captured on page 19 (Page19SiblingsScreen).
  *
  * This is a client-side scaffold — the backend `siblings` table stores
@@ -63,10 +88,14 @@ export interface OnboardingDraft {
   currentPage: number;
 
   /**
-   * Accumulated profile field values, typed as a writable subset of the
-   * eventual PATCH body. Only fields the user has actually filled are present.
+   * Accumulated profile field values.
+   *
+   * Typed as {@link DraftFields} rather than `Partial<UserProfileWritable>`
+   * so that `sex` is constrained to `'Male' | 'Female' | undefined` — the
+   * DB-level `null` is excluded because the wizard never writes `null` for sex.
+   * Only fields the user has actually filled are present.
    */
-  fields: Partial<UserProfileWritable>;
+  fields: DraftFields;
 
   /**
    * Sibling records captured on page 19. Empty array before page 19.

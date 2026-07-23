@@ -13,6 +13,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: []
+    tracking_issue: 82
     acceptance_criteria:
       - `Page05SexScreen` renders two tappable tiles using `images.onboarding.genderMale` + label "Male" and `images.onboarding.genderFemale` + label "Female" per §11.2.1 row 5.
       - Values `Male` and `Female` are imported via a new `src/config/options/index.ts` barrel that re-exports the existing `src/config/options/gender.json` as `options.gender` (`string[]`). Screen imports as `import { options } from '@/config/options'` and reads `options.gender` — never inlined.
@@ -28,6 +29,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: []
+    tracking_issue: 83
     acceptance_criteria:
       - `Page06NameScreen` renders two catalog `TextInput`s for `first_name` and `last_name`, each with `maxLength=35`.
       - `Helper/validationHelper.ts` gains `isValidName(s: string): boolean`. Rules: only `[A-Za-z]`, space, hyphen, apostrophe; no leading/trailing whitespace; length 1-35. Unit tests cover accept (`"Marie"`, `"Marie-Claire"`, `"O'Brien"`, `"Van Der Berg"`) and reject (`" Marie"`, `"Marie "`, `""`, `"Marie1"`, `"Marie!"`, 36-char string) cases.
@@ -42,6 +44,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: []
+    tracking_issue: 84
     acceptance_criteria:
       - `Page07BirthdayScreen` renders `images.onboarding.banner` and uses the catalog `DatePicker` from phase 1 (`src/components/DatePicker.tsx`).
       - Create `src/Helper/dateHelper.ts` exporting `isAtLeast18(iso: string, today?: string): boolean`, `isNotFuture(iso: string, today?: string): boolean`, `isYearReasonable(iso: string): boolean` (year in `[1900, current_year]`), `age(iso: string, today?: string): number` (completed years), and `validateBirthday(iso: string, today?: string): LabelKey | null` (composite that returns the first failing label key, or `null` if all pass). Every function that reads "today" MUST accept an optional `today` parameter (defaulting to `new Date().toISOString().slice(0, 10)`) so tests can inject boundary dates deterministically.
@@ -56,6 +59,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [3.3]
+    tracking_issue: 85
     acceptance_criteria:
       - `Page08FirstCheckpointScreen` renders `images.onboarding.banner` with no taglines and a `Start` button enabled by default.
       - On tap: call `useOnboardingDraft().advanceWithCheckpoint(9, 'firstCheckpoint')` (this both sets `lastCheckpoint` to `'firstCheckpoint'` — with non-regression already enforced by `resolveCheckpoint` in `useOnboardingDraft.ts` — AND advances the draft's `currentPage` to 9, so no separate `advance()` call is required), then navigate to `Page09ReligionSubsectScreen`.
