@@ -18,7 +18,7 @@ phases:
 - phase: 3
   title: Identity - sex, name, birthday, first checkpoint (B2, pages 5-8)
   file: implementationplan/phase-3-identity-b2.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 4
