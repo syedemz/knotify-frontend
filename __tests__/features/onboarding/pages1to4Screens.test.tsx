@@ -259,8 +259,11 @@ describe("Page03ConfirmCodeScreen (story 2.6 real content)", () => {
 });
 
 // ── Page04GetStartedScreen ────────────────────────────────────────────────────
+// Real content shipped in story 2.7. Full wiring tests are in
+// Page04GetStartedScreen.test.tsx. These smoke-test the screen in this
+// multi-screen fixture.
 
-describe("Page04GetStartedScreen (story 2.3 placeholder)", () => {
+describe("Page04GetStartedScreen (story 2.7 real content)", () => {
   it("given Page04GetStartedScreen, then it mounts without throwing", () => {
     expect(() => renderScreen(Page04GetStartedScreen, "Page04GetStartedScreen")).not.toThrow();
   });
@@ -270,8 +273,13 @@ describe("Page04GetStartedScreen (story 2.3 placeholder)", () => {
     expect(screen.getByLabelText(t("wizard.header.back"))).toBeTruthy();
   });
 
-  it("given Page04GetStartedScreen, then common.notImplemented placeholder text is visible", () => {
+  it("given Page04GetStartedScreen, then 'Get started' button is visible", () => {
     renderScreen(Page04GetStartedScreen, "Page04GetStartedScreen");
-    expect(screen.getByText(t("common.notImplemented"))).toBeTruthy();
+    expect(screen.getByText(t("onboarding.getStarted.button"))).toBeTruthy();
+  });
+
+  it("given Page04GetStartedScreen, then banner image is rendered", () => {
+    renderScreen(Page04GetStartedScreen, "Page04GetStartedScreen");
+    expect(screen.getByTestId("expo-image")).toBeTruthy();
   });
 });
