@@ -8,6 +8,8 @@
  * @module navigation/types
  */
 
+import type { OnboardingRouteName } from "@/features/onboarding/pageMap";
+
 // ---------------------------------------------------------------------------
 // Auth Stack
 // ---------------------------------------------------------------------------
@@ -32,42 +34,17 @@ export type AuthStackParamList = {
 /**
  * Route params for the `OnboardingStack` navigator.
  *
- * Pages 01-31 cover the multi-step sign-up wizard.
- * Screens are placeholder-only in phase 1; real screens and params
- * are added by the onboarding phases (B1-B10, phases 2-11).
+ * Keys are typed against `OnboardingRouteName` imported from
+ * `src/features/onboarding/pageMap.ts` — the single source of truth for all
+ * 31 route names. This import guarantees `types.ts` and `pageMap.ts` cannot
+ * drift: adding or renaming a route in `pageMap.ts` is immediately reflected
+ * here via the mapped type.
+ *
+ * All routes carry `undefined` params (no required navigation params on any
+ * onboarding screen); real param shapes are added per-screen as needed.
  */
 export type OnboardingStackParamList = {
-  Page01: undefined;
-  Page02: undefined;
-  Page03: undefined;
-  Page04: undefined;
-  Page05: undefined;
-  Page06: undefined;
-  Page07: undefined;
-  Page08: undefined;
-  Page09: undefined;
-  Page10: undefined;
-  Page11: undefined;
-  Page12: undefined;
-  Page13: undefined;
-  Page14: undefined;
-  Page15: undefined;
-  Page16: undefined;
-  Page17: undefined;
-  Page18: undefined;
-  Page19: undefined;
-  Page20: undefined;
-  Page21: undefined;
-  Page22: undefined;
-  Page23: undefined;
-  Page24: undefined;
-  Page25: undefined;
-  Page26: undefined;
-  Page27: undefined;
-  Page28: undefined;
-  Page29: undefined;
-  Page30: undefined;
-  Page31: undefined;
+  [K in OnboardingRouteName]: undefined;
 };
 
 // ---------------------------------------------------------------------------
