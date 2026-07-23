@@ -84,6 +84,35 @@
     },
     "getStarted": {
       "button": "Get started"
+    },
+    "sex": {
+      "male": "Male",
+      "female": "Female"
+    },
+    "name": {
+      "title": "What's your name?",
+      "firstNameLabel": "First name",
+      "firstNamePlaceholder": "e.g. Marie",
+      "lastNameLabel": "Last name",
+      "lastNamePlaceholder": "e.g. Smith",
+      "errors": {
+        "invalidName": "Only letters, spaces, hyphens, and apostrophes are allowed (1–35 characters)."
+      }
+    },
+    "birthday": {
+      "title": "When were you born?",
+      "pickerLabel": "Date of birth",
+      "agePreview": "{age} years",
+      "errors": {
+        "under18": "You must be at least 18 years old.",
+        "future": "Date of birth cannot be in the future.",
+        "yearUnreasonable": "Please enter a valid birth year.",
+        "invalid": "Please enter a valid date of birth."
+      }
+    },
+    "firstCheckpoint": {
+      "title": "You're all set!",
+      "start": "Start"
     }
   }
 }

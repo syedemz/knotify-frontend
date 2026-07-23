@@ -14,8 +14,8 @@ import {
   createEmptyDraft,
   type OnboardingDraft,
   type SiblingDraft,
+  type DraftFields,
 } from '../draftSchema';
-import type { UserProfileWritable } from '@/types/api/UserProfile';
 
 /** Debounce delay for secure-store writes, in milliseconds. */
 const WRITE_DEBOUNCE_MS = 200;
@@ -33,9 +33,9 @@ export interface UseOnboardingDraftReturn {
    * is `'firstCheckpoint'`), the checkpoint is silently ignored and the
    * existing value is kept.
    *
-   * @param partial - Partial profile fields to merge.
+   * @param partial - Partial draft fields to merge.
    */
-  update: (partial: Partial<UserProfileWritable>) => void;
+  update: (partial: DraftFields) => void;
 
   /**
    * Advances the wizard to `nextPage` and schedules a debounced write.
@@ -205,7 +205,7 @@ export function useOnboardingDraft(): UseOnboardingDraftReturn {
   }, []);
 
   const update = useCallback(
-    (partial: Partial<UserProfileWritable>): void => {
+    (partial: DraftFields): void => {
       setDraft((prev) => {
         const next: OnboardingDraft = {
           ...prev,

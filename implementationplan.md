@@ -1,6 +1,7 @@
 project: knotify-frontend
 last_updated: 2026-07-23
 
+
 phases:
 
 - phase: 1
@@ -19,7 +20,7 @@ phases:
   title: Identity - sex, name, birthday, first checkpoint (B2, pages 5-8)
   file: implementationplan/phase-3-identity-b2.md
   ready: true
-  done: false
+  done: true
 
 - phase: 4
   title: Religion + work (B3, pages 9-11)

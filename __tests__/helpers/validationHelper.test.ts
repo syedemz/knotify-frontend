@@ -1,5 +1,5 @@
 /**
- * Unit tests for validationHelper.ts (story 2.5).
+ * Unit tests for validationHelper.ts (stories 2.5, 3.2).
  *
  * Covers:
  * - isValidEmail: RFC-5322-shaped check — accepts common good inputs, rejects bad ones.
@@ -11,6 +11,7 @@
 import {
   isValidEmail,
   isSixDigitCode,
+  isValidName,
   passwordMeetsCognitoPolicy,
 } from "@/Helper/validationHelper";
 
@@ -181,5 +182,61 @@ describe("passwordMeetsCognitoPolicy", () => {
     const result = passwordMeetsCognitoPolicy("password");
     // TypeScript readonly is compile-time only, but the value must be an array.
     expect(Array.isArray(result.missing)).toBe(true);
+  });
+});
+
+// ── isValidName ────────────────────────────────────────────────────────────────
+
+describe("isValidName", () => {
+  describe("given valid names", () => {
+    const VALID = [
+      "Marie",
+      "Marie-Claire",
+      "O'Brien",
+      "Van Der Berg",
+    ];
+
+    it.each(VALID)("then '%s' is accepted", (input) => {
+      expect(isValidName(input)).toBe(true);
+    });
+  });
+
+  describe("given invalid names", () => {
+    const INVALID: Array<[string, string]> = [
+      [" Marie", "leading space"],
+      ["Marie ", "trailing space"],
+      ["", "empty string"],
+      ["Marie1", "contains digit"],
+      ["Marie!", "contains disallowed symbol"],
+      ["M".repeat(36), "36-character string exceeds max length"],
+    ];
+
+    it.each(INVALID)("then '%s' is rejected (%s)", (input) => {
+      expect(isValidName(input)).toBe(false);
+    });
+  });
+
+  it("given name at exactly 35 characters, then it is accepted", () => {
+    expect(isValidName("M".repeat(35))).toBe(true);
+  });
+
+  it("given name at 36 characters, then it is rejected", () => {
+    expect(isValidName("M".repeat(36))).toBe(false);
+  });
+
+  it("given name with only one character, then it is accepted", () => {
+    expect(isValidName("A")).toBe(true);
+  });
+
+  it("given name with hyphen in the middle, then it is accepted", () => {
+    expect(isValidName("Mary-Jane")).toBe(true);
+  });
+
+  it("given name with apostrophe, then it is accepted", () => {
+    expect(isValidName("O'Brien")).toBe(true);
+  });
+
+  it("given name with internal spaces, then it is accepted", () => {
+    expect(isValidName("Van Der Berg")).toBe(true);
   });
 });
