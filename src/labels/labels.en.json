@@ -68,6 +68,19 @@
         "secureStorageUnavailable": "We couldn't securely save your password on this device. Please try again or restart the app.",
         "generic": "Something went wrong. Please try again."
       }
+    },
+    "confirmCode": {
+      "title": "Enter the code",
+      "subtitle": "We sent a 6-digit code to {email}",
+      "codePlaceholder": "123456",
+      "errors": {
+        "invalidCode": "That code isn't right. Try again.",
+        "codeExpired": "Your code has expired.",
+        "limitExceeded": "Too many attempts. Please wait a moment and try again.",
+        "signInAfterConfirm": "We verified your email but couldn't sign you in. Please restart signup.",
+        "bootstrapMissing": "We lost track of your signup. Please restart from the beginning.",
+        "generic": "Something went wrong. Please try again."
+      }
     }
   }
 }

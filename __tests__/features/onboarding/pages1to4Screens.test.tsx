@@ -91,6 +91,18 @@ jest.mock("@/state/i18n/LanguageProvider", () => ({
   useLocale: () => ({ locale: "en", setLocale: jest.fn() }),
 }));
 
+// ── Mocks required by Page03ConfirmCodeScreen (story 2.6 real content) ───────
+jest.mock("@/state/auth/AuthProvider", () => ({
+  useAuth: () => ({
+    status: "unauthenticated",
+    session: null,
+    profileComplete: false,
+    signIn: jest.fn(),
+    signOut: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 // ── Mocks required by Page02EmailScreen (story 2.5 real content) ─────────────
 
 jest.mock("@/services/auth/cognitoClient", () => ({
@@ -226,8 +238,11 @@ describe("Page02EmailScreen (story 2.5 real content)", () => {
 });
 
 // ── Page03ConfirmCodeScreen ───────────────────────────────────────────────────
+// Real content shipped in story 2.6. Full wiring tests are in
+// Page03ConfirmCodeScreen.test.tsx. These smoke-test the screen in this
+// multi-screen fixture.
 
-describe("Page03ConfirmCodeScreen (story 2.3 placeholder)", () => {
+describe("Page03ConfirmCodeScreen (story 2.6 real content)", () => {
   it("given Page03ConfirmCodeScreen, then it mounts without throwing", () => {
     expect(() => renderScreen(Page03ConfirmCodeScreen, "Page03ConfirmCodeScreen")).not.toThrow();
   });
@@ -237,9 +252,9 @@ describe("Page03ConfirmCodeScreen (story 2.3 placeholder)", () => {
     expect(screen.getByLabelText(t("wizard.header.back"))).toBeTruthy();
   });
 
-  it("given Page03ConfirmCodeScreen, then common.notImplemented placeholder text is visible", () => {
+  it("given Page03ConfirmCodeScreen, then confirmCode title is visible", () => {
     renderScreen(Page03ConfirmCodeScreen, "Page03ConfirmCodeScreen");
-    expect(screen.getByText(t("common.notImplemented"))).toBeTruthy();
+    expect(screen.getByText(t("onboarding.confirmCode.title"))).toBeTruthy();
   });
 });
 
