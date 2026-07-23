@@ -11,7 +11,7 @@ stories:
   - id: 3.1
     title: Page 5 - Sex tile picker (auto-advance, editable on back-nav)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 82
     acceptance_criteria:
