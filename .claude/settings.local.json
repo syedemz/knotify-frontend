@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python C:/Users/syede/Claude-Master/knotify-frontend/scripts/create-issues.py)"
+      "Bash(python C:/Users/syede/Claude-Master/knotify-frontend/scripts/create-issues.py)",
+      "Bash(npm show *)",
+      "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); [print\\(x\\) for x in v if '56' in x]\")",
+      "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); [print\\(x\\) for x in v if x.startswith\\('0.85'\\)]\")",
+      "Bash(npm install *)",
+      "Bash(npx jest *)",
+      "Bash(npx tsc *)",
+      "Bash(git -C /c/Users/syede/Claude-Master/knotify-frontend add __tests__/config/ src/assets/images/ src/config/ templateimages/)",
+      "Bash(git -C /c/Users/syede/Claude-Master/knotify-frontend status)",
+      "Bash(gh issue *)",
+      "Bash(git push *)"
     ]
   }
 }

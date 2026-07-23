@@ -13,11 +13,14 @@ import { AuthProvider } from "@/state/auth/AuthProvider";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { linking } from "@/navigation/linking";
 import { env } from "@/config/env";
-import { worker } from "@/services/api/mocks/handlers";
 
 // Start MSW before any component renders so every fetch() call is intercepted.
 // Gated by EXPO_PUBLIC_API_MODE=mock — live builds are unaffected.
+// Dynamic require so MSW's module-init (which touches browser-only globals
+// like MessageEvent) never runs in live mode on React Native.
 if (env.isMock) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- deferred to avoid MSW module-init in live mode
+  const { worker } = require("@/services/api/mocks/handlers");
   worker.listen({ onUnhandledRequest: "warn" });
 }
 
