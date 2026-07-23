@@ -1,6 +1,6 @@
 phase: 2
 title: Wizard shell + pages 1-4 (B1)
-last_updated: 2026-07-23
+last_updated: 2026-07-23 (story 2.7 complete)
 
 context_summary: |
   Phase 2 delivers the onboarding wizard's structural spine (wizard chrome components, draft persistence, checkpoint hooks, page-number mapping) plus the first four pages: welcome (p1, with language toggle sheet), email + password (p2, Cognito signUp), confirm code (p3, Cognito confirmSignUp + auto-signIn), and get-started (p4). After this phase a user can create a Cognito account and reach page 4 authenticated; phases 3-11 (B2-B10) fill the remaining 27 pages page-by-page.
@@ -36,7 +36,7 @@ stories:
   - id: 2.1
     title: Wizard chrome components (WizardHeader, WizardProgress, WizardFooter)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 74
     acceptance_criteria:
@@ -52,7 +52,7 @@ stories:
   - id: 2.2
     title: Onboarding draft store (draftSchema, useOnboardingDraft, checkpoints, pageMap, progress + checkpoint-resume hooks)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 75
     acceptance_criteria:
@@ -71,7 +71,7 @@ stories:
   - id: 2.3
     title: Rename OnboardingStack routes to semantic names, update RootNavigator auth-gate for unauth-during-signup, wire pages 1-4 with wizard chrome
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [2.1, 2.2]
     tracking_issue: 76
     acceptance_criteria:
@@ -92,7 +92,7 @@ stories:
   - id: 2.4
     title: Page 1 — Welcome screen with language toggle sheet
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [2.3]
     tracking_issue: 77
     acceptance_criteria:
@@ -116,7 +116,7 @@ stories:
   - id: 2.5
     title: Page 2 — Email + password input + Cognito signUp (creates Helper/ folder)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [2.3]
     tracking_issue: 78
     acceptance_criteria:
@@ -166,7 +166,7 @@ stories:
   - id: 2.6
     title: Page 3 — Confirm email code + Cognito confirmSignUp + auto-signIn
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [2.5]
     tracking_issue: 79
     acceptance_criteria:
@@ -206,7 +206,7 @@ stories:
   - id: 2.7
     title: Page 4 — Get started
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [2.3]
     tracking_issue: 80
     acceptance_criteria:

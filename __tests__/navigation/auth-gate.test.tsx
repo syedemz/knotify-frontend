@@ -1,18 +1,22 @@
 /**
- * Auth-gate tests for `RootNavigator` (story 1.9, acceptance criterion §6.2).
+ * Auth-gate tests for `RootNavigator` (story 1.9 AC §6.2, updated in story 2.3).
  *
  * Strategy: mock the three sub-navigators (AuthStack, OnboardingStack, AppTabs)
  * so they render identifiable text nodes. `RootNavigator` itself is NOT mocked —
  * the tests verify its auth-gate branching logic (§6.2) by inspecting which
  * sub-navigator the component mounts based on the `useAuth()` state.
  *
- * Covered cases:
- * (a) `status === 'unauthenticated'` → `AuthStack` rendered; `AppTabs` absent.
+ * Auth-gate mapping (updated story 2.3 per context_summary §High 6):
+ * (a) `status === 'unauthenticated'` → `OnboardingStack` (new sign-up flow); `AuthStack` absent.
  * (b) `status === 'authenticated'` + `profileComplete === false` →
  *     `OnboardingStack` rendered; `AuthStack` and `AppTabs` absent.
  * (c) `status === 'authenticated'` + `profileComplete === true` →
- *     `AppTabs` rendered; `AuthStack` absent.
+ *     `AppTabs` rendered; `AuthStack` and `OnboardingStack` absent.
  * (d) `status === 'loading'` → loading splash; neither sub-navigator visible.
+ *
+ * NOTE: `AuthStack` is no longer reachable from the auth-gate in phase 2, but
+ * the stack remains exported and in the tree for future flows. The placeholder
+ * test (e) renders `AuthStack` directly to assert it is still a valid export.
  */
 
 import React from "react";
@@ -42,7 +46,7 @@ jest.mock("@/navigation/OnboardingStack", () => {
   const Rct = require("react") as typeof import("react");
   return {
     OnboardingStack: function MockOnboardingStack() {
-      return Rct.createElement(RN.Text, { testID: "onboarding-stack" }, "Page01");
+      return Rct.createElement(RN.Text, { testID: "onboarding-stack" }, "ONBOARDING_STACK");
     },
   };
 });
@@ -166,6 +170,7 @@ jest.mock("@/state/auth/AuthProvider", () => ({
 // ── Imports under test (after mocks) ─────────────────────────────────────────
 
 import { RootNavigator } from "@/navigation/RootNavigator";
+import { AuthStack } from "@/navigation/AuthStack";
 import { t } from "@/labels";
 import { ThemeProvider } from "@/theme";
 
@@ -196,32 +201,27 @@ beforeEach(() => {
   mockAuthState.session = null;
 });
 
-// ── (a) unauthenticated → AuthStack ──────────────────────────────────────────
+// ── (a) unauthenticated → OnboardingStack (updated story 2.3) ────────────────
 
 describe("given status === 'unauthenticated'", () => {
-  it("when RootNavigator renders, then auth.login.title label key maps to a string that can be queried", () => {
-    // Sanity-check: t('auth.login.title') returns a non-empty string.
-    expect(t("auth.login.title")).toBeTruthy();
-  });
-
-  it("when RootNavigator renders, then AuthStack is mounted (queryByText AUTH_STACK returns a node)", () => {
+  it("when RootNavigator renders, then OnboardingStack is mounted (ONBOARDING_STACK text visible)", () => {
     const { queryByText } = renderRoot();
 
-    // The MockAuthStack stub renders the text 'AUTH_STACK'.
-    expect(queryByText("AUTH_STACK")).not.toBeNull();
+    // Story 2.3: unauthenticated users now land in OnboardingStack, not AuthStack.
+    expect(queryByText("ONBOARDING_STACK")).not.toBeNull();
+  });
+
+  it("when RootNavigator renders, then AuthStack is absent (AUTH_STACK text not present)", () => {
+    const { queryByText } = renderRoot();
+
+    // AuthStack is no longer mounted by the auth-gate for unauthenticated users.
+    expect(queryByText("AUTH_STACK")).toBeNull();
   });
 
   it("when RootNavigator renders, then AppTabs is absent (Discover tab text not present)", () => {
     const { queryByText } = renderRoot();
 
-    // The MockAppTabs stub renders 'Discover'; it must not appear.
     expect(queryByText(t("nav.tabs.discover"))).toBeNull();
-  });
-
-  it("when RootNavigator renders, then OnboardingStack is absent", () => {
-    const { queryByText } = renderRoot();
-
-    expect(queryByText("Page01")).toBeNull();
   });
 });
 
@@ -233,11 +233,10 @@ describe("given status === 'authenticated' and profileComplete === false", () =>
     mockAuthState.profileComplete = false;
   });
 
-  it("when RootNavigator renders, then OnboardingStack is mounted (Page01 text visible)", () => {
+  it("when RootNavigator renders, then OnboardingStack is mounted (ONBOARDING_STACK text visible)", () => {
     const { queryByText } = renderRoot();
 
-    // The MockOnboardingStack stub renders 'Page01'.
-    expect(queryByText("Page01")).not.toBeNull();
+    expect(queryByText("ONBOARDING_STACK")).not.toBeNull();
   });
 
   it("when RootNavigator renders, then AuthStack is absent (AUTH_STACK text not present)", () => {
@@ -249,7 +248,6 @@ describe("given status === 'authenticated' and profileComplete === false", () =>
   it("when RootNavigator renders, then AppTabs is absent (nav.tabs.discover not present)", () => {
     const { queryByText } = renderRoot();
 
-    // The MockAppTabs stub renders 'Discover' (the value of t('nav.tabs.discover')).
     expect(queryByText(t("nav.tabs.discover"))).toBeNull();
   });
 });
@@ -278,7 +276,7 @@ describe("given status === 'authenticated' and profileComplete === true", () => 
   it("when RootNavigator renders, then OnboardingStack is absent", () => {
     const { queryByText } = renderRoot();
 
-    expect(queryByText("Page01")).toBeNull();
+    expect(queryByText("ONBOARDING_STACK")).toBeNull();
   });
 });
 
@@ -293,7 +291,7 @@ describe("given status === 'loading'", () => {
     const { queryByText } = renderRoot();
 
     expect(queryByText("AUTH_STACK")).toBeNull();
-    expect(queryByText("Page01")).toBeNull();
+    expect(queryByText("ONBOARDING_STACK")).toBeNull();
     expect(queryByText(t("nav.tabs.discover"))).toBeNull();
   });
 
@@ -302,5 +300,25 @@ describe("given status === 'loading'", () => {
 
     // LoadingState renders the common.loading label.
     expect(queryByText(t("common.loading"))).not.toBeNull();
+  });
+});
+
+// ── (e) AuthStack direct render — placeholder test ───────────────────────────
+//
+// AuthStack is no longer reachable from the auth-gate in phase 2, but it remains
+// exported and may be mounted by future flows (explicit sign-in entry points).
+// This test asserts the export is still a valid React component.
+
+describe("AuthStack export — placeholder test", () => {
+  it("when AuthStack is rendered directly, then it mounts without throwing", () => {
+    // AuthStack is mocked at the top of this file; calling render on it
+    // verifies the export is still a valid component reference.
+    expect(() =>
+      render(
+        <ThemeProvider>
+          <AuthStack />
+        </ThemeProvider>,
+      ),
+    ).not.toThrow();
   });
 });

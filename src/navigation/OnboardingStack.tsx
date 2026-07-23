@@ -1,10 +1,14 @@
 /**
  * Onboarding wizard navigator.
  *
- * Registers routes `Page01` through `Page31` — the 31-page sign-up wizard
- * (architecture §6.3, §11.2). All screens are placeholder `EmptyState`
- * components in phase 1; the wizard shell and real screens land in the
- * onboarding phases (B1-B10, phases 2-11).
+ * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-4
+ * are real placeholder screens (created in story 2.3); pages 5-31 remain as
+ * `EmptyState` placeholders — real screens land in stories 2.4-2.7 and
+ * phases 3-11 (B2-B10).
+ *
+ * `useCheckpointResume` is wired as `initialRouteName` so users who resume
+ * an in-progress wizard skip already-completed pages.
  *
  * @module navigation/OnboardingStack
  */
@@ -14,22 +18,29 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { EmptyState } from "@/components";
 import { t } from "@/labels";
+import { useCheckpointResume } from "@/features/onboarding/hooks/useCheckpointResume";
+import { useOnboardingDraft } from "@/features/onboarding/hooks/useOnboardingDraft";
+
+import { Page01WelcomeScreen } from "@/features/onboarding/screens/Page01WelcomeScreen";
+import { Page02EmailScreen } from "@/features/onboarding/screens/Page02EmailScreen";
+import { Page03ConfirmCodeScreen } from "@/features/onboarding/screens/Page03ConfirmCodeScreen";
+import { Page04GetStartedScreen } from "@/features/onboarding/screens/Page04GetStartedScreen";
+
 import type { OnboardingStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
 // ---------------------------------------------------------------------------
-// Placeholder screen factory
+// Placeholder screen factory (pages 5-31)
 // ---------------------------------------------------------------------------
 
 /**
  * Creates a named placeholder screen component for a given onboarding page.
  *
- * Each page renders an `EmptyState` with `common.notImplemented` — sufficient
- * for the phase 1 scaffold. Real screen components replace these in
- * onboarding phases.
+ * Renders an `EmptyState` with `common.notImplemented`. Real screen components
+ * replace these in onboarding phases 3-11 (B2-B10).
  *
- * @param pageName - The route name (e.g. `'Page01'`).
+ * @param pageName - The semantic route name (e.g. `'Page05SexScreen'`).
  * @returns A React component suitable for use as a `Stack.Screen` component.
  */
 function makePlaceholderScreen(pageName: string) {
@@ -41,41 +52,37 @@ function makePlaceholderScreen(pageName: string) {
       />
     );
   }
-  PlaceholderScreen.displayName = `${pageName}Screen`;
+  PlaceholderScreen.displayName = `${pageName}`;
   return PlaceholderScreen;
 }
 
-const Page01Screen = makePlaceholderScreen("Page01");
-const Page02Screen = makePlaceholderScreen("Page02");
-const Page03Screen = makePlaceholderScreen("Page03");
-const Page04Screen = makePlaceholderScreen("Page04");
-const Page05Screen = makePlaceholderScreen("Page05");
-const Page06Screen = makePlaceholderScreen("Page06");
-const Page07Screen = makePlaceholderScreen("Page07");
-const Page08Screen = makePlaceholderScreen("Page08");
-const Page09Screen = makePlaceholderScreen("Page09");
-const Page10Screen = makePlaceholderScreen("Page10");
-const Page11Screen = makePlaceholderScreen("Page11");
-const Page12Screen = makePlaceholderScreen("Page12");
-const Page13Screen = makePlaceholderScreen("Page13");
-const Page14Screen = makePlaceholderScreen("Page14");
-const Page15Screen = makePlaceholderScreen("Page15");
-const Page16Screen = makePlaceholderScreen("Page16");
-const Page17Screen = makePlaceholderScreen("Page17");
-const Page18Screen = makePlaceholderScreen("Page18");
-const Page19Screen = makePlaceholderScreen("Page19");
-const Page20Screen = makePlaceholderScreen("Page20");
-const Page21Screen = makePlaceholderScreen("Page21");
-const Page22Screen = makePlaceholderScreen("Page22");
-const Page23Screen = makePlaceholderScreen("Page23");
-const Page24Screen = makePlaceholderScreen("Page24");
-const Page25Screen = makePlaceholderScreen("Page25");
-const Page26Screen = makePlaceholderScreen("Page26");
-const Page27Screen = makePlaceholderScreen("Page27");
-const Page28Screen = makePlaceholderScreen("Page28");
-const Page29Screen = makePlaceholderScreen("Page29");
-const Page30Screen = makePlaceholderScreen("Page30");
-const Page31Screen = makePlaceholderScreen("Page31");
+const Page05SexScreen = makePlaceholderScreen("Page05SexScreen");
+const Page06NameScreen = makePlaceholderScreen("Page06NameScreen");
+const Page07BirthdayScreen = makePlaceholderScreen("Page07BirthdayScreen");
+const Page08FirstCheckpointScreen = makePlaceholderScreen("Page08FirstCheckpointScreen");
+const Page09ReligionSubsectScreen = makePlaceholderScreen("Page09ReligionSubsectScreen");
+const Page10ProfessionalCategoryScreen = makePlaceholderScreen("Page10ProfessionalCategoryScreen");
+const Page11WorkDetailsScreen = makePlaceholderScreen("Page11WorkDetailsScreen");
+const Page12EducationLevelScreen = makePlaceholderScreen("Page12EducationLevelScreen");
+const Page13EducationCredentialsScreen = makePlaceholderScreen("Page13EducationCredentialsScreen");
+const Page14SecondCheckpointScreen = makePlaceholderScreen("Page14SecondCheckpointScreen");
+const Page15ResidenceCountryScreen = makePlaceholderScreen("Page15ResidenceCountryScreen");
+const Page16ResidenceCityScreen = makePlaceholderScreen("Page16ResidenceCityScreen");
+const Page17FamilyResidenceScreen = makePlaceholderScreen("Page17FamilyResidenceScreen");
+const Page18ParentsScreen = makePlaceholderScreen("Page18ParentsScreen");
+const Page19SiblingsScreen = makePlaceholderScreen("Page19SiblingsScreen");
+const Page20MarriageTimelineScreen = makePlaceholderScreen("Page20MarriageTimelineScreen");
+const Page21OwnReligiousLevelScreen = makePlaceholderScreen("Page21OwnReligiousLevelScreen");
+const Page22PartnersReligiousLevelScreen = makePlaceholderScreen("Page22PartnersReligiousLevelScreen");
+const Page23MaritalStatusScreen = makePlaceholderScreen("Page23MaritalStatusScreen");
+const Page24MoveAbroadScreen = makePlaceholderScreen("Page24MoveAbroadScreen");
+const Page25Preferences1Screen = makePlaceholderScreen("Page25Preferences1Screen");
+const Page26Preferences2Screen = makePlaceholderScreen("Page26Preferences2Screen");
+const Page27RelationScreen = makePlaceholderScreen("Page27RelationScreen");
+const Page28PhotosScreen = makePlaceholderScreen("Page28PhotosScreen");
+const Page29PhoneScreen = makePlaceholderScreen("Page29PhoneScreen");
+const Page30FaceVerifyIntroScreen = makePlaceholderScreen("Page30FaceVerifyIntroScreen");
+const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen");
 
 // ---------------------------------------------------------------------------
 // Navigator
@@ -84,46 +91,65 @@ const Page31Screen = makePlaceholderScreen("Page31");
 /**
  * Native-stack navigator for the 31-page onboarding wizard.
  *
- * Mounted when `status === 'authenticated' && profileComplete === false`.
- * All screens are placeholders; the wizard shell (WizardHeader, WizardProgress,
- * WizardFooter) and real screens are added by the onboarding phases.
+ * Auth-gate mapping (managed by `RootNavigator`):
+ * - `status === 'unauthenticated'` → this stack (new sign-up flow, starts at page 1).
+ * - `status === 'authenticated' && !profileComplete` → this stack (resume from checkpoint).
+ *
+ * `useCheckpointResume` reads the persisted draft's `lastCheckpoint` and
+ * returns the correct `initialRouteName`:
+ * - `'secondCheckpoint'` → `Page15ResidenceCountryScreen`
+ * - `'firstCheckpoint'`  → `Page09ReligionSubsectScreen`
+ * - `null`               → `Page01WelcomeScreen`
+ *
+ * Pages 1-4 use real placeholder screens with `WizardHeader hideProgress`.
+ * Pages 5-31 are `EmptyState` placeholders; real screens land in phases 3-11.
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
 export function OnboardingStack(): React.JSX.Element {
+  const { getDraft } = useOnboardingDraft();
+  const draft = getDraft();
+  const initialRouteName = useCheckpointResume(draft.lastCheckpoint);
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Page01" component={Page01Screen} />
-      <Stack.Screen name="Page02" component={Page02Screen} />
-      <Stack.Screen name="Page03" component={Page03Screen} />
-      <Stack.Screen name="Page04" component={Page04Screen} />
-      <Stack.Screen name="Page05" component={Page05Screen} />
-      <Stack.Screen name="Page06" component={Page06Screen} />
-      <Stack.Screen name="Page07" component={Page07Screen} />
-      <Stack.Screen name="Page08" component={Page08Screen} />
-      <Stack.Screen name="Page09" component={Page09Screen} />
-      <Stack.Screen name="Page10" component={Page10Screen} />
-      <Stack.Screen name="Page11" component={Page11Screen} />
-      <Stack.Screen name="Page12" component={Page12Screen} />
-      <Stack.Screen name="Page13" component={Page13Screen} />
-      <Stack.Screen name="Page14" component={Page14Screen} />
-      <Stack.Screen name="Page15" component={Page15Screen} />
-      <Stack.Screen name="Page16" component={Page16Screen} />
-      <Stack.Screen name="Page17" component={Page17Screen} />
-      <Stack.Screen name="Page18" component={Page18Screen} />
-      <Stack.Screen name="Page19" component={Page19Screen} />
-      <Stack.Screen name="Page20" component={Page20Screen} />
-      <Stack.Screen name="Page21" component={Page21Screen} />
-      <Stack.Screen name="Page22" component={Page22Screen} />
-      <Stack.Screen name="Page23" component={Page23Screen} />
-      <Stack.Screen name="Page24" component={Page24Screen} />
-      <Stack.Screen name="Page25" component={Page25Screen} />
-      <Stack.Screen name="Page26" component={Page26Screen} />
-      <Stack.Screen name="Page27" component={Page27Screen} />
-      <Stack.Screen name="Page28" component={Page28Screen} />
-      <Stack.Screen name="Page29" component={Page29Screen} />
-      <Stack.Screen name="Page30" component={Page30Screen} />
-      <Stack.Screen name="Page31" component={Page31Screen} />
+    <Stack.Navigator
+      initialRouteName={initialRouteName}
+      screenOptions={{ headerShown: false }}
+    >
+      {/* Pages 1-4: real placeholder screens with WizardHeader */}
+      <Stack.Screen name="Page01WelcomeScreen" component={Page01WelcomeScreen} />
+      <Stack.Screen name="Page02EmailScreen" component={Page02EmailScreen} />
+      <Stack.Screen name="Page03ConfirmCodeScreen" component={Page03ConfirmCodeScreen} />
+      <Stack.Screen name="Page04GetStartedScreen" component={Page04GetStartedScreen} />
+
+      {/* Pages 5-31: EmptyState placeholders — replaced by phases 3-11 */}
+      <Stack.Screen name="Page05SexScreen" component={Page05SexScreen} />
+      <Stack.Screen name="Page06NameScreen" component={Page06NameScreen} />
+      <Stack.Screen name="Page07BirthdayScreen" component={Page07BirthdayScreen} />
+      <Stack.Screen name="Page08FirstCheckpointScreen" component={Page08FirstCheckpointScreen} />
+      <Stack.Screen name="Page09ReligionSubsectScreen" component={Page09ReligionSubsectScreen} />
+      <Stack.Screen name="Page10ProfessionalCategoryScreen" component={Page10ProfessionalCategoryScreen} />
+      <Stack.Screen name="Page11WorkDetailsScreen" component={Page11WorkDetailsScreen} />
+      <Stack.Screen name="Page12EducationLevelScreen" component={Page12EducationLevelScreen} />
+      <Stack.Screen name="Page13EducationCredentialsScreen" component={Page13EducationCredentialsScreen} />
+      <Stack.Screen name="Page14SecondCheckpointScreen" component={Page14SecondCheckpointScreen} />
+      <Stack.Screen name="Page15ResidenceCountryScreen" component={Page15ResidenceCountryScreen} />
+      <Stack.Screen name="Page16ResidenceCityScreen" component={Page16ResidenceCityScreen} />
+      <Stack.Screen name="Page17FamilyResidenceScreen" component={Page17FamilyResidenceScreen} />
+      <Stack.Screen name="Page18ParentsScreen" component={Page18ParentsScreen} />
+      <Stack.Screen name="Page19SiblingsScreen" component={Page19SiblingsScreen} />
+      <Stack.Screen name="Page20MarriageTimelineScreen" component={Page20MarriageTimelineScreen} />
+      <Stack.Screen name="Page21OwnReligiousLevelScreen" component={Page21OwnReligiousLevelScreen} />
+      <Stack.Screen name="Page22PartnersReligiousLevelScreen" component={Page22PartnersReligiousLevelScreen} />
+      <Stack.Screen name="Page23MaritalStatusScreen" component={Page23MaritalStatusScreen} />
+      <Stack.Screen name="Page24MoveAbroadScreen" component={Page24MoveAbroadScreen} />
+      <Stack.Screen name="Page25Preferences1Screen" component={Page25Preferences1Screen} />
+      <Stack.Screen name="Page26Preferences2Screen" component={Page26Preferences2Screen} />
+      <Stack.Screen name="Page27RelationScreen" component={Page27RelationScreen} />
+      <Stack.Screen name="Page28PhotosScreen" component={Page28PhotosScreen} />
+      <Stack.Screen name="Page29PhoneScreen" component={Page29PhoneScreen} />
+      <Stack.Screen name="Page30FaceVerifyIntroScreen" component={Page30FaceVerifyIntroScreen} />
+      <Stack.Screen name="Page31FaceCaptureScreen" component={Page31FaceCaptureScreen} />
     </Stack.Navigator>
   );
 }

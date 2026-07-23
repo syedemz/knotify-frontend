@@ -29,5 +29,61 @@
       "chat": "Chat",
       "menu": "Menu"
     }
+  },
+  "wizard": {
+    "header": {
+      "back": "Back"
+    },
+    "footer": {
+      "continue": "Continue",
+      "back": "Back"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Knotify",
+      "continueEmail": "Continue with email",
+      "continueGoogle": "Continue with Google"
+    },
+    "language": {
+      "sheetTitle": "Language",
+      "optionEnglish": "English",
+      "optionUrdu": "Urdu"
+    },
+    "email": {
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 12 characters",
+      "errors": {
+        "invalidEmail": "Please enter a valid email address.",
+        "passwordTooShort": "Password must be at least 12 characters.",
+        "passwordMissingUpper": "Password must include an uppercase letter.",
+        "passwordMissingLower": "Password must include a lowercase letter.",
+        "passwordMissingNumber": "Password must include a number.",
+        "passwordMissingSymbol": "Password must include a symbol.",
+        "usernameExists": "An account with this email already exists.",
+        "invalidPassword": "Password doesn't meet requirements.",
+        "network": "We couldn't reach the server. Please try again.",
+        "secureStorageUnavailable": "We couldn't securely save your password on this device. Please try again or restart the app.",
+        "generic": "Something went wrong. Please try again."
+      }
+    },
+    "confirmCode": {
+      "title": "Enter the code",
+      "subtitle": "We sent a 6-digit code to {email}",
+      "codePlaceholder": "123456",
+      "errors": {
+        "invalidCode": "That code isn't right. Try again.",
+        "codeExpired": "Your code has expired.",
+        "limitExceeded": "Too many attempts. Please wait a moment and try again.",
+        "signInAfterConfirm": "We verified your email but couldn't sign you in. Please restart signup.",
+        "bootstrapMissing": "We lost track of your signup. Please restart from the beginning.",
+        "generic": "Something went wrong. Please try again."
+      }
+    },
+    "getStarted": {
+      "button": "Get started"
+    }
   }
 }

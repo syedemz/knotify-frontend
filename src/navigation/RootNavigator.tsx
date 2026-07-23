@@ -3,9 +3,15 @@
  *
  * Reads `useAuth()` and renders exactly one of:
  * - Loading splash (`LoadingState`) while `status === 'loading'`.
- * - `AuthStack` when `status === 'unauthenticated'`.
- * - `OnboardingStack` when `status === 'authenticated' && !profileComplete`.
+ * - `OnboardingStack` when `status === 'unauthenticated'` (new sign-up flow).
+ * - `OnboardingStack` when `status === 'authenticated' && !profileComplete`
+ *   (user authenticated during wizard but has not completed their profile).
  * - `AppTabs` when `status === 'authenticated' && profileComplete`.
+ *
+ * `AuthStack` remains in the codebase for returning users who explicitly opt
+ * to sign in (out of scope for phase 2 — the auth-gate does not route to it
+ * in this phase). It is kept exported so the existing `AuthStack` tests pass
+ * and future phases can wire it back in.
  *
  * Transitions are driven by state changes in `AuthProvider`, not by
  * imperative `navigation.navigate()` calls across boundaries. This makes
@@ -21,7 +27,6 @@ import { LoadingState } from "@/components";
 import { t } from "@/labels";
 import { useAuth } from "@/state/auth/AuthProvider";
 
-import { AuthStack } from "./AuthStack";
 import { OnboardingStack } from "./OnboardingStack";
 import { AppTabs } from "./AppTabs";
 
@@ -39,9 +44,12 @@ import { AppTabs } from "./AppTabs";
  *
  * Auth-gate mapping:
  * - `'loading'` → full-screen {@link LoadingState} (splash).
- * - `'unauthenticated'` → {@link AuthStack}.
- * - `'authenticated'` + `profileComplete === false` → {@link OnboardingStack}.
+ * - `'unauthenticated'` → {@link OnboardingStack} (new sign-up flow starts at page 1).
+ * - `'authenticated'` + `profileComplete === false` → {@link OnboardingStack} (resumes from checkpoint).
  * - `'authenticated'` + `profileComplete === true` → {@link AppTabs}.
+ *
+ * `AuthStack` is not mounted by the auth-gate in phase 2. It remains exported
+ * for future phases that add explicit sign-in entry points.
  */
 export function RootNavigator(): React.JSX.Element {
   const { status, profileComplete } = useAuth();
@@ -54,8 +62,9 @@ export function RootNavigator(): React.JSX.Element {
     );
   }
 
+  // New sign-up flow: unauthenticated users start at page 1 of the wizard.
   if (status === "unauthenticated") {
-    return <AuthStack />;
+    return <OnboardingStack />;
   }
 
   // status === 'authenticated'

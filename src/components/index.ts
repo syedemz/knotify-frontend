@@ -126,3 +126,17 @@ export type {
 
 export { Illustration } from "./Illustration";
 export type { IllustrationProps, IllustrationSize } from "./Illustration";
+
+// Catalog — wizard chrome (story 2.1)
+export { WizardHeader } from "./WizardHeader";
+export type { WizardHeaderProps } from "./WizardHeader";
+
+export { WizardProgress } from "./WizardProgress";
+export type { WizardProgressProps } from "./WizardProgress";
+
+export { WizardFooter } from "./WizardFooter";
+export type { WizardFooterProps } from "./WizardFooter";
+
+// Catalog — welcome screen background (story 2.4)
+export { ScreenBackground } from "./ScreenBackground";
+export type { ScreenBackgroundProps } from "./ScreenBackground";
