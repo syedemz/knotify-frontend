@@ -13,7 +13,7 @@ phases:
   title: Wizard shell + pages 1-4 (B1)
   file: implementationplan/phase-2-wizard-shell-b1.md
   ready: true
-  done: false
+  done: true
 
 - phase: 3
   title: Identity - sex, name, birthday, first checkpoint (B2, pages 5-8)
