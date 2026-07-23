@@ -34,9 +34,10 @@ let _amplifyConfigured = false;
  * Configures Amplify with Cognito credentials from `env` if not already done.
  *
  * Called at the top of every public method to ensure the singleton is
- * configured before use. Idempotent.
+ * configured before use. Idempotent. Skipped in mock mode.
  */
 function ensureConfigured(): void {
+  if (env.isMockAuth) return;
   if (_amplifyConfigured) return;
   Amplify.configure({
     Auth: {
@@ -118,6 +119,20 @@ export interface SignInInput {
  *   duplicate username, or policy violation.
  */
 async function signUp(input: SignUpInput): Promise<SignUpOutput> {
+  if (env.isMockAuth) {
+    return {
+      isSignUpComplete: false,
+      userId: `mock-${input.username}`,
+      nextStep: {
+        signUpStep: 'CONFIRM_SIGN_UP',
+        codeDeliveryDetails: {
+          destination: input.email,
+          deliveryMedium: 'EMAIL',
+          attributeName: 'email',
+        },
+      },
+    } as unknown as SignUpOutput;
+  }
   ensureConfigured();
   return amplifySignUp({
     username: input.username,
@@ -139,6 +154,14 @@ async function signUp(input: SignUpInput): Promise<SignUpOutput> {
  * @throws {AuthError} Propagated from Amplify on invalid or expired code.
  */
 async function confirmSignUp(input: ConfirmSignUpInput): Promise<ConfirmSignUpOutput> {
+  if (env.isMockAuth) {
+    // Accept any 6-digit code in mock mode. The label helper already caught
+    // non-6-digit inputs upstream.
+    return {
+      isSignUpComplete: true,
+      nextStep: { signUpStep: 'DONE' },
+    } as unknown as ConfirmSignUpOutput;
+  }
   ensureConfigured();
   return amplifyConfirmSignUp({
     username: input.username,
@@ -157,6 +180,16 @@ async function confirmSignUp(input: ConfirmSignUpInput): Promise<ConfirmSignUpOu
  *   account, or locked-out state.
  */
 async function signIn(input: SignInInput): Promise<SignInOutput> {
+  if (env.isMockAuth) {
+    const mockTokens = makeMockTokens(input.username);
+    await secureStorage.setAccessToken(mockTokens.accessToken);
+    await secureStorage.setRefreshToken(mockTokens.refreshToken!);
+    await secureStorage.setIdToken(mockTokens.idToken);
+    return {
+      isSignedIn: true,
+      nextStep: { signInStep: 'DONE' },
+    } as unknown as SignInOutput;
+  }
   ensureConfigured();
   const output = await amplifySignIn({
     username: input.username,
@@ -186,6 +219,10 @@ async function signIn(input: SignInInput): Promise<SignInOutput> {
  * @throws {AuthError} Propagated from Amplify on unexpected failure.
  */
 async function signOut(): Promise<void> {
+  if (env.isMockAuth) {
+    await secureStorage.clearAuthTokens();
+    return;
+  }
   ensureConfigured();
   await amplifySignOut();
   await secureStorage.clearAuthTokens();
@@ -204,11 +241,32 @@ async function signOut(): Promise<void> {
  *   (`httpClient`) should treat this as a terminal 401 and sign the user out.
  */
 async function refreshSession(): Promise<SessionTokens | null> {
+  if (env.isMockAuth) {
+    const existing = await secureStorage.getAccessToken();
+    if (existing === null) return null;
+    return makeMockTokens('mock-user');
+  }
   ensureConfigured();
   // `forceRefresh: true` instructs Amplify to bypass its in-memory cache and
   // issue a new token request to Cognito.
   const session = await fetchAuthSession({ forceRefresh: true });
   return tokensFromSession(session);
+}
+
+// ── Mock helpers ──────────────────────────────────────────────────────────
+
+function makeMockTokens(username: string): Required<SessionTokens> {
+  // Token-shaped strings for the UI walkthrough. Not real JWTs — downstream
+  // code that treats them as opaque strings still works; anything that decodes
+  // them will find valid JSON in the middle segment via atob().
+  const now = Math.floor(Date.now() / 1000);
+  const payload = globalThis
+    .btoa(JSON.stringify({ sub: username, iat: now, exp: now + 3600 }));
+  return {
+    accessToken: `mock.${payload}.sig`,
+    refreshToken: `mock-refresh-${username}`,
+    idToken: `mock.${payload}.sig`,
+  };
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────

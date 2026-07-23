@@ -118,6 +118,17 @@ export const env = {
   /** Whether MSW mock mode is active (`EXPO_PUBLIC_API_MODE === 'mock'`). */
   isMock: process.env['EXPO_PUBLIC_API_MODE'] === 'mock',
 
+  /**
+   * Whether local auth mocking is active. True when `backendConfig.<env>.json`
+   * still holds the dummy sentinel user pool id (`eu-central-1_dummydummy`) —
+   * used by `cognitoClient` (and future services) to short-circuit real network
+   * calls so the UI can be walked end-to-end without a deployed backend.
+   *
+   * **Delete this field, the sentinel, and all mock branches once real Cognito
+   * is deployed and stable — see context.md "Before shipping".**
+   */
+  isMockAuth: config.cognito.userPoolId === 'eu-central-1_dummydummy',
+
   /** CloudFront base URL for all REST calls. Include the `/v1` prefix. */
   apiBaseUrl: config.restApi.baseUrl,
 

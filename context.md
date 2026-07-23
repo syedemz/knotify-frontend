@@ -9,6 +9,16 @@ Not yet started. Awaiting `architecture.md` and `/create-plan`.
 ## Active blockers
 None. Phase 1 gates §17.22 and §17.26 both resolved on 2026-07-19.
 
+## Before shipping
+
+Local auth mock mode is active while the AWS backend is unspun (to save cost during UI walkthrough). Before the first real production build, delete the mock scaffolding in this order:
+
+1. **`src/config/env.ts`** — delete the `isMockAuth` field from the exported `env` object (currently keyed off the sentinel `cognito.userPoolId === 'eu-central-1_dummydummy'`).
+2. **`src/services/auth/cognitoClient.ts`** — delete every `if (env.isMockAuth) { ... }` branch (currently in `ensureConfigured`, `signUp`, `confirmSignUp`, `signIn`, `signOut`, `refreshSession`) and delete the `makeMockTokens` helper.
+3. **`src/config/backendConfig.dev.json`** — replace the dummy sentinel values (`eu-central-1_dummydummy`, `dummydummydummydummydummy1`, `dummy.example.invalid`, `dummy.appsync-api...`, `dummy.cloudfront.net`) with the real values emitted by the backend Terraform outputs. `env.ts` throws at import time on any `<FILL_*>` placeholder, so partial fills are safe.
+
+After all three are done, `grep -r isMockAuth src/` should return zero hits and `grep -r dummydummy src/config/` should return zero hits. Add a CI grep gate at that time if you want a hard stop.
+
 ## Critical design decisions
 None yet.
 
