@@ -1,14 +1,26 @@
 /**
- * Hook for reading and writing the onboarding wizard draft.
+ * Shared onboarding wizard draft — context + consumer hook.
  *
  * The draft is persisted to `expo-secure-store` under the `onboarding.draft`
  * key. Writes are debounced by 200 ms (trailing-edge) so rapid UI updates
  * (e.g. text field keystrokes) do not hammer the secure-store API.
  *
+ * The state is owned by `OnboardingDraftProvider` and consumed by
+ * `useOnboardingDraft()` via React context — so cross-screen reads (e.g. Page
+ * 13 rendering a form based on Page 12's `education_level`) see fresh values
+ * synchronously, without depending on the debounced SecureStore write.
+ *
  * @module features/onboarding/hooks/useOnboardingDraft
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { secureStorage } from '@/services/auth/secureStorage';
 import {
   createEmptyDraft,
@@ -143,22 +155,10 @@ function resolveCheckpoint(
 }
 
 /**
- * Reads, writes, and resets the onboarding wizard draft via expo-secure-store.
- *
- * Writes are debounced by {@link WRITE_DEBOUNCE_MS} ms (trailing-edge) — a
- * single write fires per debounce window regardless of how many `update()` or
- * `advance()` calls are made within that window.
- *
- * @returns {@link UseOnboardingDraftReturn}
- *
- * @example
- * ```tsx
- * const { update, advance, getDraft } = useOnboardingDraft();
- * update({ email: 'user@example.com' });
- * advance(3);
- * ```
+ * Internal hook — owns the actual draft state, ref, timers, and secure-store
+ * I/O. Called once by `OnboardingDraftProvider`; not exported.
  */
-export function useOnboardingDraft(): UseOnboardingDraftReturn {
+function useOnboardingDraftState(): UseOnboardingDraftReturn {
   const [draft, setDraft] = useState<OnboardingDraft>(createEmptyDraft);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -375,4 +375,49 @@ export function useOnboardingDraft(): UseOnboardingDraftReturn {
     setLocationPermissionStatus,
     isLoading,
   };
+}
+
+// ── Context + provider + consumer hook ─────────────────────────────────────────
+
+const OnboardingDraftContext = createContext<UseOnboardingDraftReturn | null>(null);
+
+/**
+ * Provider for the shared onboarding draft. Wrap the OnboardingStack (or any
+ * subtree that needs cross-screen draft coordination) with this component.
+ *
+ * State + secure-store I/O live here — a single instance owns everything so
+ * every consumer inside sees the same values synchronously.
+ */
+export function OnboardingDraftProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.JSX.Element {
+  const value = useOnboardingDraftState();
+  return (
+    <OnboardingDraftContext.Provider value={value}>
+      {children}
+    </OnboardingDraftContext.Provider>
+  );
+}
+
+/**
+ * Consumer hook for the shared onboarding draft.
+ *
+ * Must be used inside `OnboardingDraftProvider`. Reads and writes propagate
+ * synchronously across all consumers in the subtree, so a screen can safely
+ * render based on a value another screen just wrote (e.g. Page 13's form
+ * depends on Page 12's `education_level`).
+ *
+ * @throws Error if called outside `OnboardingDraftProvider`.
+ * @returns {@link UseOnboardingDraftReturn}
+ */
+export function useOnboardingDraft(): UseOnboardingDraftReturn {
+  const value = useContext(OnboardingDraftContext);
+  if (value === null) {
+    throw new Error(
+      'useOnboardingDraft must be used inside an OnboardingDraftProvider',
+    );
+  }
+  return value;
 }

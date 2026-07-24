@@ -200,6 +200,7 @@ jest.mock("@/state/auth/AuthProvider", () => ({
 // ── useOnboardingDraft mock ───────────────────────────────────────────────────────
 
 jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
+  OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => ({
     update: jest.fn(),
     advance: jest.fn(),

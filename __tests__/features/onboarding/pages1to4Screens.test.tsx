@@ -141,6 +141,7 @@ jest.mock("@/services/auth/secureStorage", () => ({
 }));
 
 jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
+  OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => ({
     update: jest.fn(),
     advance: jest.fn(),

@@ -147,6 +147,7 @@ const mockDraftHook: jest.Mock<{
   isLoading: false,
 }));
 jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
+  OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => mockDraftHook(),
 }));
 

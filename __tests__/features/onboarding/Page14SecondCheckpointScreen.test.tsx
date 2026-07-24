@@ -130,6 +130,7 @@ const mockSetNotificationPermissionStatus = jest.fn();
 const mockSetLocationPermissionStatus = jest.fn();
 
 jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
+  OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => ({
     update: jest.fn(),
     advance: jest.fn(),

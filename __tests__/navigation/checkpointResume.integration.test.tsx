@@ -195,6 +195,7 @@ const SEED_DRAFT = {
  * `Page09ReligionSubsectScreen`.
  */
 jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
+  OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => ({
     update: jest.fn(),
     advance: jest.fn(),
