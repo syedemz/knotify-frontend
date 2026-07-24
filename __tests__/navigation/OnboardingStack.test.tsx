@@ -122,16 +122,28 @@ jest.mock("@/services/auth/cognitoClient", () => ({
 }));
 
 // Mock useOnboardingDraft — Page02EmailScreen (story 2.5) calls useOnboardingDraft.
+// Return value is controllable per-test via mockDraftHook so we can toggle isLoading
+// and lastCheckpoint (the loading-gate regression covered by fix/onboarding-resume-race).
+type Checkpoint = "firstCheckpoint" | "secondCheckpoint" | null;
+const mockDraftHook: jest.Mock<{
+  update: jest.Mock;
+  advance: jest.Mock;
+  advanceWithCheckpoint: jest.Mock;
+  reset: jest.Mock;
+  getDraft: jest.Mock<{ fields: Record<string, unknown>; lastCheckpoint: Checkpoint; currentPage: number }>;
+  setSiblings: jest.Mock;
+  isLoading: boolean;
+}> = jest.fn(() => ({
+  update: jest.fn(),
+  advance: jest.fn(),
+  advanceWithCheckpoint: jest.fn(),
+  reset: jest.fn(),
+  getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null as Checkpoint, currentPage: 2 })),
+  setSiblings: jest.fn(),
+  isLoading: false,
+}));
 jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
-  useOnboardingDraft: () => ({
-    update: jest.fn(),
-    advance: jest.fn(),
-    advanceWithCheckpoint: jest.fn(),
-    reset: jest.fn(),
-    getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 2 })),
-    setSiblings: jest.fn(),
-    isLoading: false,
-  }),
+  useOnboardingDraft: () => mockDraftHook(),
 }));
 
 // Mock expo-image — Page01WelcomeScreen uses ScreenBackground which wraps expo-image.
@@ -174,6 +186,15 @@ function renderOnboardingStack() {
 
 beforeEach(() => {
   mockCheckpointResume.mockReturnValue("Page01WelcomeScreen");
+  mockDraftHook.mockReturnValue({
+    update: jest.fn(),
+    advance: jest.fn(),
+    advanceWithCheckpoint: jest.fn(),
+    reset: jest.fn(),
+    getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 2 })),
+    setSiblings: jest.fn(),
+    isLoading: false,
+  });
 });
 
 // ── 1. Basic render ───────────────────────────────────────────────────────────
@@ -290,5 +311,52 @@ describe("OnboardingStack — pages 1-4 concrete screens", () => {
     const { findByText } = renderOnboardingStack();
     // Page01WelcomeScreen has real content (story 2.4) — renders 'Knotify' title.
     await expect(findByText(t("onboarding.welcome.title"))).resolves.toBeTruthy();
+  });
+});
+
+// ── 5. Async-draft hydration gate ────────────────────────────────────────────
+// Regression guard for the onboarding-resume race: React Navigation reads
+// `initialRouteName` once at mount and freezes it. If OnboardingStack mounts
+// before the persisted draft finishes loading from secure-store, the
+// checkpoint is still `null` and the user lands on Page 1 instead of resuming.
+
+describe("OnboardingStack — async-draft hydration gate", () => {
+  it("given the draft is still loading, then OnboardingStack renders nothing (no navigator mount)", () => {
+    mockDraftHook.mockReturnValue({
+      update: jest.fn(),
+      advance: jest.fn(),
+      advanceWithCheckpoint: jest.fn(),
+      reset: jest.fn(),
+      getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 1 })),
+      setSiblings: jest.fn(),
+      isLoading: true,
+    });
+    mockCheckpointResume.mockReturnValue("Page01WelcomeScreen");
+
+    const { queryByText, toJSON } = renderOnboardingStack();
+
+    // Navigator did not mount — no screen content is rendered.
+    expect(queryByText(t("onboarding.welcome.title"))).toBeNull();
+    // Only the ThemeProvider/NavigationContainer shell exists; OnboardingStack returned null.
+    // toJSON returns the rendered tree — asserting no descendant matches the welcome title
+    // above is sufficient; this line documents the intent.
+    expect(toJSON()).toBeDefined();
+  });
+
+  it("given the draft finishes loading with firstCheckpoint, then navigator mounts at Page09ReligionSubsectScreen", async () => {
+    mockDraftHook.mockReturnValue({
+      update: jest.fn(),
+      advance: jest.fn(),
+      advanceWithCheckpoint: jest.fn(),
+      reset: jest.fn(),
+      getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: "firstCheckpoint" as Checkpoint, currentPage: 9 })),
+      setSiblings: jest.fn(),
+      isLoading: false,
+    });
+    mockCheckpointResume.mockReturnValue("Page09ReligionSubsectScreen");
+
+    const { findByText } = renderOnboardingStack();
+
+    await expect(findByText(t("onboarding.religion.title"))).resolves.toBeTruthy();
   });
 });

@@ -114,10 +114,20 @@ const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen")
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
-export function OnboardingStack(): React.JSX.Element {
-  const { getDraft } = useOnboardingDraft();
+export function OnboardingStack(): React.JSX.Element | null {
+  const { getDraft, isLoading } = useOnboardingDraft();
   const draft = getDraft();
   const initialRouteName = useCheckpointResume(draft.lastCheckpoint);
+
+  // Wait for the persisted draft to hydrate from secure-store before mounting
+  // the navigator. React Navigation reads `initialRouteName` once at mount and
+  // freezes it — if we mount before the draft loads, the checkpoint is still
+  // `null` and the user lands on Page 1 instead of resuming from their last
+  // completed checkpoint. Returning `null` for the ~ms of hydration avoids the
+  // race; the Splash/loading UX is handled at a higher level (App root).
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <Stack.Navigator
