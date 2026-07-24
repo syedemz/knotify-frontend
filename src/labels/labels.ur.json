@@ -122,6 +122,9 @@
     "professionalCategory": {
       "title": "آپ کا پیشہ کیا ہے؟"
     },
+    "education": {
+      "title": "آپ کی اعلیٰ ترین تعلیمی سطح کیا ہے؟"
+    },
     "work": {
       "title": "اپنے کام کے بارے میں بتائیں",
       "employmentType": {

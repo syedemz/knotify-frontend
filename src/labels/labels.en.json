@@ -122,6 +122,9 @@
     "professionalCategory": {
       "title": "What is your profession?"
     },
+    "education": {
+      "title": "What's your highest level of education?"
+    },
     "work": {
       "title": "Tell us about your work",
       "employmentType": {
