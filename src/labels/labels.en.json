@@ -86,6 +86,7 @@
       "button": "Get started"
     },
     "sex": {
+      "prompt": "Are you a",
       "male": "Male",
       "female": "Female"
     },

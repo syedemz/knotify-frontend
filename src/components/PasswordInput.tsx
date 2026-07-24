@@ -6,6 +6,8 @@ import {
   View,
   type TextInputProps as RNTextInputProps,
 } from "react-native";
+import { Eye, EyeOff } from "lucide-react-native";
+import { Icon } from "./Icon";
 import { useTheme } from "@/theme";
 import { textStyles } from "@/theme/typography";
 import type { Theme } from "@/theme/theme";
@@ -144,8 +146,7 @@ export function PasswordInput({
         accessibilityLabel={secure ? "Show password" : "Hide password"}
         accessibilityRole="button"
       >
-        {/* Eye icon placeholder — the Icon component (story 1.6) is not yet in catalog */}
-        <View style={styles.eyeIcon} />
+        <Icon icon={secure ? Eye : EyeOff} size="md" color="tertiary" />
       </Pressable>
     </View>
   );
@@ -187,14 +188,6 @@ function createStyles(
       justifyContent: "center",
       alignItems: "center",
       minWidth: 44,
-    },
-    // Placeholder circle until Icon catalog component ships in 1.6
-    eyeIcon: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderColor: theme.colors.text.tertiary,
     },
   });
 }
