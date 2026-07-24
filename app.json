@@ -8,10 +8,17 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.knotify.app"
+      "bundleIdentifier": "com.knotify.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Knotify uses your approximate location to show you compatible matches nearby"
+      }
     },
     "android": {
-      "package": "com.knotify.app"
+      "package": "com.knotify.app",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-font",
@@ -19,7 +26,8 @@
       "expo-image",
       "expo-secure-store",
       "expo-localization",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-location"
     ]
   }
 }

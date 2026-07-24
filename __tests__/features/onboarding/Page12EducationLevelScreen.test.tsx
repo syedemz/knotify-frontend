@@ -1,13 +1,15 @@
 /**
- * Wiring tests for Page10ProfessionalCategoryScreen (story 4.2).
+ * Wiring tests for Page12EducationLevelScreen (story 5.1).
  *
- * Covers:
- * - List length matches `options.professionalCategory.length` (not a hardcoded number).
- * - Selected row is highlighted after tap.
- * - Tap writes `professional_category` to the draft and calls `advance(11)`.
- * - Auto-advances to `Page11WorkDetailsScreen`.
- * - Back-navigation: tapping a row overwrites `professional_category` and auto-advances.
- * - WizardHeader back navigation.
+ * Covers all AC-enumerated cases:
+ * (a) Auto-advance on tap: update({education_level}) + advance(13) +
+ *     navigate('Page13EducationCredentialsScreen').
+ * (b) education_level written to draft on tap.
+ * (c) List length equals `options.educationLevel.length` (never hardcoded).
+ * (d) Re-tap no-op: tapping the already-selected row fires neither update
+ *     nor advance nor navigate.
+ * (e) Back-navigation: prior selection is shown as selected on remount.
+ * (f) WizardHeader back navigation calls navigation.goBack.
  */
 
 import React from 'react';
@@ -151,6 +153,7 @@ jest.mock('expo-image', () => {
 
 const mockUpdate = jest.fn();
 const mockAdvance = jest.fn();
+const mockGetDraft = jest.fn();
 
 jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
   useOnboardingDraft: () => ({
@@ -158,17 +161,7 @@ jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
     advance: mockAdvance,
     advanceWithCheckpoint: jest.fn(),
     reset: jest.fn(),
-    getDraft: jest.fn(() => ({
-      schemaVersion: 1,
-      lastCheckpoint: 'firstCheckpoint',
-      currentPage: 10,
-      fields: {},
-      siblings: [],
-      photoPreviewUris: [],
-      notificationPermissionStatus: null,
-      locationPermissionStatus: null,
-      timestamps: { createdAt: '', updatedAt: '' },
-    })),
+    getDraft: mockGetDraft,
     setSiblings: jest.fn(),
     setNotificationPermissionStatus: jest.fn(),
     setLocationPermissionStatus: jest.fn(),
@@ -181,29 +174,58 @@ jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
 import { ThemeProvider } from '@/theme';
 import { t } from '@/labels';
 import { options } from '@/config/options';
-import { Page10ProfessionalCategoryScreen } from '@/features/onboarding/screens/Page10ProfessionalCategoryScreen';
+import { Page12EducationLevelScreen } from '@/features/onboarding/screens/Page12EducationLevelScreen';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function mockNavigation() {
-  return { navigate: jest.fn(), goBack: jest.fn() };
+/** Returns a fresh mock navigation object. */
+function mockNavigation(canGoBack = true) {
+  return {
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+    canGoBack: jest.fn().mockReturnValue(canGoBack),
+  };
 }
 
 function mockRoute() {
   return {
-    key: 'Page10ProfessionalCategoryScreen',
-    name: 'Page10ProfessionalCategoryScreen' as const,
+    key: 'Page12EducationLevelScreen',
+    name: 'Page12EducationLevelScreen' as const,
     params: undefined,
   };
 }
 
-function renderScreen(nav = mockNavigation()) {
+/**
+ * Builds a minimal draft object for getDraft().
+ *
+ * @param educationLevel - The prior selection to seed into the draft, or null
+ *   for a fresh (unvisited) screen.
+ */
+function makeDraft(educationLevel: string | null = null) {
+  return {
+    schemaVersion: 1 as const,
+    lastCheckpoint: 'firstCheckpoint' as const,
+    currentPage: 12,
+    fields: educationLevel !== null ? { education_level: educationLevel } : {},
+    siblings: [],
+    photoPreviewUris: [],
+    notificationPermissionStatus: null,
+    locationPermissionStatus: null,
+    timestamps: { createdAt: '', updatedAt: '' },
+  };
+}
+
+function renderScreen(
+  nav = mockNavigation(),
+  existingLevel: string | null = null,
+) {
+  mockGetDraft.mockReturnValue(makeDraft(existingLevel));
   return {
     nav,
     ...render(
       <ThemeProvider>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <Page10ProfessionalCategoryScreen navigation={nav as any} route={mockRoute() as any} />
+        <Page12EducationLevelScreen navigation={nav as any} route={mockRoute() as any} />
       </ThemeProvider>,
     ),
   };
@@ -212,38 +234,39 @@ function renderScreen(nav = mockNavigation()) {
 beforeEach(() => {
   mockUpdate.mockClear();
   mockAdvance.mockClear();
+  mockGetDraft.mockClear();
 });
 
 // ── Mount ─────────────────────────────────────────────────────────────────────
 
-describe('Page10ProfessionalCategoryScreen — mount', () => {
+describe('Page12EducationLevelScreen — mount', () => {
   it('given the screen, when rendered, then it mounts without throwing', () => {
     expect(() => renderScreen()).not.toThrow();
   });
 
   it('given the screen renders, then the screen title is visible', () => {
     renderScreen();
-    expect(screen.getByText(t('onboarding.professionalCategory.title'))).toBeTruthy();
+    expect(screen.getByText(t('onboarding.education.title'))).toBeTruthy();
   });
 });
 
-// ── List length (AC 1) ────────────────────────────────────────────────────────
+// ── AC: List length equals options.educationLevel.length ─────────────────────
 
-describe('Page10ProfessionalCategoryScreen — list rendering (AC 1)', () => {
-  it('given the screen renders, then it shows every professional category option', () => {
+describe('Page12EducationLevelScreen — list length (AC)', () => {
+  it('given the screen renders, then every education level option appears as an accessible row', () => {
     renderScreen();
-    const items = screen.getAllByRole('checkbox');
-    expect(items).toHaveLength(options.professionalCategory.length);
-  });
-
-  it('given the screen renders, then every option label is accessible', () => {
-    renderScreen();
-    for (const category of options.professionalCategory) {
-      expect(screen.getByLabelText(category)).toBeTruthy();
+    for (const level of options.educationLevel) {
+      expect(screen.getByLabelText(level)).toBeTruthy();
     }
   });
 
-  it('given the screen renders, then no row is selected initially', () => {
+  it('given the screen renders, then the row count equals options.educationLevel.length (never hardcoded)', () => {
+    renderScreen();
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.length).toBe(options.educationLevel.length);
+  });
+
+  it('given the screen renders with no prior selection, then no row is checked initially', () => {
     renderScreen();
     const checkboxes = screen.getAllByRole('checkbox');
     for (const cb of checkboxes) {
@@ -252,91 +275,119 @@ describe('Page10ProfessionalCategoryScreen — list rendering (AC 1)', () => {
   });
 });
 
-// ── Selection highlight (AC 2) ────────────────────────────────────────────────
+// ── AC: Auto-advance on tap — update, advance, navigate ──────────────────────
 
-describe('Page10ProfessionalCategoryScreen — selection highlight (AC 2)', () => {
-  it('given a category row is tapped, then that row becomes checked', () => {
+describe('Page12EducationLevelScreen — auto-advance on tap (AC)', () => {
+  const firstLevel = options.educationLevel[0];
+  if (firstLevel === undefined) throw new Error('options.educationLevel is empty');
+
+  it('given a level is tapped, then update is called with education_level', () => {
     renderScreen();
-    const firstCategory = options.professionalCategory[0];
-    if (firstCategory === undefined) throw new Error('professionalCategory is empty');
-    fireEvent.press(screen.getByLabelText(firstCategory));
-    const row = screen.getByLabelText(firstCategory);
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledWith({ education_level: firstLevel });
+  });
+
+  it('given a level is tapped, then advance is called with 13', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    expect(mockAdvance).toHaveBeenCalledTimes(1);
+    expect(mockAdvance).toHaveBeenCalledWith(13);
+  });
+
+  it('given a level is tapped, then navigation goes to Page13EducationCredentialsScreen', () => {
+    const { nav } = renderScreen();
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    expect(nav.navigate).toHaveBeenCalledTimes(1);
+    expect(nav.navigate).toHaveBeenCalledWith('Page13EducationCredentialsScreen');
+  });
+
+  it('given any level is tapped, then the row becomes selected', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    const row = screen.getByLabelText(firstLevel);
+    expect(row.props.accessibilityState.checked).toBe(true);
+  });
+});
+
+// ── AC: education_level written to draft ─────────────────────────────────────
+
+describe('Page12EducationLevelScreen — education_level written to draft (AC)', () => {
+  it('given "Graduate And Above" is tapped, then update receives education_level="Graduate And Above"', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('Graduate And Above'));
+    expect(mockUpdate).toHaveBeenCalledWith({ education_level: 'Graduate And Above' });
+  });
+
+  it('given "Medical Doctor / PHD" is tapped, then update receives education_level="Medical Doctor / PHD"', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('Medical Doctor / PHD'));
+    expect(mockUpdate).toHaveBeenCalledWith({ education_level: 'Medical Doctor / PHD' });
+  });
+});
+
+// ── AC: Re-tap no-op ──────────────────────────────────────────────────────────
+
+describe('Page12EducationLevelScreen — re-tap no-op (AC)', () => {
+  const firstLevel = options.educationLevel[0];
+  if (firstLevel === undefined) throw new Error('options.educationLevel is empty');
+
+  it('given a level is tapped twice, then update is called only once', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('given a level is tapped twice, then advance is called only once', () => {
+    renderScreen();
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    expect(mockAdvance).toHaveBeenCalledTimes(1);
+  });
+
+  it('given a level is tapped twice, then navigate fires only once', () => {
+    const { nav } = renderScreen();
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    fireEvent.press(screen.getByLabelText(firstLevel));
+    expect(nav.navigate).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── AC: Back-navigation — prior selection shown as selected ──────────────────
+
+describe('Page12EducationLevelScreen — back-navigation shows prior selection (AC)', () => {
+  it('given the draft already has education_level set, then that row is shown as selected on mount', () => {
+    renderScreen(mockNavigation(), 'Graduate And Above');
+    const row = screen.getByLabelText('Graduate And Above');
     expect(row.props.accessibilityState.checked).toBe(true);
   });
 
-  it('given "Engineering" is tapped, then its row is highlighted', () => {
-    renderScreen();
-    fireEvent.press(screen.getByLabelText('Engineering'));
-    expect(screen.getByLabelText('Engineering').props.accessibilityState.checked).toBe(true);
-  });
+  it('given the draft has education_level="High School (10th)", then that row is checked and others are not', () => {
+    renderScreen(mockNavigation(), 'High School (10th)');
+    const selectedRow = screen.getByLabelText('High School (10th)');
+    expect(selectedRow.props.accessibilityState.checked).toBe(true);
 
-  it('given "Engineering" is tapped, then other rows remain unchecked', () => {
-    renderScreen();
-    fireEvent.press(screen.getByLabelText('Engineering'));
-    const checkboxes = screen.getAllByRole('checkbox');
-    const unchecked = checkboxes.filter(
-      (cb) => cb.props.accessibilityState.checked === false,
+    // All other rows should be unchecked.
+    const otherLevels = options.educationLevel.filter(
+      (l) => l !== 'High School (10th)',
     );
-    expect(unchecked).toHaveLength(options.professionalCategory.length - 1);
-  });
-});
-
-// ── Draft write + auto-advance (AC 2) ─────────────────────────────────────────
-
-describe('Page10ProfessionalCategoryScreen — draft write and auto-advance (AC 2)', () => {
-  it('given "Healthcare" is tapped, then update is called with professional_category=Healthcare', () => {
-    renderScreen();
-    fireEvent.press(screen.getByLabelText('Healthcare'));
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
-    expect(mockUpdate).toHaveBeenCalledWith({ professional_category: 'Healthcare' });
+    for (const level of otherLevels) {
+      const row = screen.getByLabelText(level);
+      expect(row.props.accessibilityState.checked).toBe(false);
+    }
   });
 
-  it('given "Healthcare" is tapped, then advance is called with 11', () => {
-    renderScreen();
-    fireEvent.press(screen.getByLabelText('Healthcare'));
-    expect(mockAdvance).toHaveBeenCalledTimes(1);
-    expect(mockAdvance).toHaveBeenCalledWith(11);
-  });
-
-  it('given "Healthcare" is tapped, then navigation goes to Page11WorkDetailsScreen', () => {
-    const { nav } = renderScreen();
-    fireEvent.press(screen.getByLabelText('Healthcare'));
-    expect(nav.navigate).toHaveBeenCalledWith('Page11WorkDetailsScreen');
-    expect(nav.navigate).toHaveBeenCalledTimes(1);
-  });
-
-  it('given "Law" is tapped, then update receives professional_category=Law', () => {
-    renderScreen();
-    fireEvent.press(screen.getByLabelText('Law'));
-    expect(mockUpdate).toHaveBeenCalledWith({ professional_category: 'Law' });
-  });
-});
-
-// ── No manual Continue button (AC 3) ─────────────────────────────────────────
-
-describe('Page10ProfessionalCategoryScreen — no manual Continue button (AC 3)', () => {
-  it('given the screen renders, then there is no Continue button', () => {
-    renderScreen();
-    expect(screen.queryByText(t('wizard.footer.continue'))).toBeNull();
-  });
-});
-
-// ── Back-nav overwrite (AC 4) ─────────────────────────────────────────────────
-
-describe('Page10ProfessionalCategoryScreen — back-navigation overwrite (AC 4)', () => {
-  it('given the screen is re-mounted after back-nav, tapping a new category writes the new value', () => {
-    // Back-nav remounts the screen with fresh state. We simulate this by
-    // rendering a new instance and tapping a different category.
-    renderScreen();
-    fireEvent.press(screen.getByLabelText('Finance'));
-    expect(mockUpdate).toHaveBeenCalledWith({ professional_category: 'Finance' });
-    expect(mockAdvance).toHaveBeenCalledWith(11);
+  it('given back-nav with prior selection, then tapping a different level overwrites the draft', () => {
+    renderScreen(mockNavigation(), 'Graduate And Above');
+    fireEvent.press(screen.getByLabelText('Medical Doctor / PHD'));
+    expect(mockUpdate).toHaveBeenCalledWith({ education_level: 'Medical Doctor / PHD' });
   });
 });
 
 // ── WizardHeader back ─────────────────────────────────────────────────────────
 
-describe('Page10ProfessionalCategoryScreen — WizardHeader', () => {
+describe('Page12EducationLevelScreen — WizardHeader', () => {
   it('given the screen renders, then at least one back element is accessible', () => {
     renderScreen();
     const backButtons = screen.getAllByLabelText(t('wizard.header.back'));
@@ -350,5 +401,10 @@ describe('Page10ProfessionalCategoryScreen — WizardHeader', () => {
     if (firstBack === undefined) throw new Error('No back button found');
     fireEvent.press(firstBack);
     expect(nav.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('given the screen is the stack root (canGoBack=false), then the WizardHeader back button is hidden', () => {
+    renderScreen(mockNavigation(false));
+    expect(screen.queryByLabelText(t('wizard.header.back'))).toBeNull();
   });
 });

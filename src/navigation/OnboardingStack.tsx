@@ -2,9 +2,9 @@
  * Onboarding wizard navigator.
  *
  * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
- * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-11
- * are real screens (phases 2-4, B1-B3); pages 12-31 remain as `EmptyState`
- * placeholders — real screens land in phases 5-11 (B4-B10).
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-14
+ * are real screens (phases 2-5, B1-B4); pages 15-31 remain as
+ * `EmptyState` placeholders — real screens land in phases 6-11 (B5-B10).
  *
  * `useCheckpointResume` is wired as `initialRouteName` so users who resume
  * an in-progress wizard skip already-completed pages.
@@ -31,6 +31,9 @@ import { Page08FirstCheckpointScreen as Page08FirstCheckpointScreenImpl } from "
 import { Page09ReligionSubsectScreen as Page09ReligionSubsectScreenImpl } from "@/features/onboarding/screens/Page09ReligionSubsectScreen";
 import { Page10ProfessionalCategoryScreen as Page10ProfessionalCategoryScreenImpl } from "@/features/onboarding/screens/Page10ProfessionalCategoryScreen";
 import { Page11WorkDetailsScreen as Page11WorkDetailsScreenImpl } from "@/features/onboarding/screens/Page11WorkDetailsScreen";
+import { Page12EducationLevelScreen as Page12EducationLevelScreenImpl } from "@/features/onboarding/screens/Page12EducationLevelScreen";
+import { Page13EducationCredentialsScreen as Page13EducationCredentialsScreenImpl } from "@/features/onboarding/screens/Page13EducationCredentialsScreen";
+import { Page14SecondCheckpointScreen as Page14SecondCheckpointScreenImpl } from "@/features/onboarding/screens/Page14SecondCheckpointScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -71,9 +74,12 @@ const Page08FirstCheckpointScreen = Page08FirstCheckpointScreenImpl;
 const Page09ReligionSubsectScreen = Page09ReligionSubsectScreenImpl;
 const Page10ProfessionalCategoryScreen = Page10ProfessionalCategoryScreenImpl;
 const Page11WorkDetailsScreen = Page11WorkDetailsScreenImpl;
-const Page12EducationLevelScreen = makePlaceholderScreen("Page12EducationLevelScreen");
-const Page13EducationCredentialsScreen = makePlaceholderScreen("Page13EducationCredentialsScreen");
-const Page14SecondCheckpointScreen = makePlaceholderScreen("Page14SecondCheckpointScreen");
+// Page 12: real screen landed in phase 5 (B4, story 5.1).
+const Page12EducationLevelScreen = Page12EducationLevelScreenImpl;
+// Page 13: real screen landed in phase 5 (B4, story 5.2).
+const Page13EducationCredentialsScreen = Page13EducationCredentialsScreenImpl;
+// Page 14: real screen landed in phase 5 (B4, story 5.3).
+const Page14SecondCheckpointScreen = Page14SecondCheckpointScreenImpl;
 const Page15ResidenceCountryScreen = makePlaceholderScreen("Page15ResidenceCountryScreen");
 const Page16ResidenceCityScreen = makePlaceholderScreen("Page16ResidenceCityScreen");
 const Page17FamilyResidenceScreen = makePlaceholderScreen("Page17FamilyResidenceScreen");
@@ -109,8 +115,8 @@ const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen")
  * - `'firstCheckpoint'`  → `Page09ReligionSubsectScreen`
  * - `null`               → `Page01WelcomeScreen`
  *
- * Pages 1-8 use real screens (phases 2-3). Pages 9-31 are `EmptyState`
- * placeholders; real screens land in phases 4-11.
+ * Pages 1-14 use real screens (phases 2-5). Pages 15-31 are `EmptyState`
+ * placeholders; real screens land in phases 6-11.
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
@@ -140,7 +146,7 @@ export function OnboardingStack(): React.JSX.Element | null {
       <Stack.Screen name="Page03ConfirmCodeScreen" component={Page03ConfirmCodeScreen} />
       <Stack.Screen name="Page04GetStartedScreen" component={Page04GetStartedScreen} />
 
-      {/* Pages 5-31: real screens for 5-11, EmptyState placeholders for 12-31 */}
+      {/* Pages 5-31: real screens for 5-12, EmptyState placeholders for 13-31 */}
       <Stack.Screen name="Page05SexScreen" component={Page05SexScreen} />
       <Stack.Screen name="Page06NameScreen" component={Page06NameScreen} />
       <Stack.Screen name="Page07BirthdayScreen" component={Page07BirthdayScreen} />

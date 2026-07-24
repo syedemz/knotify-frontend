@@ -115,12 +115,59 @@
       "title": "You're all set!",
       "start": "Start"
     },
+    "secondCheckpoint": {
+      "title": "You're doing great!",
+      "subtitle": "Enable notifications so you don't miss new matches and messages, and share your approximate location so we can show you compatible matches nearby.",
+      "enableNotifications": "Enable Notifications",
+      "continue": "Continue"
+    },
     "religion": {
       "title": "What is your religion?",
       "subsectTitle": "Which school of thought do you follow?"
     },
     "professionalCategory": {
       "title": "What is your profession?"
+    },
+    "education": {
+      "title": "What's your highest level of education?",
+      "credentials": {
+        "title": "Tell us about your education",
+        "highSchool": {
+          "label": "High school name",
+          "placeholder": "e.g. St. Mary's High School",
+          "error": "Use letters, digits, spaces, apostrophes, and , . & - only (max 40 chars)"
+        },
+        "highSchoolYear": {
+          "label": "High school passing year",
+          "placeholder": "e.g. 2012",
+          "error": "Enter a 4-digit year between 1950 and the current year"
+        },
+        "higherSecondary": {
+          "label": "Higher secondary school name",
+          "placeholder": "e.g. Government College Lahore",
+          "error": "Use letters, digits, spaces, apostrophes, and , . & - only (max 40 chars)"
+        },
+        "higherSecondaryYear": {
+          "label": "Higher secondary passing year",
+          "placeholder": "e.g. 2014",
+          "error": "Enter a 4-digit year between 1950 and the current year"
+        },
+        "highestDegree": {
+          "label": "Highest degree",
+          "placeholder": "e.g. BSc Computer Science",
+          "error": "Use letters, digits, spaces, apostrophes, and , . & - only (max 40 chars)"
+        },
+        "graduationYear": {
+          "label": "Graduation year",
+          "placeholder": "e.g. 2018",
+          "error": "Enter a 4-digit year between 1950 and the current year"
+        },
+        "collegeName": {
+          "label": "College / university name",
+          "placeholder": "e.g. LUMS",
+          "error": "Use letters, digits, spaces, apostrophes, and , . & - only (max 40 chars)"
+        }
+      }
     },
     "work": {
       "title": "Tell us about your work",

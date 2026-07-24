@@ -1,343 +1,531 @@
-PHASE 4 — RELIGION + WORK (pages 9-11) — CONCERNS FROM THE BRAINSTORM
-========================================================================
+================================================================================
+PHASE 5 — CONCERNS EXPLAINED IN PLAIN ENGLISH
+================================================================================
 
-These are the issues the audit found in the Phase 4 plan (PRD). For each
-issue, I explain what the problem actually is in plain language, why it
-matters, and what the choices are for fixing it.
+Phase 5 builds pages 12, 13, and 14 of the onboarding wizard:
+  - Page 12: pick your education level (5 choices)
+  - Page 13: fill in details based on that level (school name, year, etc.)
+  - Page 14: "second checkpoint" — save progress + ask for notification and
+             location permissions
 
-Once you've read through them, tell me your choice for each and I'll
-update the PRD accordingly.
+I audited the plan against the code we actually have today and found 15
+issues. They range from "the app will literally crash" to "small wording
+cleanups." I've numbered them and rated severity. For each one you get
+three sections:
 
-------------------------------------------------------------------------
-ISSUE 1 — Screen name mismatch (BLOCKER)
-------------------------------------------------------------------------
+  WHAT THE PLAN SAYS  — the exact instruction in the PRD
+  WHY IT MATTERS      — what will happen if we don't decide
+  YOUR CHOICES        — the options I see, with the recommended one marked
 
-WHAT THE PLAN SAYS:
-  Story 4.1 tells the developer to build a screen called
-  "Page09ReligionScreen".
+Just tell me the number and letter for each one (e.g., "1: A, 2: B, 3: A")
+and I'll update the plan accordingly.
 
-WHAT THE CODE ALREADY HAS:
-  When Phase 2 built the navigation skeleton, it registered a placeholder
-  called "Page09ReligionSubsectScreen" (note the extra word "Subsect").
 
-WHY THIS MATTERS:
-  Think of the app's navigation like a hotel. Every screen has a room
-  number that the front desk uses to send guests to the right room.
-  Right now, the front desk (navigation) has "Room 9 = Religion+Subsect"
-  written on its map. If the developer builds a room called "Religion"
-  (without "Subsect"), they have essentially built a new, unlisted room.
-  The front desk will keep sending guests to the old, empty placeholder
-  room, and the new room will sit unused. Or worse, the developer will
-  add a second entry to the map, and now you have TWO rooms both trying
-  to be page 9 — a duplicate.
+================================================================================
+BLOCKERS — things that would make the app crash or the plan not compile
+================================================================================
 
-  This is a naming drift bug. It's easy to fix but guarantees a broken
-  wire-up if we don't catch it now.
-
-YOUR CHOICES:
-  A) Change the PRD to say "Page09ReligionSubsectScreen" (matches
-     existing code — recommended).
-  B) Change the code to rename the placeholder to "Page09ReligionScreen"
-     (extra work in the navigator, no upside).
-
-------------------------------------------------------------------------
-ISSUE 2 — Contradiction: "immutable" vs. "can be changed" (story 4.1)
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS (two lines, both in story 4.1):
-  Line A: "If the user picks Islam + subsect, then goes back and picks
-           Christianity, the subsect must reset to 'Not Applicable'
-           before advancing."
-  Line B: "Both religion and subsect are treated as immutable-after-set
-           in the draft."
-
-WHY THESE CONTRADICT:
-  "Immutable" means "cannot be changed once set."
-  "Reset after back-nav" means "can be changed after set."
-
-  You can't have both. It's like saying "this door is permanently locked"
-  in one paragraph, and "when you come back through this door, unlock it
-  first" in the next.
-
-BACKGROUND ON WHY THE CODE CURRENTLY DOES SOMETHING SUBTLE:
-  Phase 3 already added a helper called `isImmutable()`. Right now,
-  religion and subsect are in that helper's "immutable list."
-  BUT — and this is the important part — that list is NOT used to lock
-  the draft. It is only consulted at the very end (Phase 11) when
-  building the PATCH request to the server. At that point, if a field
-  is "immutable," Phase 11 will refuse to send it to the server (because
-  the server itself locks the field after the first save).
-
-  In other words: the DRAFT (the in-memory form the user is filling out)
-  is fully editable. The SERVER is where fields become frozen. The two
-  live in different places.
-
-WHY THIS MATTERS:
-  If we don't clarify the plan, the developer might interpret "immutable
-  in the draft" literally and add a lock that prevents back-navigation
-  from editing religion. That would break the reset-to-Not-Applicable
-  bullet. Or they might do the opposite. Either way, whichever they
-  pick, half the acceptance criteria will fail their own test.
-
-YOUR CHOICES:
-  A) DRAFT-EDITABLE, SERVER-LOCKED (recommended, matches Phase 11 plan).
-     Reword line B to: "religion + subsect participate in isImmutable()
-     metadata used by Phase 11's PATCH-builder — no in-draft enforcement
-     in Phase 4." Draft can be freely edited during onboarding.
-
-  B) DRAFT-LOCKED. Delete the reset-after-back-nav bullet (line A) AND
-     block back-navigation to page 9 once the user has moved past it.
-     This is stricter but breaks the "user can review and edit their
-     answers" pattern the wizard establishes elsewhere.
-
-------------------------------------------------------------------------
-ISSUE 3 — Missing "where does the user go next?"
-------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+ISSUE 1 — SEVERITY: BLOCKER
+    "The plan asks for location permission but the phone doesn't know how"
+--------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-  Story 4.1: "auto-advances" (to where? not stated)
-  Story 4.2: "auto-advances" (to where? not stated)
-  Story 4.3: correctly states "advance to Page12EducationLevelScreen"
+    Story 5.3 says to create a helper called `requestLocationPermission()`
+    using an Expo library called `expo-location`.
 
-WHY THIS MATTERS:
-  Imagine giving a taxi driver the instruction "drive forward" without
-  saying to which address. They'll pick a direction, and it might not
-  be the one you meant. The developer will guess, and probably guess
-  right (Page 9 → Page 10 → Page 11 is the obvious flow), but "probably"
-  isn't good enough for acceptance criteria that need to be testable.
+WHY IT MATTERS:
+    Analogy — it's like the plan says "the ambulance will use its siren,"
+    but the ambulance doesn't have a siren installed. `expo-location` is
+    not in our project's list of installed packages (`package.json`). If
+    the developer writes the code as-is, the app will build fine in unit
+    tests (they mock the module) but crash the first time a real phone
+    tries to run it, because the native code for asking iOS/Android for
+    GPS access isn't there.
 
-  A test needs a concrete expectation: "after tap, navigation.navigate
-  was called with 'Page10ProfessionalCategoryScreen'." Vague acceptance
-  criteria produce vague tests.
+    Also, iOS and Android both require you to declare, in an app config
+    file, WHY you want location — a short user-facing sentence like
+    "Knotify uses your location to show nearby matches." Without that,
+    Apple's App Store review will reject the build.
 
 YOUR CHOICES:
-  A) Fill in the blanks in the PRD (recommended):
-       Story 4.1 → advances to Page10ProfessionalCategoryScreen
-       Story 4.2 → advances to Page11WorkDetailsScreen
-  B) Leave as-is, trust the developer to infer from context.
+    A) (RECOMMENDED) Add an explicit sub-task to story 5.3:
+       "Run `npx expo install expo-location`. Add
+       NSLocationWhenInUseUsageDescription (iOS) and ACCESS_FINE_LOCATION
+       + ACCESS_COARSE_LOCATION (Android) to `app.json` / `app.config.ts`
+       with the copy: '<your one-sentence justification>'." Then proceed.
+    B) Skip the location permission entirely for now — only ask for
+       notification permission on page 14. Location would be requested
+       later, from wherever it's actually first used.
+    C) Ask me for the exact justification copy right now so we bake it
+       into the plan.
 
-------------------------------------------------------------------------
-ISSUE 4 — Character rules reject real-world names (story 4.3)
-------------------------------------------------------------------------
+    If you pick A, I'll need one sentence of justification copy from you
+    for the OS prompt. If you don't have one in mind, a safe default is:
+    "Knotify uses your approximate location to show you compatible
+    matches nearby."
+
+    ANSWER: Option A with the recommended safe default "Knotify uses your approximate location to show you compatible
+    matches nearby"
+
+
+--------------------------------------------------------------------------------
+ISSUE 2 — SEVERITY: BLOCKER
+    "The plan tells us to build something that already exists"
+--------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-  For job title and employer name, allow only these characters:
-  letters, digits, spaces, hyphen (-), period (.), comma (,).
+    Story 5.3 says: create `src/services/permissions/index.ts` with a
+    function `requestNotificationPermission()` that wraps
+    `expo-notifications`.
 
-WHY THIS IS TOO STRICT:
-  A lot of real employers and job titles use characters this rule
-  rejects. Examples of what would be blocked:
+WHY IT MATTERS:
+    Analogy — it's like the plan says "install a doorbell" but there's
+    already a working doorbell around the back of the house that nobody
+    told the planner about. In our code, `src/services/push/expoPush.ts`
+    already has a private function called EXACTLY `requestNotificationPermission`
+    doing exactly what the plan asks for. It's used to register the phone
+    for push notifications.
 
-    - "P&G"                (rejected — & not allowed)
-    - "Johnson & Johnson"  (rejected — & not allowed)
-    - "Macy's"             (rejected — ' not allowed)
-    - "O'Reilly Media"     (rejected — ' not allowed)
-    - "AT&T"               (rejected — & not allowed)
-
-  These are all legitimate employer names. If a user tries to type any
-  of them, they'll hit a validation error and be unable to proceed.
-
-  Note that Phase 3's `isValidName()` already allows apostrophes
-  (needed for names like "O'Brien"). Being stricter on employer names
-  than on person names doesn't make sense.
+    If the developer just follows the plan blindly, we'll end up with
+    TWO functions with the same name doing the same thing. Six months
+    from now, someone will change one and forget the other, and we'll
+    get "notifications work sometimes" bugs.
 
 YOUR CHOICES:
-  A) Add both & and ' to the allowed set (recommended, matches reality).
-     Final rule: letters, digits, spaces, - . , & '
-  B) Keep the rule as-is (users with those employers will be blocked).
-  C) Loosen further to "any printable character" (fewer bugs, less
-     protection against garbage input).
+    A) (RECOMMENDED) Extract the existing function out of `expoPush.ts`
+       and move it into the new `services/permissions/index.ts`. Then
+       have `expoPush.ts` import it. One implementation, both callers
+       share it. The PRD should say this explicitly so the developer
+       doesn't accidentally duplicate.
+    B) Leave the existing one alone and put a separate copy in
+       `services/permissions/index.ts`. Two copies, guaranteed to drift.
+       (Do not pick this.)
+    C) Put the notification helper in `expoPush.ts` and have the new
+       `services/permissions/index.ts` re-export it. Backwards direction
+       — `permissions` is the lower-level building block; making it
+       depend on `push` is inside-out.
 
-------------------------------------------------------------------------
-ISSUE 5 — Length limits aren't tied to the database
-------------------------------------------------------------------------
+    ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 3 — SEVERITY: BLOCKER
+    "The plan writes to draft fields that have different names than what's
+     actually in the draft schema"
+--------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-  job_title max 40 characters
-  employer_name max 50 characters
-  office_address max 150 characters
+    Story 5.3 says both permission results are "written to draft
+    (`notification_permission_status`, `location_permission_status`)."
 
-WHY THIS MATTERS:
-  These numbers came from somewhere, but the PRD doesn't say where.
-  There's a file in the backend called `db-schema.json` that defines
-  the "real" limits — how many characters each column in the database
-  can actually hold.
+WHY IT MATTERS:
+    Analogy — imagine writing a check to "John Smith" when the account
+    is actually under "J. Smith". The check bounces. Same idea here in
+    two ways:
 
-  Think of it like a bucket. The database bucket might hold exactly
-  50 characters for `employer_name`. If our form limits to 40, we're
-  under-using the bucket (annoying for users with long employer names
-  but harmless). If our form limits to 60, users will type 60 chars,
-  hit Submit, and the database will reject or silently truncate the
-  extra 10 characters — a bad-data bug.
+    (a) NAMING STYLE: The plan uses snake_case
+        (`notification_permission_status`) but the draft file defines
+        these fields in camelCase (`notificationPermissionStatus`). One
+        of them is wrong.
 
-  We need to confirm the numbers in the PRD (40, 50, 150) actually
-  match the database schema. If they don't, we ship a subtle data
-  corruption bug.
+    (b) LOCATION IN THE SHAPE: The plan implies these live INSIDE
+        `draft.fields.*` (where all the profile-column stuff lives). But
+        the actual schema puts them at the TOP LEVEL of the draft —
+        siblings of `fields`, `siblings`, `photoPreviewUris`. Different
+        location, different setter.
+
+    On top of that, the draft hook (`useOnboardingDraft`) only exposes
+    ONE top-level setter today (`setSiblings`). Story 5.3 needs new
+    setters (something like `setNotificationPermissionStatus`) that
+    don't exist yet. The plan doesn't mention this — it's a hidden
+    sub-task that would surprise the developer mid-story.
 
 YOUR CHOICES:
-  A) Have the developer verify against `knotify-backend/db-schema.json`
-     during implementation and adjust if there's a mismatch
-     (recommended — trivial to do, catches the bug).
-  B) Trust the PRD numbers as-is (may ship a bug if wrong).
-  C) You look up the db-schema numbers now and tell me what they are;
-     I'll bake them into the PRD.
+    A) (RECOMMENDED) Update the PRD to use the EXISTING camelCase names
+       (`notificationPermissionStatus`, `locationPermissionStatus`) and
+       add an explicit sub-task: "Extend `useOnboardingDraft` with two
+       new top-level setters modeled on `setSiblings`:
+       `setNotificationPermissionStatus(status)` and
+       `setLocationPermissionStatus(status)`."
+    B) Rename the draft-schema fields to snake_case to match the PRD.
+       (More churn — snake_case is what backend/DB uses, camelCase is
+       what all our JS/TS code uses. Client-side draft fields staying
+       camelCase is more consistent with the rest of the codebase.)
 
-------------------------------------------------------------------------
-ISSUE 6 — Users won't know WHY the Continue button is disabled (4.3)
-------------------------------------------------------------------------
+ANSWER: Option A
+
+
+================================================================================
+STORY 5.1 (Page 12 — pick education level) — smaller cleanups
+================================================================================
+
+--------------------------------------------------------------------------------
+ISSUE 4 — SEVERITY: MEDIUM
+    "Story 5.1 has an acceptance criterion that only story 5.2 can satisfy"
+--------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-  Page 11 has 5 fields. "Continue is disabled until all five fields
-  validate."
+    Story 5.1 acceptance criterion 3 reads: "Back-navigation from page 13
+    to page 12 is supported; changing the selection triggers page 13's
+    re-mount reconciliation (implemented in 5.2)."
 
-WHY THIS ISN'T ENOUGH:
-  Disabling a button tells the user "you can't proceed yet" but doesn't
-  tell them "here's what's wrong."
+WHY IT MATTERS:
+    Analogy — imagine a job description that says "You will hire your own
+    boss." That's a contradiction — you can't be tested against something
+    that requires another role to exist.
 
-  Imagine an ATM that says "TRANSACTION DENIED" without saying why —
-  insufficient funds? Wrong PIN? Card expired? You'd tap around
-  helplessly. Same thing here: user fills 4 fields, 5th field has a
-  typo they can't see, Continue is grey, user is stuck.
+    Story 5.1 is Page 12 only. The "reconciliation" (auto-clearing
+    obsolete fields when the user downgrades their education level) lives
+    in Page 13, which is story 5.2. So story 5.1 can't be tested against
+    this criterion — it would need story 5.2's code, which by definition
+    doesn't exist yet when we're building story 5.1.
 
-  Page 2 (email/password) already established a pattern: each field
-  shows its own inline error message ("password too short", "not a
-  valid email", etc.). Page 11 should follow that pattern for
-  consistency.
+    It's not a bug per se; it's a testability issue. The story appears
+    to depend on 5.2, but `depends_on: []` (nothing) is what the PRD
+    declares.
 
 YOUR CHOICES:
-  A) Require inline per-field error messages (recommended, matches
-     Page 2 pattern). Each field shows its own error label.
-  B) Just disable Continue and let the user figure it out (bad UX).
+    A) (RECOMMENDED) Rephrase 5.1's AC 3 to only cover what 5.1 can
+       actually verify: "Back-navigation from page 13 to page 12 is
+       supported (the nav wiring works — no navigator errors, the
+       previous selection is still shown)." Move the reconciliation
+       clause into 5.2's AC set (it's basically already there as 5.2
+       AC 4).
+    B) Delete AC 3 from 5.1 entirely; 5.2's AC 4 covers the same idea.
 
-------------------------------------------------------------------------
-ISSUE 7 — Test doesn't catch changes to the options list (story 4.2)
-------------------------------------------------------------------------
+ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 5 — SEVERITY: LOW
+    "Which component should Page 12 use for the picker?"
+--------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-  "Renders all 27 entries." The test checks the count is 27.
+    "renders a selectable list."
 
-WHY THIS IS BRITTLE:
-  The 27 entries come from a JSON file (`professionalCategory.json`).
-  If someone adds a 28th profession later, the file grows to 28 entries
-  BUT the test still expects 27. The test will fail — not because the
-  code is broken, but because the test was hard-coded to yesterday's
-  count.
-
-  It's like writing "there are 50 US states" into every test in your
-  codebase, then having to update all of them when a 51st state is
-  added. Better to write "however many states there are, that's the
-  right count."
-
-  Fix: instead of `expect(items).toHaveLength(27)`, write
-  `expect(items).toHaveLength(options.professionalCategory.length)`.
-  The test now says "however many entries are in the options file,
-  the screen should render exactly that many." Adding a new option
-  doesn't break the test.
+WHY IT MATTERS:
+    Analogy — the plan says "put a chair here" but there are two chair
+    shapes in the catalog (armchair vs. stool). We have two picker
+    components:
+      - `ListRowSelectable` — text rows in a list (what page 9 uses for
+        religions)
+      - `SelectionTile` — bigger image-forward tiles (what page 5 uses
+        for Male/Female)
+    Education is 5 text choices — matches the religion pattern. But if
+    we don't say so, the developer will guess.
 
 YOUR CHOICES:
-  A) Test against `options.professionalCategory.length` (recommended,
-     future-proof).
-  B) Keep hardcoded 27 (works today, breaks the day someone edits
-     the JSON).
+    A) (RECOMMENDED) Say explicitly: "Use `ListRowSelectable` (matches
+       page 9's religion picker pattern)."
+    B) Say `SelectionTile` — bigger tiles, more visual. Might be nice
+       if you want a "cards" feel here.
 
-------------------------------------------------------------------------
-ISSUE 8 — Two behaviors on Page 9 aren't specified
-------------------------------------------------------------------------
+ANSWER: Option A
 
-WHAT THE PLAN COVERS:
-  - Islam + subsect happy path
-  - Non-Islam auto-advance
-  - Back-nav from Islam+subsect to Christianity (subsect resets)
-  - Forward re-select same religion
 
-WHAT'S NOT COVERED:
-  1. If the user picks Islam, then picks Islam AGAIN (tapping the same
-     row twice) — what happens? Nothing (no-op)? Reset the subsect?
-     Assume no-op is fine but should be explicit.
-  2. If the user has picked Islam + Sunni, then in the SAME session
-     (no back-nav, just tapping a different religion row on the same
-     screen) picks Christianity — should subsect clear? The plan only
-     covers the back-nav case; this is the forward case.
-
-WHY THIS MATTERS:
-  Undefined behavior means the developer makes a call, and that call
-  might not match what you'd want. Then a QA session finds it and
-  we're back here.
-
-YOUR CHOICES:
-  A) Add both to the plan: same-religion re-tap is a no-op;
-     different-religion-tap-on-same-screen clears subsect and (if
-     non-Islam) triggers auto-advance (recommended, complete spec).
-  B) Leave to developer discretion.
-
-------------------------------------------------------------------------
-ISSUE 9 — Back-navigation on Page 10 (professional category)
-------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+ISSUE 6 — SEVERITY: LOW
+    "The plan doesn't list the text label keys for Page 12"
+--------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-  Nothing about back-nav. Just "tap writes and auto-advances."
+    Nothing — no label keys are enumerated.
 
-WHY THIS MATTERS:
-  `professional_category` is NOT one of the fields the server treats
-  as immutable (checked against `immutableFieldHelper.ts` — only
-  sex, first_name, last_name, birthday, religion, subsect are locked
-  server-side). So the user CAN come back to page 10 and change their
-  answer.
+WHY IT MATTERS:
+    Analogy — writing a play script without listing the props you need.
+    The actors will invent stand-ins on the day of the shoot.
 
-  The behavior should be: tapping a different category on back-nav
-  overwrites the previous choice in the draft, then auto-advances
-  as before. Trivial to implement, but not stated.
-
-YOUR CHOICES:
-  A) Add a bullet: "On back-nav, tapping a different row overwrites
-     professional_category in the draft" (recommended).
-  B) Leave unstated.
-
-------------------------------------------------------------------------
-ISSUE 10 — Localization gap (Urdu display of options)
-------------------------------------------------------------------------
-
-WHAT'S HAPPENING:
-  The options for religion, subsect, professional category, etc. live
-  as raw English strings in JSON files. When the user switches the app
-  to Urdu, the tile labels stay in English.
-
-  This matches the architecture's design (§5.3 says options are the
-  literal DB values). But Phase 4 doesn't call it out — a user on
-  the Urdu locale will see:
-       [ اسلام ]  ← screen title in Urdu
-       [ Islam ]  ← tile label still in English
-       [ Christianity ]
-       [ Hinduism ]
-
-WHY THIS MATTERS:
-  It's not a bug per se — it's a deliberate design choice. But if you
-  weren't aware, you'd flag it as broken later. Better to confirm the
-  stance now.
+    We enforce English + Urdu label parity across the app (CI checks
+    that every English key has an Urdu equivalent). If the developer
+    invents labels on the fly, they might add English but forget Urdu,
+    or use inconsistent naming. Being explicit up-front means Urdu
+    parity gets added in the same commit.
 
 YOUR CHOICES:
-  A) Intentional — options display in English regardless of locale.
-     Ship as-is (matches architecture).
-  B) Add Urdu translations for each option value (parallel maps like
-     labels.ur.json). More work; deferred to a later phase.
+    A) (RECOMMENDED) Enumerate at least: `onboarding.education.title`
+       ("What's your education level?" — Urdu parity required). The
+       developer picks nice English + Urdu copy.
+    B) Leave it to the developer's judgment (they'll do fine, but Urdu
+       parity might slip).
 
-------------------------------------------------------------------------
-ISSUE 11 — Import path clarity
-------------------------------------------------------------------------
+ANSWER: Option A
+
+
+================================================================================
+STORY 5.2 (Page 13 — dynamic education-details form) — the biggest story
+================================================================================
+
+--------------------------------------------------------------------------------
+ISSUE 7 — SEVERITY: MEDIUM
+    "One acceptance criterion is doing the work of three"
+--------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-  "reads options.religion" — but doesn't say where `options` lives.
+    Story 5.2 AC 5: "Screen wiring test covers each of the 5 branch
+    matrix rows including auto-default of hidden fields, the back-nav
+    downgrade reset, and Continue navigation to
+    `Page14SecondCheckpointScreen`."
 
-WHY THIS MATTERS:
-  A developer new to the codebase might guess `@/labels/options` or
-  `@/state/options`. The actual path is `@/config/options`. It's a
-  tiny detail but saves 5 minutes of grep.
+WHY IT MATTERS:
+    Analogy — one test that says "check the engine, check the tires,
+    and check the brakes." If any one fails, you don't know which. And
+    if all three are jammed into one test function, it's harder to fix
+    the failing part.
+
+    Better practice: one AC per behavior, one test per AC. Easier to
+    read, easier to debug when something breaks, easier to see coverage
+    gaps.
 
 YOUR CHOICES:
-  A) Add the import path to the PRD (recommended).
-  B) Leave — the developer will find it easily enough.
+    A) (RECOMMENDED) Split AC 5 into three bullets:
+       - For each of the 5 education-level values, the correct field
+         set renders and hidden fields are auto-defaulted to their
+         sentinels in the draft.
+       - Back-navigating to page 12 and picking a lesser level force-
+         resets the now-irrelevant fields to defaults before page 13
+         re-mounts.
+       - Continue is only enabled when every visible field validates;
+         tapping it navigates to `Page14SecondCheckpointScreen`.
+    B) Leave as one bullet — the test will still be written, it'll just
+       be one big test.
 
-------------------------------------------------------------------------
-END. Reply with your picks (e.g., "1A, 2A, 3A, 4A, 5A, 6A, 7A, 8A, 9A,
-10A, 11A") or with any freeform corrections you want written into the
-PRD.
+ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 8 — SEVERITY: MEDIUM
+    "The plan doesn't say to test the edges of the length/year limits"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    Text fields: max 40 chars. Year fields: 1950 ≤ year ≤ current year.
+    But no explicit "test 40 and 41", "test 1949, 1950, current year,
+    current year + 1."
+
+WHY IT MATTERS:
+    Analogy — if you're building a shelf that holds books up to 12
+    inches tall, you don't just test with a 5-inch book. You test with
+    an 11.9-inch book (fits), a 12-inch book (fits), and a 12.1-inch
+    book (rejected). Bugs live at the boundaries.
+
+    Phase 4 (story 4.3) explicitly required boundary tests for each
+    length-limited field, and we shipped ~5 boundary tests. Story 5.2
+    should do the same or we'll have inconsistent test rigor.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Add: "Boundary tests: 40/41 chars for each of the
+       four text fields; 1949/1950/currentYear/currentYear+1 for each of
+       the three year fields."
+    B) Leave to developer judgment (they'll probably do it, but the AC
+       doesn't require it).
+
+ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 9 — SEVERITY: LOW
+    "The character rule rejects real school names"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    Text fields allow "letters/digits/spaces/-/./&/,".
+
+WHY IT MATTERS:
+    Analogy — same problem we hit in phase 4 with employer names.
+    Real-world school names contain apostrophes: "St. Mary's High
+    School", "St. John's College". The rule as written would reject
+    them.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Add `'` (apostrophe) to the allowed character set
+       — same fix we made in phase 4 for `job_title` / `employer_name`.
+    B) Reject apostrophes; require users to type "St Mary's" as "St
+       Marys" or similar. (Bad UX.)
+
+ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 10 — SEVERITY: LOW
+    "The 40-character limit isn't verified against the actual database"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    "text fields max 40 chars."
+
+WHY IT MATTERS:
+    Analogy — imagine your form allows names up to 40 characters, but
+    the database column is actually 30. The user fills 40, the backend
+    truncates or rejects — either way, bad experience.
+
+    In story 4.3 we resolved this by having the developer check
+    `knotify-backend/db-schema.json` during implementation. Turned out
+    the DB uses `TEXT` (unbounded), so the 40 is a UI choice — not
+    database-driven. Should verify the same is true for education
+    fields.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Add a note: "Developer verifies max-40 against
+       `knotify-backend/db-schema.json` during implementation for
+       `college_name`, `high_school`, `higher_secondary`,
+       `highest_degree`. If DB is TEXT (unbounded), 40 is our choice;
+       if `VARCHAR(N)` and N differs, update to N."
+    B) Skip the verification and hope the schema aligns.
+
+ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 11 — SEVERITY: MEDIUM
+    "The plan doesn't say to show WHY validation failed"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    "Continue is disabled until every visible field validates."
+
+WHY IT MATTERS:
+    Analogy — the Continue button being gray tells the user "you can't
+    proceed," but not WHY. Users get frustrated. Every phase-2 and
+    phase-4 form we shipped shows inline errors ("Name is too long",
+    "Year must be between 1950 and 2026") right under the field so
+    users can self-correct.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Add explicitly: "Each field shows an inline
+       validation error keyed off a `LabelKey` when its value is
+       invalid — same pattern as pages 2 and 11."
+    B) Continue-only-disabled with no inline errors (leaves users
+       stuck).
+ANSWER: Option A
+
+--------------------------------------------------------------------------------
+ISSUE 12 — SEVERITY: LOW
+    "The plan doesn't list the ~15 label keys Page 13 needs"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    Nothing.
+
+WHY IT MATTERS:
+    Same as issue 6 (Urdu parity). Page 13 has 4 text fields and 3 year
+    fields, each needing label + placeholder + error copy, plus a
+    screen title. That's ~15 keys. Left to the developer, some might
+    slip through without Urdu.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Enumerate them in the PRD (title, then 7 sets of
+       label+placeholder+error). Developer fills in the actual English +
+       Urdu copy but the KEYS are pre-declared.
+    B) Leave to developer.
+
+ANSWER: Option A
+
+
+================================================================================
+STORY 5.3 (Page 14 — second checkpoint + permissions)
+================================================================================
+
+--------------------------------------------------------------------------------
+ISSUE 13 — SEVERITY: MEDIUM
+    "The plan says 'advance' but doesn't say WHERE"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    AC 5: "On advance the draft's `lastCheckpoint` is set to
+    `secondCheckpoint`; killing and relaunching mounts the stack at the
+    page after 14."
+
+WHY IT MATTERS:
+    Analogy — "get on the highway" without saying which one. The developer
+    will infer "the page after 14 = Page 15 = `Page15ResidenceCountryScreen`",
+    which is correct, but every other story in the wizard states its
+    advance target explicitly. Missing it here is inconsistent and could
+    theoretically cause a wrong nav call.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Add: "auto-advances to
+       `Page15ResidenceCountryScreen` on Continue" — matching the
+       phrasing in every other story.
+    B) Leave implicit.
+
+ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 14 — SEVERITY: MEDIUM
+    "What happens when only ONE of the two permissions is granted?"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    "On resume when both permissions are already granted, the screen
+    shows a plain Continue button without re-prompting."
+
+WHY IT MATTERS:
+    Analogy — the plan tells you what to do when the light is green
+    (both granted) and implies what to do when it's red (both denied),
+    but says nothing about yellow (one granted, one denied). There are
+    actually 6 combinations, and iOS specifically will NOT let you
+    re-prompt once a user has denied — the OS returns 'denied'
+    immediately and shows nothing.
+
+    Combinations to cover:
+      - Both granted → plain Continue ✓ (in plan)
+      - Both null (fresh) → show "Enable Notifications" flow ✓ (in plan)
+      - Notif denied, location null → ??
+      - Notif null, location denied → ??
+      - Notif denied, location denied → ??
+      - Notif granted, location denied → ??
+
+    Simplest rule: if EITHER permission is 'denied' with `canAskAgain:
+    false`, show plain Continue (can't do anything anyway — user must
+    go to Settings). If either is null / undetermined, show the "Enable
+    Notifications" flow.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Add explicit rule: "On mount, if either permission
+       has status `null` or `undetermined`, show the 'Enable
+       Notifications' flow (which sequentially prompts for both). If
+       both statuses are terminal (`granted` OR `denied` with
+       `canAskAgain: false`), show plain Continue. Persist the observed
+       status on every mount."
+    B) Simpler rule: "Show 'Enable Notifications' flow unless BOTH are
+       granted. Prompting a denied permission is a no-op on iOS and
+       returns 'denied' again — that's acceptable." (Fewer edge cases,
+       but users may see the button not do anything on re-tap.)
+    C) Even simpler: never re-prompt. If we've asked before, show plain
+       Continue always. (Only ask once, first mount.)
+
+ANSWER: Option A
+
+
+--------------------------------------------------------------------------------
+ISSUE 15 — SEVERITY: LOW
+    "The plan doesn't specify the return type of the permission helpers"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+    "typed `requestNotificationPermission()` and
+    `requestLocationPermission()`."
+
+WHY IT MATTERS:
+    Analogy — the plan says "add a temperature gauge" but not "degrees
+    Celsius or Fahrenheit." Developer will pick one, and if it doesn't
+    match what the caller expects, we get bugs.
+
+    We already have a template — `expoPush.ts` uses
+    `Promise<'granted' | 'denied' | 'undetermined'>`. Standardizing on
+    that avoids surprises.
+
+YOUR CHOICES:
+    A) (RECOMMENDED) Add: "Return type
+       `Promise<'granted' | 'denied' | 'undetermined'>` — matches the
+       existing pattern in `expoPush.ts`."
+    B) Return a boolean (granted / not granted). Less info, but
+       simpler.
+    C) Return the raw Expo permission object. More info than we need
+       and couples callers to the SDK shape.
+
+ANSWER: Option A
+

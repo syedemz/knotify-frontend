@@ -284,3 +284,74 @@ export function isValidOfficeAddress(s: string): boolean {
   if (s.length === 0 || s.length > OFFICE_ADDRESS_MAX_LENGTH) return false;
   return true;
 }
+
+// ── Education credentials — text fields ───────────────────────────────────────
+
+/**
+ * Maximum character length for education text credential fields
+ * (`high_school`, `higher_secondary`, `college_name`, `highest_degree`).
+ *
+ * db-schema.json declares these columns as TEXT (unbounded); the frontend
+ * enforces this 40-char limit as a UI choice per story 5.2 AC.
+ */
+export const EDUCATION_TEXT_MAX_LENGTH = 40;
+
+/**
+ * Returns `true` when `s` is a valid education credential text value.
+ *
+ * Rules:
+ * - Allowed characters: `[A-Za-z0-9]`, space, hyphen (`-`), period (`.`),
+ *   comma (`,`), ampersand (`&`), apostrophe (`'`).
+ * - No leading or trailing whitespace.
+ * - Length: 1–{@link EDUCATION_TEXT_MAX_LENGTH} characters (inclusive).
+ *
+ * Apostrophe is required so names like "St. Mary's High School" pass.
+ *
+ * @param s - The string to validate.
+ * @returns `true` if `s` is a valid education credential text value.
+ *
+ * @example
+ * ```ts
+ * isValidEducationText("St. Mary's High School")  // true
+ * isValidEducationText("BSc Computer Science")    // true
+ * isValidEducationText("LUMS")                    // true
+ * isValidEducationText(" LUMS")                   // false — leading space
+ * isValidEducationText("LUMS!")                   // false — invalid char
+ * isValidEducationText("")                         // false — empty
+ * ```
+ */
+export function isValidEducationText(s: string): boolean {
+  if (s.length === 0 || s.length > EDUCATION_TEXT_MAX_LENGTH) return false;
+  if (s !== s.trim()) return false;
+  return /^[A-Za-z0-9 \-.,&']+$/.test(s);
+}
+
+// ── Education credentials — year fields ───────────────────────────────────────
+
+/**
+ * Returns `true` when `year` is a valid education passing/graduation year.
+ *
+ * Rules:
+ * - Exactly 4 digits when represented as a string (i.e. value in 1000–9999).
+ * - Value in the range [1950, current calendar year] (inclusive).
+ *
+ * The `currentYear` parameter is injected so the function is fully
+ * deterministic in tests (no wall-clock dependency).
+ *
+ * @param year        - The numeric year to validate.
+ * @param currentYear - The current calendar year (injected for testability).
+ * @returns `true` if `year` is in [1950, currentYear].
+ *
+ * @example
+ * ```ts
+ * isValidEducationYear(1949, 2026)  // false — below 1950
+ * isValidEducationYear(1950, 2026)  // true
+ * isValidEducationYear(2026, 2026)  // true — current year
+ * isValidEducationYear(2027, 2026)  // false — future
+ * ```
+ */
+export function isValidEducationYear(year: number, currentYear: number): boolean {
+  // Must be a 4-digit integer: in [1000, 9999].
+  if (!Number.isInteger(year) || year < 1000 || year > 9999) return false;
+  return year >= 1950 && year <= currentYear;
+}
