@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text as RNText, View } from "react-native";
 import RNDateTimePicker, {
-  DateTimePickerEvent,
   DateTimePickerChangeEvent,
 } from "@react-native-community/datetimepicker";
+import { Calendar } from "lucide-react-native";
+import { Icon } from "./Icon";
 import { useTheme } from "@/theme";
 import { textStyles } from "@/theme/typography";
 import type { Theme } from "@/theme/theme";
@@ -103,24 +104,21 @@ export function DatePicker({
   const minDate = min !== undefined ? new Date(min) : undefined;
   const maxDate = max !== undefined ? new Date(max) : undefined;
 
-  /**
-   * Handler for Android (uses deprecated `onChange` which is still the only
-   * reliable way to detect Android dialog dismiss events in the JS layer).
-   * On Android, `onChange` is called with type='dismissed' when the user
-   * presses the Cancel button.
-   */
-  const handleAndroidChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+  // Android: onValueChange fires only when the user confirms (OK); onDismiss
+  // fires only when they cancel. The two are mutually exclusive per session.
+  const handleAndroidValueChange = (
+    _event: DateTimePickerChangeEvent,
+    selectedDate: Date,
+  ) => {
     setAndroidOpen(false);
-    if (selectedDate !== undefined) {
-      onChange(toIso(selectedDate));
-    } else {
-      onChange(undefined);
-    }
+    onChange(toIso(selectedDate));
   };
 
-  /**
-   * Handler for iOS inline spinner (uses the non-deprecated `onValueChange` API).
-   */
+  const handleAndroidDismiss = () => {
+    setAndroidOpen(false);
+    onChange(undefined);
+  };
+
   const handleIosValueChange = (_event: DateTimePickerChangeEvent, selectedDate: Date) => {
     onChange(toIso(selectedDate));
   };
@@ -173,8 +171,9 @@ export function DatePicker({
         >
           {displayLabel}
         </RNText>
-        {/* Calendar icon placeholder — Icon catalog ships in story 1.6 */}
-        <View style={styles.calendarIcon} />
+        <View style={styles.calendarIconWrapper}>
+          <Icon icon={Calendar} size="md" color="tertiary" />
+        </View>
       </Pressable>
 
       {androidOpen && (
@@ -184,7 +183,8 @@ export function DatePicker({
           value={dateValue}
           minimumDate={minDate}
           maximumDate={maxDate}
-          onChange={handleAndroidChange}
+          onValueChange={handleAndroidValueChange}
+          onDismiss={handleAndroidDismiss}
         />
       )}
     </>
@@ -232,13 +232,7 @@ function createStyles(theme: Theme, disabled: boolean) {
     placeholderText: {
       color: theme.colors.text.tertiary,
     },
-    // Calendar placeholder — replaced by Icon in story 1.6
-    calendarIcon: {
-      width: 18,
-      height: 18,
-      borderWidth: 1.5,
-      borderColor: theme.colors.text.tertiary,
-      borderRadius: theme.radii.sm,
+    calendarIconWrapper: {
       marginLeft: theme.spacing.sm,
     },
     // iOS inline spinner wrapper

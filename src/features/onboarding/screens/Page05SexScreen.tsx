@@ -16,7 +16,7 @@
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { Screen, WizardHeader, Column, Row, SelectionTile } from '@/components';
+import { Screen, WizardHeader, Column, Row, SelectionTile, Heading } from '@/components';
 import { t } from '@/labels';
 import { images } from '@/config/images';
 import { options } from '@/config/options';
@@ -61,6 +61,9 @@ export function Page05SexScreen({ navigation }: Props): React.JSX.Element {
     <Screen>
       <WizardHeader onBack={() => navigation.goBack()} />
       <Column flex align="center" justify="center" gap="xxl">
+        <Heading variant="heading.lg" color="primary" align="center">
+          {t('onboarding.sex.prompt')}
+        </Heading>
         <Row gap="xl" justify="center">
           <SelectionTile
             imageSource={images.onboarding.genderMale}

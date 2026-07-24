@@ -6,7 +6,6 @@ import type { Theme } from '@/theme/theme';
 import { Text } from './Text';
 
 type RadiusKey = keyof Theme['radii'];
-type SpacingKey = keyof Theme['spacing'];
 type ShadowKey = keyof Theme['shadows'];
 
 /**
@@ -30,7 +29,7 @@ export interface SelectionTileProps {
    */
   imageHeight?: number;
   /**
-   * Label displayed below the image.
+   * Label displayed BELOW the tile (outside the bordered box).
    */
   label: string;
   /**
@@ -54,12 +53,6 @@ export interface SelectionTileProps {
    */
   testID?: string;
   /**
-   * Internal padding of the tile.
-   *
-   * @default 'lg'
-   */
-  padding?: SpacingKey;
-  /**
    * Border radius of the tile container.
    *
    * @default 'xl'
@@ -74,12 +67,11 @@ export interface SelectionTileProps {
 }
 
 /**
- * Tappable image-and-label tile used for single-choice selection flows
- * (e.g., the sex-selection page in onboarding).
+ * Tappable image tile with a label rendered below the bordered box.
  *
- * The tile is always tappable — there is no locked/disabled state. It
- * displays an image above a text label, with a branded border when `selected`
- * is true. Press feedback is provided via opacity reduction.
+ * The image fills the bordered Pressable edge-to-edge (rounded corners clip
+ * the image via `overflow: 'hidden'`). The label sits underneath the tile,
+ * outside the border.
  *
  * @example
  * ```tsx
@@ -99,64 +91,62 @@ export function SelectionTile({
   onPress,
   accessibilityLabel,
   selected = false,
-  padding = 'lg',
   radius = 'xl',
   shadow = 'sm',
   testID,
 }: SelectionTileProps): React.JSX.Element {
   const theme = useTheme();
   const styles = useMemo(
-    () => createStyles(theme, padding, radius, shadow),
-    [theme, padding, radius, shadow],
+    () => createStyles(theme, radius, shadow),
+    [theme, radius, shadow],
   );
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tile,
-        selected && styles.tileSelected,
-        pressed && styles.tilePressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ selected }}
-      testID={testID}
-    >
-      <View style={styles.imageWrapper}>
+    <View style={styles.wrapper}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.tile,
+          { width: imageWidth, height: imageHeight },
+          selected && styles.tileSelected,
+          pressed && styles.tilePressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityState={{ selected }}
+        testID={testID}
+      >
         <ExpoImage
           source={imageSource}
-          style={{ width: imageWidth, height: imageHeight }}
-          contentFit="contain"
+          style={styles.image}
+          contentFit="cover"
           // The enclosing Pressable already carries the accessibility label.
           // Marking the image as decorative prevents duplicate screen-reader
           // announcements and avoids ambiguous label matches in tests.
           accessibilityLabel=""
           accessible={false}
         />
-      </View>
+      </Pressable>
       <Text variant="body.md" color="primary" align="center">
         {label}
       </Text>
-    </Pressable>
+    </View>
   );
 }
 
-function createStyles(
-  theme: Theme,
-  padding: SpacingKey,
-  radius: RadiusKey,
-  shadow: ShadowKey,
-) {
+function createStyles(theme: Theme, radius: RadiusKey, shadow: ShadowKey) {
   const shadowStyle = theme.shadows[shadow];
   return StyleSheet.create({
+    wrapper: {
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
     tile: {
       backgroundColor: theme.colors.bg.surface,
       borderRadius: theme.radii[radius],
-      padding: theme.spacing[padding],
       borderWidth: 2,
       borderColor: theme.colors.border.default,
-      alignItems: 'center',
+      overflow: 'hidden',
       ...shadowStyle,
     },
     tileSelected: {
@@ -166,8 +156,9 @@ function createStyles(
     tilePressed: {
       opacity: 0.75,
     },
-    imageWrapper: {
-      marginBottom: theme.spacing.sm,
+    image: {
+      width: '100%',
+      height: '100%',
     },
   });
 }
