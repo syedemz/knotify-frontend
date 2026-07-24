@@ -51,6 +51,22 @@ describe("WizardHeader", () => {
     });
   });
 
+  describe("given canGoBack={false}", () => {
+    it("then hides the back button", () => {
+      renderWithTheme(
+        <WizardHeader currentPage={9} onBack={() => {}} canGoBack={false} />,
+      );
+      expect(screen.queryByLabelText("Back")).toBeNull();
+    });
+
+    it("then still renders the progress bar", () => {
+      renderWithTheme(
+        <WizardHeader currentPage={9} onBack={() => {}} canGoBack={false} />,
+      );
+      expect(screen.getByLabelText("Step 9 of 31")).toBeTruthy();
+    });
+  });
+
   describe("given hideProgress={true}", () => {
     it("then does not render the progress bar", () => {
       renderWithTheme(<WizardHeader hideProgress onBack={() => {}} />);

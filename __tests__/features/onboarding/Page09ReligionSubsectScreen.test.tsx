@@ -191,8 +191,8 @@ import { Page09ReligionSubsectScreen } from '@/features/onboarding/screens/Page0
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function mockNavigation() {
-  return { navigate: jest.fn(), goBack: jest.fn() };
+function mockNavigation(canGoBack = true) {
+  return { navigate: jest.fn(), goBack: jest.fn(), canGoBack: jest.fn().mockReturnValue(canGoBack) };
 }
 
 function mockRoute() {
@@ -453,5 +453,14 @@ describe('Page09ReligionSubsectScreen — WizardHeader', () => {
     if (firstBack === undefined) throw new Error('No back button found');
     fireEvent.press(firstBack);
     expect(nav.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('given the screen is the stack root (checkpoint resume), then the WizardHeader back button is hidden', () => {
+    // Simulates the firstCheckpoint resume path: OnboardingStack mounts with
+    // Page 9 as initialRouteName, so navigation.canGoBack() returns false.
+    // Rendering the back button here would produce the "GO_BACK was not
+    // handled by any navigator" runtime error when pressed.
+    renderScreen(mockNavigation(false));
+    expect(screen.queryByLabelText(t('wizard.header.back'))).toBeNull();
   });
 });

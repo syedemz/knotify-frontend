@@ -104,7 +104,11 @@ export function Page09ReligionSubsectScreen({ navigation }: Props): React.JSX.El
 
   return (
     <Screen>
-      <WizardHeader currentPage={9} onBack={() => navigation.goBack()} />
+      <WizardHeader
+        currentPage={9}
+        onBack={() => navigation.goBack()}
+        canGoBack={navigation.canGoBack()}
+      />
       <ScrollView>
         <Heading variant="display.md" color="primary">
           {t('onboarding.religion.title')}

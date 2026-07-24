@@ -34,6 +34,18 @@ export interface WizardHeaderProps {
    */
   onBack: () => void;
   /**
+   * When `false`, the back button is hidden entirely (a spacer preserves the
+   * header's fixed height so screen content doesn't jump).
+   *
+   * Pass `navigation.canGoBack()` from checkpoint-resume target screens
+   * (currently Page 9, later Page 15) so the button doesn't render when the
+   * screen is the stack's initial route — pressing it there throws
+   * "GO_BACK was not handled by any navigator".
+   *
+   * @default true
+   */
+  canGoBack?: boolean;
+  /**
    * Vertical padding above and below the header row.
    *
    * Maps to a theme spacing token.
@@ -82,6 +94,7 @@ export function WizardHeader({
   currentPage = 1,
   hideProgress = false,
   onBack,
+  canGoBack = true,
   paddingY = "sm",
   paddingX = "sm",
   bg = "primary",
@@ -95,11 +108,13 @@ export function WizardHeader({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <IconButton
-          icon={<ChevronLeft size={24} color={theme.colors.text.primary} />}
-          onPress={onBack}
-          accessibilityLabel={t("wizard.header.back")}
-        />
+        {canGoBack && (
+          <IconButton
+            icon={<ChevronLeft size={24} color={theme.colors.text.primary} />}
+            onPress={onBack}
+            accessibilityLabel={t("wizard.header.back")}
+          />
+        )}
       </View>
       {!hideProgress && (
         <WizardProgress current={currentPage} />
