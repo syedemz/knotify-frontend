@@ -1,6 +1,6 @@
 phase: 4
 title: Religion + work (B3, pages 9-11)
-last_updated: 2026-07-24
+last_updated: 2026-07-24 (story 4.2)
 
 context_summary: |
   Phase 4 captures religion + subsect (with a dynamic Islam-only subsect list), professional category, and work details (employment type, job title, employer, office address, salary range). It introduces the first dynamic-branch pattern (page 9's Islam-conditional subsect list) and the first multi-field validated form (page 11's work details).
@@ -34,7 +34,7 @@ stories:
   - id: 4.2
     title: Page 10 - Professional category (auto-advance list)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 23
     acceptance_criteria:

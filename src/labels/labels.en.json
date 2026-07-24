@@ -118,6 +118,9 @@
     "religion": {
       "title": "What is your religion?",
       "subsectTitle": "Which school of thought do you follow?"
+    },
+    "professionalCategory": {
+      "title": "What is your profession?"
     }
   }
 }

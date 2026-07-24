@@ -29,6 +29,7 @@ import { Page06NameScreen as Page06NameScreenImpl } from "@/features/onboarding/
 import { Page07BirthdayScreen as Page07BirthdayScreenImpl } from "@/features/onboarding/screens/Page07BirthdayScreen";
 import { Page08FirstCheckpointScreen as Page08FirstCheckpointScreenImpl } from "@/features/onboarding/screens/Page08FirstCheckpointScreen";
 import { Page09ReligionSubsectScreen as Page09ReligionSubsectScreenImpl } from "@/features/onboarding/screens/Page09ReligionSubsectScreen";
+import { Page10ProfessionalCategoryScreen as Page10ProfessionalCategoryScreenImpl } from "@/features/onboarding/screens/Page10ProfessionalCategoryScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -67,7 +68,7 @@ const Page07BirthdayScreen = Page07BirthdayScreenImpl;
 const Page08FirstCheckpointScreen = Page08FirstCheckpointScreenImpl;
 // Pages 9+: real screens land as phases 4-11 are implemented.
 const Page09ReligionSubsectScreen = Page09ReligionSubsectScreenImpl;
-const Page10ProfessionalCategoryScreen = makePlaceholderScreen("Page10ProfessionalCategoryScreen");
+const Page10ProfessionalCategoryScreen = Page10ProfessionalCategoryScreenImpl;
 const Page11WorkDetailsScreen = makePlaceholderScreen("Page11WorkDetailsScreen");
 const Page12EducationLevelScreen = makePlaceholderScreen("Page12EducationLevelScreen");
 const Page13EducationCredentialsScreen = makePlaceholderScreen("Page13EducationCredentialsScreen");

@@ -118,6 +118,9 @@
     "religion": {
       "title": "آپ کا مذہب کیا ہے؟",
       "subsectTitle": "آپ کس فکری مکتب کی پیروی کرتے ہیں؟"
+    },
+    "professionalCategory": {
+      "title": "آپ کا پیشہ کیا ہے؟"
     }
   }
 }
