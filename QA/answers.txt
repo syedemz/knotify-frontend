@@ -1,288 +1,361 @@
+PHASE 4 — RELIGION + WORK (pages 9-11) — CONCERNS FROM THE BRAINSTORM
+========================================================================
 
-======================================================================
-BLOCKING PROBLEMS — the plan asks for something that literally can't work as written
-======================================================================
+These are the issues the audit found in the Phase 4 plan (PRD). For each
+issue, I explain what the problem actually is in plain language, why it
+matters, and what the choices are for fixing it.
 
+Once you've read through them, tell me your choice for each and I'll
+update the PRD accordingly.
 
-ISSUE F-1: Story 3.4 calls a function that doesn't exist by that name
----------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-"On the Start button, call useOnboardingDraft().advance(firstCheckpoint) — that sets the checkpoint and moves the wizard forward."
-
-WHY THAT'S BROKEN:
-Back in phase 2, we built two separate tools inside useOnboardingDraft:
-
-  1. advance(pageNumber)                          — moves the wizard forward by one page. Takes a NUMBER.
-  2. advanceWithCheckpoint(pageNumber, marker)    — moves forward AND drops a checkpoint marker. Takes a number AND a marker.
-
-The plan is asking us to call the FIRST tool but pass it the argument for the SECOND. It's like asking a bartender: "make me a drink — bourbon." The word "bourbon" is a liquid name, not a drink order. If we do exactly what the plan says, we'd pass the string "firstCheckpoint" into a function expecting a page number, and the wizard would either crash or think it needs to jump to page NaN.
-
-ANALOGY:
-Imagine a two-button elevator. Button A is "go up one floor". Button B is "go up one floor AND remember you passed this landing so we can drop you back here if you get lost." The plan says "press Button A, and while pressing it, say the word 'landing'." Button A doesn't listen to words. You have to press Button B, and tell it which floor AND which landing.
-
-WHAT THE FIX LOOKS LIKE:
-Change the AC to: "call useOnboardingDraft().advanceWithCheckpoint(9, 'firstCheckpoint')" — 9 because Page 9 is what comes after Page 8, and 'firstCheckpoint' is the marker name we agreed on in phase 2.
-
-CONFIRM: Yes please do the fix
-
-
-ISSUE F-2: Story 3.4 tries to navigate to a screen that doesn't exist by that name
-----------------------------------------------------------------------------------
+------------------------------------------------------------------------
+ISSUE 1 — Screen name mismatch (BLOCKER)
+------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-"After Start, navigate to Page09ReligionScreen."
+  Story 4.1 tells the developer to build a screen called
+  "Page09ReligionScreen".
 
-WHY THAT'S BROKEN:
-In phase 2 we built the routing table (PAGE_MAP) and named page 9 "Page09ReligionSubsectScreen" — because the page actually asks for religion AND subsect together, not just religion. The plan uses the shorter, older name.
+WHAT THE CODE ALREADY HAS:
+  When Phase 2 built the navigation skeleton, it registered a placeholder
+  called "Page09ReligionSubsectScreen" (note the extra word "Subsect").
 
-React Navigation's navigate() function is dumb about names — if you say "take me to Page09ReligionScreen" but the map only knows "Page09ReligionSubsectScreen", it silently fails or throws. Either way, the button does nothing useful.
+WHY THIS MATTERS:
+  Think of the app's navigation like a hotel. Every screen has a room
+  number that the front desk uses to send guests to the right room.
+  Right now, the front desk (navigation) has "Room 9 = Religion+Subsect"
+  written on its map. If the developer builds a room called "Religion"
+  (without "Subsect"), they have essentially built a new, unlisted room.
+  The front desk will keep sending guests to the old, empty placeholder
+  room, and the new room will sit unused. Or worse, the developer will
+  add a second entry to the map, and now you have TWO rooms both trying
+  to be page 9 — a duplicate.
 
-ANALOGY:
-You tell a taxi driver "take me to Franklin Street." The driver's map only knows "Franklin Avenue." He shrugs and stays put. The plan needs to use the name that's actually on the map.
+  This is a naming drift bug. It's easy to fix but guarantees a broken
+  wire-up if we don't catch it now.
 
-WHAT THE FIX LOOKS LIKE:
-Rename the target in the AC from Page09ReligionScreen to Page09ReligionSubsectScreen.
+YOUR CHOICES:
+  A) Change the PRD to say "Page09ReligionSubsectScreen" (matches
+     existing code — recommended).
+  B) Change the code to rename the placeholder to "Page09ReligionScreen"
+     (extra work in the navigator, no upside).
 
-CONFIRM: use the existing name Page09ReligionSubsectScreen? Yes please do it
+ANSWER: Option A
 
+------------------------------------------------------------------------
+ISSUE 2 — Contradiction: "immutable" vs. "can be changed" (story 4.1)
+------------------------------------------------------------------------
 
-======================================================================
-UNDER-SPECIFIED — the plan hand-waves in places where the builder needs a concrete rule
-======================================================================
+WHAT THE PLAN SAYS (two lines, both in story 4.1):
+  Line A: "If the user picks Islam + subsect, then goes back and picks
+           Christianity, the subsect must reset to 'Not Applicable'
+           before advancing."
+  Line B: "Both religion and subsect are treated as immutable-after-set
+           in the draft."
 
+WHY THESE CONTRADICT:
+  "Immutable" means "cannot be changed once set."
+  "Reset after back-nav" means "can be changed after set."
 
-ISSUE F-3: Story 3.2's "sanitize" function has no definition, so username generation is guesswork
--------------------------------------------------------------------------------------------------
+  You can't have both. It's like saying "this door is permanently locked"
+  in one paragraph, and "when you come back through this door, unlock it
+  first" in the next.
 
-WHAT THE PLAN SAYS:
-"Generate the username as: sanitize(first_name) + sanitize(last_name) + <4-digit alphanumeric>"
+BACKGROUND ON WHY THE CODE CURRENTLY DOES SOMETHING SUBTLE:
+  Phase 3 already added a helper called `isImmutable()`. Right now,
+  religion and subsect are in that helper's "immutable list."
+  BUT — and this is the important part — that list is NOT used to lock
+  the draft. It is only consulted at the very end (Phase 11) when
+  building the PATCH request to the server. At that point, if a field
+  is "immutable," Phase 11 will refuse to send it to the server (because
+  the server itself locks the field after the first save).
 
-WHY THAT'S BROKEN:
-"Sanitize" is jargon that could mean five different things, and each version produces a different username. The plan never picks one. And "4-digit alphanumeric" is similarly slippery.
+  In other words: the DRAFT (the in-memory form the user is filling out)
+  is fully editable. The SERVER is where fields become frozen. The two
+  live in different places.
 
-Say the user types first name "Marie-Claire" and last name "O'Brien". What's the username?
+WHY THIS MATTERS:
+  If we don't clarify the plan, the developer might interpret "immutable
+  in the draft" literally and add a lock that prevents back-navigation
+  from editing religion. That would break the reset-to-Not-Applicable
+  bullet. Or they might do the opposite. Either way, whichever they
+  pick, half the acceptance criteria will fail their own test.
 
-  - Version A (lowercase + strip everything non-letter):    marieclaireobrien + 4 chars
-  - Version B (lowercase + keep letters and hyphens):       marie-claireo'brien + 4 chars   (has an apostrophe — Cognito might reject)
-  - Version C (preserve case + strip):                      MarieClaireOBrien + 4 chars
-  - Version D (strip diacritics too, so "Zoë" → "Zoe"):     zoe...
+YOUR CHOICES:
+  A) DRAFT-EDITABLE, SERVER-LOCKED (recommended, matches Phase 11 plan).
+     Reword line B to: "religion + subsect participate in isImmutable()
+     metadata used by Phase 11's PATCH-builder — no in-draft enforcement
+     in Phase 4." Draft can be freely edited during onboarding.
 
-And "4-digit alphanumeric" — is that:
-  - 4 digits (0-9), like "7291"?
-  - 4 characters from letters and numbers, like "a3f9"?
-  - Case-sensitive letters, like "aB3F"?
+  B) DRAFT-LOCKED. Delete the reset-after-back-nav bullet (line A) AND
+     block back-navigation to page 9 once the user has moved past it.
+     This is stricter but breaks the "user can review and edit their
+     answers" pattern the wizard establishes elsewhere.
 
-Each variant is a different pattern the builder has to invent, and if they invent something the wrong way, we'll only find out much later when phase 11's final PATCH to the backend collides with Cognito's username rules or produces usernames the backend rejects.
+ANSWER: Option A
 
-ANALOGY:
-The plan says "build a mailbox — paint it a nice color." "Nice" isn't a color. The painter has to pick — red, blue, teal? — and then you're stuck with whatever they picked. Better to say "paint it #1E88E5 blue."
-
-MY RECOMMENDATION:
-Create a new file Helper/usernameHelper.ts with two named, testable functions:
-  - sanitizeNamePart(s) → lowercase the input, strip everything that isn't a-z (so spaces, hyphens, apostrophes, accents all vanish)
-  - generateUsername(first, last) → sanitizeNamePart(first) + sanitizeNamePart(last) + 4 random chars from [a-z0-9]
-
-That gives us a Cognito-safe, deterministic pattern.
-
-ANSWER: Please crea the usernameHelper.ts with the recommendations
-
-QUESTIONS:
-  Q3a. Is lowercase + strip-non-letter the right rule for names, or do you want to preserve accents/case? please use lowercase + strip-non-letter should suffice
-  Q3b. Is [a-z0-9]{4} the right suffix, or do you specifically want [0-9]{4} (only digits) — which reads friendlier ("marieobrien7291")? please use [0-9]{4} (only digits)
-  Q3c. Should the username helper live at Helper/usernameHelper.ts, or bundled into the existing Helper/validationHelper.ts? create Helper/usernameHelper.ts
-
-
-ISSUE F-4: Story 3.2 describes name validation rules but doesn't name the function that enforces them
-------------------------------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-"Validation rejects digits, special characters, leading/trailing whitespace; only letters, spaces, hyphens, apostrophes pass."
-
-WHY THAT'S UNDER-SPECIFIED:
-Phase 2 already gave us Helper/validationHelper.ts with tools named isValidEmail, isSixDigitCode, passwordMeetsCognitoPolicy. Story 3.2 wants a name validator with matching purpose, but the plan doesn't say what to call it or where to put it. That's a small thing but it matters — if the builder invents their own name ("validateName", "checkName", "nameOk"), we lose the consistent naming that makes the codebase easy to skim.
-
-ANALOGY:
-The plan says "add another light switch." The house already has switches labeled "kitchen", "hallway", "porch." You want the new one added to that same labeled panel, not stuck on a random wall with no label.
-
-MY RECOMMENDATION:
-Add "isValidName(s: string): boolean" to Helper/validationHelper.ts. Rules: only [A-Za-z], space, hyphen, apostrophe; no leading/trailing whitespace; length 1-35.
-
-QUESTION:
-  Q4. Is isValidName the right name, and validationHelper.ts the right home? Yes please proceed
-
-
-ISSUE F-5: Story 3.3 mentions a function it forgot to list in the exports
--------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-"Helper/dateHelper.ts exports isAtLeast18, isNotFuture, isYearReasonable, and validateBirthday."
-Then two lines later: "Live age preview below the picker calls dateHelper.age(iso)."
-
-WHY THAT'S BROKEN:
-The plan lists four exports and then uses a fifth (age) as if it existed. The builder will either invent age() themselves (and there's no AC constraining what it looks like — do we display "27 years", "27", "you are 27 years old"?), or they'll build only the four listed and the "live age preview" AC will be un-implementable.
-
-ANALOGY:
-The plan says "in the kitchen, install a fridge, oven, sink, and dishwasher." Later: "the coffee maker goes on the counter next to the fridge." Wait — was a coffee maker on the shopping list? The builder shows up with four items and now has to figure out what a coffee maker is on their own.
-
-WHAT THE FIX LOOKS LIKE:
-Add to Story 3.3's AC: "dateHelper also exports age(iso: string, today?: string): number returning the person's completed years." That way it's ordered, sized, and testable.
-
-CONFIRM: add age() to the exports list? Yes add it
-
-
-ISSUE F-6: Story 3.3's validateBirthday can't be tested reliably
-----------------------------------------------------------------
+------------------------------------------------------------------------
+ISSUE 3 — Missing "where does the user go next?"
+------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-"validateBirthday(iso) returns a LabelKey or null."
-"Unit tests cover boundary cases at 17y364d, 18y0d, today, 1899, 1900."
+  Story 4.1: "auto-advances" (to where? not stated)
+  Story 4.2: "auto-advances" (to where? not stated)
+  Story 4.3: correctly states "advance to Page12EducationLevelScreen"
 
-WHY THAT'S BROKEN:
-The two helper functions used INSIDE validateBirthday (isAtLeast18 and isNotFuture) each accept a "today" argument, which is how we test what happens on someone's 18th birthday exactly — we hand the function a pretend "today" of 2044-03-15 and a birthday of 2026-03-15 and check what it says.
+WHY THIS MATTERS:
+  Imagine giving a taxi driver the instruction "drive forward" without
+  saying to which address. They'll pick a direction, and it might not
+  be the one you meant. The developer will guess, and probably guess
+  right (Page 9 → Page 10 → Page 11 is the obvious flow), but "probably"
+  isn't good enough for acceptance criteria that need to be testable.
 
-But the composite validateBirthday(iso) as written does NOT accept "today" — it presumably reads the real system clock. That means our boundary tests will be flaky: a test that runs today (2026-07-23) will produce a different answer than the same test run tomorrow, and the "18y0d" boundary test can only ever be correct on exactly one day per year.
+  A test needs a concrete expectation: "after tap, navigation.navigate
+  was called with 'Page10ProfessionalCategoryScreen'." Vague acceptance
+  criteria produce vague tests.
 
-ANALOGY:
-You want to test "does this alarm clock go off at 7am?" The right test is: set the clock's belief about "now" to 6:59am and check that it stays quiet, then to 7:00am and check that it rings. If the alarm clock refuses to let you fake the time and only ever reads the real wall clock, you literally have to be there at 6:59am on test day. That's not a test — that's an ordeal.
+YOUR CHOICES:
+  A) Fill in the blanks in the PRD (recommended):
+       Story 4.1 → advances to Page10ProfessionalCategoryScreen
+       Story 4.2 → advances to Page11WorkDetailsScreen
+  B) Leave as-is, trust the developer to infer from context.4
 
-WHAT THE FIX LOOKS LIKE:
-Change the signature to validateBirthday(iso: string, today?: string): LabelKey | null. Default today to the real current date when not provided (so production code stays clean), but let tests inject any date they want.
+ANSWER: Option A
 
-CONFIRM: make today an injectable parameter? Yes
-
-
-ISSUE F-7: Story 3.1 says "read from options.gender" but there's no clear path to import it
--------------------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-"Values Male and Female come from options.gender (never inlined in the screen)."
-
-WHY THAT'S UNDER-SPECIFIED:
-The gender list DOES exist — as a JSON file at src/config/options/gender.json containing ["Male", "Female"]. But there's no barrel file (an index.ts that gathers all option lists together) yet. So the screen has three ways it could import gender:
-
-  A. import gender from '@/config/options/gender.json'                       — direct file import
-  B. import { options } from '@/config/options'                              — barrel export, then options.gender
-  C. import { GENDER_OPTIONS } from '@/config/options/gender.ts'             — convert JSON to a typed const
-
-Option B matches how the plan phrases it ("options.gender"). The plan implies B exists but nothing has been built yet.
-
-ANALOGY:
-The plan says "grab the salt from the spice rack." There IS salt in the kitchen — but there's no spice rack yet, it's just sitting on a random shelf. Either build the spice rack, or change the instruction to "grab the salt from the shelf next to the fridge."
-
-MY RECOMMENDATION:
-Create src/config/options/index.ts that re-exports gender (and any other option lists we add later) as one object. This matches the "options.gender" phrasing and gives us a clean import pattern for future phases (options.religion, options.education, etc.).
-
-QUESTIONS:
-  Q7a. Create the options barrel now (option B)? Or defer and just direct-import the JSON (option A)? Option B
-  Q7b. If barrel: should the values be typed as a const enum ('Male' | 'Female') for type safety, or stay as string[]? Stay as string
-
-
-======================================================================
-SCOPE CREEP — the plan asks for something that has no consumer in this phase
-======================================================================
-
-
-ISSUE F-8: Story 3.1's "not sent as writable on retry navigation" clause has nothing to plug into
--------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------
+ISSUE 4 — Character rules reject real-world names (story 4.3)
+------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS:
-"Once sex is selected, the field is treated as immutable-after-set (recorded by Helper/immutableFieldHelper.ts predicate; not sent as writable on retry navigation to this page)."
+  For job title and employer name, allow only these characters:
+  letters, digits, spaces, hyphen (-), period (.), comma (,).
 
-WHY THAT'S SCOPE CREEP:
-There are TWO things being asked here:
+WHY THIS IS TOO STRICT:
+  A lot of real employers and job titles use characters this rule
+  rejects. Examples of what would be blocked:
 
-  1. Build a predicate function that says "is this field immutable-after-first-write?" — for sex, the answer is yes.
-  2. Make sure that when we retry submitting the user's profile, the sex field isn't included as a writable field.
+    - "P&G"                (rejected — & not allowed)
+    - "Johnson & Johnson"  (rejected — & not allowed)
+    - "Macy's"             (rejected — ' not allowed)
+    - "O'Reilly Media"     (rejected — ' not allowed)
+    - "AT&T"               (rejected — & not allowed)
 
-The FIRST thing is small and belongs in phase 3 — it introduces the predicate and its unit tests.
+  These are all legitimate employer names. If a user tries to type any
+  of them, they'll hit a validation error and be unable to proceed.
 
-The SECOND thing requires there to be a "profile PATCH builder" that consumes the predicate and decides what fields to send to the backend. That builder doesn't exist yet. It gets built in phase 11 (the final PATCH page). So the "not sent as writable on retry navigation" clause has NOWHERE to attach in phase 3 — the only piece of code that would honor it doesn't exist yet.
+  Note that Phase 3's `isValidName()` already allows apostrophes
+  (needed for names like "O'Brien"). Being stricter on employer names
+  than on person names doesn't make sense.
 
-If we leave the clause in, the builder will either (a) build a placeholder PATCH filter with no consumer, which is dead code, or (b) invent some ad-hoc "don't send sex twice" logic in the screen itself, which is the wrong layer and will collide with whatever phase 11 does properly.
+YOUR CHOICES:
+  A) Add both & and ' to the allowed set (recommended, matches reality).
+     Final rule: letters, digits, spaces, - . , & '
+  B) Keep the rule as-is (users with those employers will be blocked).
+  C) Loosen further to "any printable character" (fewer bugs, less
+     protection against garbage input).
 
-ANALOGY:
-The plan says "install a smoke detector, and wire it to the fire sprinklers." Fine — but the sprinklers haven't been installed yet, they're in phase 11. So we should install the smoke detector, leave the wire coiled up, and finish the connection when the sprinklers arrive.
+ANSWER: Option A
 
-MY RECOMMENDATION:
-Keep the predicate + its unit tests in phase 3. Strike the second clause. Add a note to phase 11's PRD: "PATCH-builder must call immutableFieldHelper.isImmutable() to skip immutable fields on retry submissions."
+------------------------------------------------------------------------
+ISSUE 5 — Length limits aren't tied to the database
+------------------------------------------------------------------------
 
-CONFIRM: strike the second clause from Story 3.1 AC, defer PATCH-time filtering to phase 11? Yes please do it
+WHAT THE PLAN SAYS:
+  job_title max 40 characters
+  employer_name max 50 characters
+  office_address max 150 characters
 
+WHY THIS MATTERS:
+  These numbers came from somewhere, but the PRD doesn't say where.
+  There's a file in the backend called `db-schema.json` that defines
+  the "real" limits — how many characters each column in the database
+  can actually hold.
 
-======================================================================
-MISSING ACCEPTANCE CRITERIA — the plan forgot to say something that matters
-======================================================================
+  Think of it like a bucket. The database bucket might hold exactly
+  50 characters for `employer_name`. If our form limits to 40, we're
+  under-using the bucket (annoying for users with long employer names
+  but harmless). If our form limits to 60, users will type 60 chars,
+  hit Submit, and the database will reject or silently truncate the
+  extra 10 characters — a bad-data bug.
 
+  We need to confirm the numbers in the PRD (40, 50, 150) actually
+  match the database schema. If they don't, we ship a subtle data
+  corruption bug.
 
-ISSUE F-9: The plan never says "update the wizard's page pointer" as pages 5-8 advance
---------------------------------------------------------------------------------------
+YOUR CHOICES:
+  A) Have the developer verify against `knotify-backend/db-schema.json`
+     during implementation and adjust if there's a mismatch
+     (recommended — trivial to do, catches the bug).
+  B) Trust the PRD numbers as-is (may ship a bug if wrong).
+  C) You look up the db-schema numbers now and tell me what they are;
+     I'll bake them into the PRD.
 
-WHAT THE PLAN OMITS:
-Each screen (pages 5, 6, 7, 8) should call draft.advance(nextPageNumber) as the user moves forward, so the draft's currentPage field stays coherent. None of the ACs actually say this.
+ANSWER: Option A
 
-WHY IT MATTERS:
-The draft has a currentPage field that phase 2 wired up. It's used by:
-  - the checkpoint-resume logic (which page do I mount when the user relaunches?)
-  - the progress-bar reads (which page is the user on?)
+------------------------------------------------------------------------
+ISSUE 6 — Users won't know WHY the Continue button is disabled (4.3)
+------------------------------------------------------------------------
 
-If pages 5-8 navigate but forget to advance the draft, the progress bar and resume logic will lag behind or read stale values. It's the kind of bug that doesn't show up in a happy-path test but manifests as "why does the progress bar say 33% when I'm on page 7?" three weeks later.
+WHAT THE PLAN SAYS:
+  Page 11 has 5 fields. "Continue is disabled until all five fields
+  validate."
 
-ANALOGY:
-Every time a train leaves a station, someone needs to update the station board. If page 5 → 6 doesn't update the board, the arrival board at the next station still says "Now approaching: Page 5" even though the train left an hour ago.
+WHY THIS ISN'T ENOUGH:
+  Disabling a button tells the user "you can't proceed yet" but doesn't
+  tell them "here's what's wrong."
 
-WHAT THE FIX LOOKS LIKE:
-Two options:
-  A. Add a line to EACH story (3.1, 3.2, 3.3, 3.4) saying "on continue/select, call draft.advance(<next-page-number>) before navigation."
-  B. Add ONE shared "phase conventions" section at the top of the PRD saying "every screen calls draft.advance(nextPage) on continue" and don't repeat it per story.
+  Imagine an ATM that says "TRANSACTION DENIED" without saying why —
+  insufficient funds? Wrong PIN? Card expired? You'd tap around
+  helplessly. Same thing here: user fills 4 fields, 5th field has a
+  typo they can't see, Continue is grey, user is stuck.
 
-CONFIRM: add the ACs (and choose option A or B)? Go with Option A
+  Page 2 (email/password) already established a pattern: each field
+  shows its own inline error message ("password too short", "not a
+  valid email", etc.). Page 11 should follow that pattern for
+  consistency.
 
+YOUR CHOICES:
+  A) Require inline per-field error messages (recommended, matches
+     Page 2 pattern). Each field shows its own error label.
+  B) Just disable Continue and let the user figure it out (bad UX).
 
-ISSUE F-10: The plan never verifies the draft's sex field is properly typed
----------------------------------------------------------------------------
+ANSWER: Option A
 
-WHAT THE PLAN OMITS:
-Story 3.1 will write "Male" or "Female" into the draft's sex field. But no AC says the sex field's TypeScript type should be 'Male' | 'Female' | undefined (a strict union). If it's currently typed loosely as string, the plan quietly widens the schema without anyone noticing.
+------------------------------------------------------------------------
+ISSUE 7 — Test doesn't catch changes to the options list (story 4.2)
+------------------------------------------------------------------------
 
-WHY IT MATTERS:
-Strict typing catches bugs. If sex is typed as string, then in phase 7 someone could accidentally write sex = "male" (lowercase) and TypeScript would say fine, but the backend would reject it. If sex is typed as 'Male' | 'Female', TypeScript catches the typo at write-time.
+WHAT THE PLAN SAYS:
+  "Renders all 27 entries." The test checks the count is 27.
 
-ANALOGY:
-A shipping form has a "country" field. If the field is a free-text box, someone types "USA", "U.S.A.", "United States", "america" — chaos. If it's a dropdown limited to exact country names, the data stays clean. TypeScript is that dropdown for the codebase.
+WHY THIS IS BRITTLE:
+  The 27 entries come from a JSON file (`professionalCategory.json`).
+  If someone adds a 28th profession later, the file grows to 28 entries
+  BUT the test still expects 27. The test will fail — not because the
+  code is broken, but because the test was hard-coded to yesterday's
+  count.
 
-WHAT THE FIX LOOKS LIKE:
-Add to Story 3.1 AC: "Verify OnboardingDraft.sex is typed 'Male' | 'Female' | undefined; if it's currently typed string, tighten it."
+  It's like writing "there are 50 US states" into every test in your
+  codebase, then having to update all of them when a 51st state is
+  added. Better to write "however many states there are, that's the
+  right count."
 
-CONFIRM: add the type-tightening AC? Yes
+  Fix: instead of `expect(items).toHaveLength(27)`, write
+  `expect(items).toHaveLength(options.professionalCategory.length)`.
+  The test now says "however many entries are in the options file,
+  the screen should render exactly that many." Adding a new option
+  doesn't break the test.
 
+YOUR CHOICES:
+  A) Test against `options.professionalCategory.length` (recommended,
+     future-proof).
+  B) Keep hardcoded 27 (works today, breaks the day someone edits
+     the JSON).
 
-======================================================================
-UX AMBIGUITY (added during Q&A)
-======================================================================
+ANSWER: Option A
 
+------------------------------------------------------------------------
+ISSUE 8 — Two behaviors on Page 9 aren't specified
+------------------------------------------------------------------------
 
-ISSUE F-11: Story 3.1 doesn't say what happens if the user back-navigates to page 5 after picking a sex
---------------------------------------------------------------------------------------------------------
+WHAT THE PLAN COVERS:
+  - Islam + subsect happy path
+  - Non-Islam auto-advance
+  - Back-nav from Islam+subsect to Christianity (subsect resets)
+  - Forward re-select same religion
 
-WHAT THE PLAN OMITS:
-Story 3.1 says the sex tile auto-advances on tap. It also says the field is "immutable-after-set" — but that word is ambiguous between "immutable on the backend after the profile is saved" and "immutable in the UI the moment the user first taps it."
+WHAT'S NOT COVERED:
+  1. If the user picks Islam, then picks Islam AGAIN (tapping the same
+     row twice) — what happens? Nothing (no-op)? Reset the subsect?
+     Assume no-op is fine but should be explicit.
+  2. If the user has picked Islam + Sunni, then in the SAME session
+     (no back-nav, just tapping a different religion row on the same
+     screen) picks Christianity — should subsect clear? The plan only
+     covers the back-nav case; this is the forward case.
 
-Concrete scenario the plan doesn't handle:
-User taps Male → auto-advances to page 6 → hits the back button → arrives on page 5 again. Now what?
+WHY THIS MATTERS:
+  Undefined behavior means the developer makes a call, and that call
+  might not match what you'd want. Then a QA session finds it and
+  we're back here.
 
-Three reasonable behaviors:
-  A. Both tiles remain tappable. Tapping Female overwrites the draft's sex and auto-advances again.
-  B. The Male tile stays highlighted and locked; Female is grayed out. To fix a misclick the user must cancel onboarding entirely.
-  C. Both tappable, but changing the choice pops a confirmation dialog ("Are you sure? This can only be set once.").
+YOUR CHOICES:
+  A) Add both to the plan: same-religion re-tap is a no-op;
+     different-religion-tap-on-same-screen clears subsect and (if
+     non-Islam) triggers auto-advance (recommended, complete spec).
+  B) Leave to developer discretion.
 
-RESOLUTION (2026-07-23):
-Going with Option A — freely editable during onboarding. Rationale: a misclick shouldn't be punished with a full onboarding restart. The backend-side immutability (Question B in the earlier discussion) still applies once the profile is committed at phase 11's final PATCH — but during the onboarding form itself, the user can freely revise any field by back-navigating.
+ANSWER: Option A
 
-WHAT THIS MEANS FOR THE PRD:
-  - Story 3.1 gets a new AC: "Back-navigating to page 5 leaves both tiles tappable. Tapping the opposite tile overwrites the draft's sex field and re-triggers auto-advance to page 6."
-  - Screen wiring test adds a case: seed the draft with sex=Male, mount the screen, tap Female, assert draft becomes sex=Female and navigation fires.
+------------------------------------------------------------------------
+ISSUE 9 — Back-navigation on Page 10 (professional category)
+------------------------------------------------------------------------
 
-  This also clarifies F-8: the immutableFieldHelper predicate is ONLY consulted at phase 11's PATCH-build time (deciding what to send to the backend). It's never consulted by page 5 itself. During the form, all fields are freely editable.
+WHAT THE PLAN SAYS:
+  Nothing about back-nav. Just "tap writes and auto-advances."
 
+WHY THIS MATTERS:
+  `professional_category` is NOT one of the fields the server treats
+  as immutable (checked against `immutableFieldHelper.ts` — only
+  sex, first_name, last_name, birthday, religion, subsect are locked
+  server-side). So the user CAN come back to page 10 and change their
+  answer.
+
+  The behavior should be: tapping a different category on back-nav
+  overwrites the previous choice in the draft, then auto-advances
+  as before. Trivial to implement, but not stated.
+
+YOUR CHOICES:
+  A) Add a bullet: "On back-nav, tapping a different row overwrites
+     professional_category in the draft" (recommended).
+  B) Leave unstated.
+
+ANSWER: Option A
+
+------------------------------------------------------------------------
+ISSUE 10 — Localization gap (Urdu display of options)
+------------------------------------------------------------------------
+
+WHAT'S HAPPENING:
+  The options for religion, subsect, professional category, etc. live
+  as raw English strings in JSON files. When the user switches the app
+  to Urdu, the tile labels stay in English.
+
+  This matches the architecture's design (§5.3 says options are the
+  literal DB values). But Phase 4 doesn't call it out — a user on
+  the Urdu locale will see:
+       [ اسلام ]  ← screen title in Urdu
+       [ Islam ]  ← tile label still in English
+       [ Christianity ]
+       [ Hinduism ]
+
+WHY THIS MATTERS:
+  It's not a bug per se — it's a deliberate design choice. But if you
+  weren't aware, you'd flag it as broken later. Better to confirm the
+  stance now.
+
+YOUR CHOICES:
+  A) Intentional — options display in English regardless of locale.
+     Ship as-is (matches architecture).
+  B) Add Urdu translations for each option value (parallel maps like
+     labels.ur.json). More work; deferred to a later phase.
+
+ANSWER: Option A
+
+------------------------------------------------------------------------
+ISSUE 11 — Import path clarity
+------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS:
+  "reads options.religion" — but doesn't say where `options` lives.
+
+WHY THIS MATTERS:
+  A developer new to the codebase might guess `@/labels/options` or
+  `@/state/options`. The actual path is `@/config/options`. It's a
+  tiny detail but saves 5 minutes of grep.
+
+YOUR CHOICES:
+  A) Add the import path to the PRD (recommended).
+  B) Leave — the developer will find it easily enough.
+
+ANSWER: option A
 

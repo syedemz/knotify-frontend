@@ -13,6 +13,12 @@ import {
   isSixDigitCode,
   isValidName,
   passwordMeetsCognitoPolicy,
+  isValidJobTitle,
+  isValidEmployerName,
+  isValidOfficeAddress,
+  JOB_TITLE_MAX_LENGTH,
+  EMPLOYER_NAME_MAX_LENGTH,
+  OFFICE_ADDRESS_MAX_LENGTH,
 } from "@/Helper/validationHelper";
 
 // ── isValidEmail ───────────────────────────────────────────────────────────────
@@ -238,5 +244,208 @@ describe("isValidName", () => {
 
   it("given name with internal spaces, then it is accepted", () => {
     expect(isValidName("Van Der Berg")).toBe(true);
+  });
+});
+
+// ── isValidJobTitle ────────────────────────────────────────────────────────────
+
+describe("isValidJobTitle", () => {
+  describe("given valid job titles", () => {
+    const VALID = [
+      "Software Engineer",
+      "AT&T Manager",
+      "O'Reilly Author",
+      "Sr. VP, Sales",
+      "P&G Director",
+      "CEO",
+      "A",
+    ];
+
+    it.each(VALID)("then '%s' is accepted", (input) => {
+      expect(isValidJobTitle(input)).toBe(true);
+    });
+  });
+
+  describe("given invalid job titles", () => {
+    const INVALID: Array<[string, string]> = [
+      ["", "empty string"],
+      [" Engineer", "leading space"],
+      ["Engineer ", "trailing space"],
+      ["Engineer!", "contains disallowed symbol !"],
+      ["Engineer#", "contains disallowed symbol #"],
+      ["Engineer@Acme", "contains @ symbol"],
+    ];
+
+    it.each(INVALID)("then '%s' is rejected (%s)", (input) => {
+      expect(isValidJobTitle(input)).toBe(false);
+    });
+  });
+
+  // ── Boundary: empty ──────────────────────────────────────────────────────────
+
+  it("given empty string, then returns false", () => {
+    expect(isValidJobTitle("")).toBe(false);
+  });
+
+  // ── Boundary: at-max (JOB_TITLE_MAX_LENGTH chars) ───────────────────────────
+
+  it(`given a title exactly ${JOB_TITLE_MAX_LENGTH} characters long, then returns true`, () => {
+    expect(isValidJobTitle("A".repeat(JOB_TITLE_MAX_LENGTH))).toBe(true);
+  });
+
+  // ── Boundary: over-max (JOB_TITLE_MAX_LENGTH + 1 chars) ─────────────────────
+
+  it(`given a title ${JOB_TITLE_MAX_LENGTH + 1} characters long, then returns false`, () => {
+    expect(isValidJobTitle("A".repeat(JOB_TITLE_MAX_LENGTH + 1))).toBe(false);
+  });
+
+  // ── Allowed special chars ────────────────────────────────────────────────────
+
+  it("given a title with hyphen, then returns true", () => {
+    expect(isValidJobTitle("Sr-Engineer")).toBe(true);
+  });
+
+  it("given a title with period, then returns true", () => {
+    expect(isValidJobTitle("Dr. Smith")).toBe(true);
+  });
+
+  it("given a title with comma, then returns true", () => {
+    expect(isValidJobTitle("VP, Sales")).toBe(true);
+  });
+
+  it("given a title with ampersand, then returns true", () => {
+    expect(isValidJobTitle("R&D Lead")).toBe(true);
+  });
+
+  it("given a title with apostrophe, then returns true", () => {
+    expect(isValidJobTitle("O'Brien Analyst")).toBe(true);
+  });
+
+  it("given a title with digits, then returns true", () => {
+    expect(isValidJobTitle("Level 5 Engineer")).toBe(true);
+  });
+
+  // ── Invalid chars ────────────────────────────────────────────────────────────
+
+  it("given a title with exclamation mark, then returns false", () => {
+    expect(isValidJobTitle("Engineer!")).toBe(false);
+  });
+
+  it("given a title with forward slash, then returns false", () => {
+    expect(isValidJobTitle("Dev/QA")).toBe(false);
+  });
+
+  it("given a title with leading whitespace, then returns false", () => {
+    expect(isValidJobTitle(" Engineer")).toBe(false);
+  });
+
+  it("given a title with trailing whitespace, then returns false", () => {
+    expect(isValidJobTitle("Engineer ")).toBe(false);
+  });
+});
+
+// ── isValidEmployerName ────────────────────────────────────────────────────────
+
+describe("isValidEmployerName", () => {
+  describe("given valid employer names", () => {
+    const VALID = [
+      "P&G",
+      "AT&T",
+      "Macy's",
+      "O'Reilly Media",
+      "Acme Corp",
+      "IBM",
+      "Smith & Jones, Ltd.",
+    ];
+
+    it.each(VALID)("then '%s' is accepted", (input) => {
+      expect(isValidEmployerName(input)).toBe(true);
+    });
+  });
+
+  describe("given invalid employer names", () => {
+    const INVALID: Array<[string, string]> = [
+      ["", "empty string"],
+      [" Acme", "leading space"],
+      ["Acme ", "trailing space"],
+      ["Acme!", "contains !"],
+      ["Acme#Corp", "contains #"],
+    ];
+
+    it.each(INVALID)("then '%s' is rejected (%s)", (input) => {
+      expect(isValidEmployerName(input)).toBe(false);
+    });
+  });
+
+  // ── Boundary: empty ──────────────────────────────────────────────────────────
+
+  it("given empty string, then returns false", () => {
+    expect(isValidEmployerName("")).toBe(false);
+  });
+
+  // ── Boundary: at-max (EMPLOYER_NAME_MAX_LENGTH chars) ───────────────────────
+
+  it(`given a name exactly ${EMPLOYER_NAME_MAX_LENGTH} characters long, then returns true`, () => {
+    expect(isValidEmployerName("A".repeat(EMPLOYER_NAME_MAX_LENGTH))).toBe(true);
+  });
+
+  // ── Boundary: over-max (EMPLOYER_NAME_MAX_LENGTH + 1 chars) ─────────────────
+
+  it(`given a name ${EMPLOYER_NAME_MAX_LENGTH + 1} characters long, then returns false`, () => {
+    expect(isValidEmployerName("A".repeat(EMPLOYER_NAME_MAX_LENGTH + 1))).toBe(false);
+  });
+
+  // ── Invalid char rejection ───────────────────────────────────────────────────
+
+  it("given a name with exclamation mark, then returns false", () => {
+    expect(isValidEmployerName("Acme!")).toBe(false);
+  });
+
+  it("given a name with @ sign, then returns false", () => {
+    expect(isValidEmployerName("Acme@Corp")).toBe(false);
+  });
+
+  it("given a name with leading whitespace, then returns false", () => {
+    expect(isValidEmployerName(" Acme")).toBe(false);
+  });
+
+  it("given a name with trailing whitespace, then returns false", () => {
+    expect(isValidEmployerName("Acme ")).toBe(false);
+  });
+});
+
+// ── isValidOfficeAddress ───────────────────────────────────────────────────────
+
+describe("isValidOfficeAddress", () => {
+  // ── Boundary: empty ──────────────────────────────────────────────────────────
+
+  it("given empty string, then returns false", () => {
+    expect(isValidOfficeAddress("")).toBe(false);
+  });
+
+  // ── Boundary: at-max (OFFICE_ADDRESS_MAX_LENGTH chars) ──────────────────────
+
+  it(`given address exactly ${OFFICE_ADDRESS_MAX_LENGTH} characters long, then returns true`, () => {
+    expect(isValidOfficeAddress("A".repeat(OFFICE_ADDRESS_MAX_LENGTH))).toBe(true);
+  });
+
+  // ── Boundary: over-max (OFFICE_ADDRESS_MAX_LENGTH + 1 chars) ────────────────
+
+  it(`given address ${OFFICE_ADDRESS_MAX_LENGTH + 1} characters long, then returns false`, () => {
+    expect(isValidOfficeAddress("A".repeat(OFFICE_ADDRESS_MAX_LENGTH + 1))).toBe(false);
+  });
+
+  // ── Valid addresses (any printable character allowed) ────────────────────────
+
+  it("given a standard UK address, then returns true", () => {
+    expect(isValidOfficeAddress("123 Baker St, London NW1 6XE")).toBe(true);
+  });
+
+  it("given an address with special characters, then returns true", () => {
+    expect(isValidOfficeAddress("Suite 4B, Block #3, Sector 7 — Tower A")).toBe(true);
+  });
+
+  it("given a single character, then returns true", () => {
+    expect(isValidOfficeAddress("A")).toBe(true);
   });
 });

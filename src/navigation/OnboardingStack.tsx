@@ -2,9 +2,9 @@
  * Onboarding wizard navigator.
  *
  * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
- * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-8
- * are real screens (phases 2-3, B1-B2); pages 9-31 remain as `EmptyState`
- * placeholders — real screens land in phases 4-11 (B3-B10).
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-11
+ * are real screens (phases 2-4, B1-B3); pages 12-31 remain as `EmptyState`
+ * placeholders — real screens land in phases 5-11 (B4-B10).
  *
  * `useCheckpointResume` is wired as `initialRouteName` so users who resume
  * an in-progress wizard skip already-completed pages.
@@ -28,6 +28,9 @@ import { Page05SexScreen as Page05SexScreenImpl } from "@/features/onboarding/sc
 import { Page06NameScreen as Page06NameScreenImpl } from "@/features/onboarding/screens/Page06NameScreen";
 import { Page07BirthdayScreen as Page07BirthdayScreenImpl } from "@/features/onboarding/screens/Page07BirthdayScreen";
 import { Page08FirstCheckpointScreen as Page08FirstCheckpointScreenImpl } from "@/features/onboarding/screens/Page08FirstCheckpointScreen";
+import { Page09ReligionSubsectScreen as Page09ReligionSubsectScreenImpl } from "@/features/onboarding/screens/Page09ReligionSubsectScreen";
+import { Page10ProfessionalCategoryScreen as Page10ProfessionalCategoryScreenImpl } from "@/features/onboarding/screens/Page10ProfessionalCategoryScreen";
+import { Page11WorkDetailsScreen as Page11WorkDetailsScreenImpl } from "@/features/onboarding/screens/Page11WorkDetailsScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -64,9 +67,10 @@ const Page05SexScreen = Page05SexScreenImpl;
 const Page06NameScreen = Page06NameScreenImpl;
 const Page07BirthdayScreen = Page07BirthdayScreenImpl;
 const Page08FirstCheckpointScreen = Page08FirstCheckpointScreenImpl;
-const Page09ReligionSubsectScreen = makePlaceholderScreen("Page09ReligionSubsectScreen");
-const Page10ProfessionalCategoryScreen = makePlaceholderScreen("Page10ProfessionalCategoryScreen");
-const Page11WorkDetailsScreen = makePlaceholderScreen("Page11WorkDetailsScreen");
+// Pages 9-11: real screens landed in phase 4 (B3).
+const Page09ReligionSubsectScreen = Page09ReligionSubsectScreenImpl;
+const Page10ProfessionalCategoryScreen = Page10ProfessionalCategoryScreenImpl;
+const Page11WorkDetailsScreen = Page11WorkDetailsScreenImpl;
 const Page12EducationLevelScreen = makePlaceholderScreen("Page12EducationLevelScreen");
 const Page13EducationCredentialsScreen = makePlaceholderScreen("Page13EducationCredentialsScreen");
 const Page14SecondCheckpointScreen = makePlaceholderScreen("Page14SecondCheckpointScreen");
@@ -126,7 +130,7 @@ export function OnboardingStack(): React.JSX.Element {
       <Stack.Screen name="Page03ConfirmCodeScreen" component={Page03ConfirmCodeScreen} />
       <Stack.Screen name="Page04GetStartedScreen" component={Page04GetStartedScreen} />
 
-      {/* Pages 5-31: EmptyState placeholders — replaced by phases 3-11 */}
+      {/* Pages 5-31: real screens for 5-11, EmptyState placeholders for 12-31 */}
       <Stack.Screen name="Page05SexScreen" component={Page05SexScreen} />
       <Stack.Screen name="Page06NameScreen" component={Page06NameScreen} />
       <Stack.Screen name="Page07BirthdayScreen" component={Page07BirthdayScreen} />

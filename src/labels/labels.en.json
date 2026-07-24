@@ -114,6 +114,58 @@
     "firstCheckpoint": {
       "title": "You're all set!",
       "start": "Start"
+    },
+    "religion": {
+      "title": "What is your religion?",
+      "subsectTitle": "Which school of thought do you follow?"
+    },
+    "professionalCategory": {
+      "title": "What is your profession?"
+    },
+    "work": {
+      "title": "Tell us about your work",
+      "employmentType": {
+        "label": "Employment type",
+        "placeholder": "Select employment type"
+      },
+      "jobTitle": {
+        "label": "Job title",
+        "placeholder": "e.g. Software Engineer"
+      },
+      "employerName": {
+        "label": "Employer name",
+        "placeholder": "e.g. Acme Corp"
+      },
+      "officeAddress": {
+        "label": "Office address",
+        "placeholder": "e.g. 123 Baker St, London NW1 6XE"
+      },
+      "salaryRange": {
+        "label": "Salary range",
+        "placeholder": "Select salary range"
+      },
+      "errors": {
+        "jobTitle": {
+          "tooLong": "Job title must be 40 characters or fewer.",
+          "invalidChars": "Only letters, digits, spaces, hyphens, periods, commas, ampersands, and apostrophes are allowed.",
+          "required": "Please enter your job title."
+        },
+        "employerName": {
+          "tooLong": "Employer name must be 50 characters or fewer.",
+          "invalidChars": "Only letters, digits, spaces, hyphens, periods, commas, ampersands, and apostrophes are allowed.",
+          "required": "Please enter your employer name."
+        },
+        "officeAddress": {
+          "tooLong": "Office address must be 150 characters or fewer.",
+          "required": "Please enter your office address."
+        },
+        "employmentType": {
+          "required": "Please select your employment type."
+        },
+        "salaryRange": {
+          "required": "Please select your salary range."
+        }
+      }
     }
   }
 }
