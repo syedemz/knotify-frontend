@@ -326,6 +326,51 @@ export function isValidEducationText(s: string): boolean {
   return /^[A-Za-z0-9 \-.,&']+$/.test(s);
 }
 
+// ── Residence city ────────────────────────────────────────────────────────────
+
+/**
+ * Maximum character length for the `current_residence_city` field.
+ *
+ * City names can exceed 35 characters (e.g. "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch"),
+ * so this limit is intentionally larger than `MAX_NAME_LENGTH` (35). The
+ * frontend enforces this as a UI choice — the db column is TEXT (unbounded).
+ */
+export const MAX_CITY_NAME_LENGTH = 40;
+
+/**
+ * Returns `true` when `s` is a valid city name string.
+ *
+ * Rules:
+ * - Allowed characters: `[A-Za-z]`, space (` `), hyphen (`-`), apostrophe (`'`).
+ * - No leading or trailing whitespace.
+ * - Length: 1–{@link MAX_CITY_NAME_LENGTH} characters (inclusive).
+ *
+ * The character class intentionally mirrors `isValidName`'s allowed set.
+ * The only difference is the maximum length: 40 for cities vs. 35 for names.
+ * `isValidName` is NOT reused here because it hard-codes `MAX_NAME_LENGTH = 35`.
+ *
+ * @param s - The string to validate.
+ * @returns `true` if `s` is a valid city name.
+ *
+ * @example
+ * ```ts
+ * isValidCity('London')          // true
+ * isValidCity('New York')        // true
+ * isValidCity('Clermont-Ferrand') // true
+ * isValidCity("Saint-Genis-de-Saintonge") // true
+ * isValidCity(' London')         // false — leading space
+ * isValidCity('London1')         // false — digit not allowed
+ * isValidCity('')                // false — empty
+ * ```
+ */
+export function isValidCity(s: string): boolean {
+  if (s.length === 0 || s.length > MAX_CITY_NAME_LENGTH) return false;
+  // Reject leading or trailing whitespace
+  if (s !== s.trim()) return false;
+  // Only letters, spaces, hyphens, and apostrophes are allowed
+  return /^[A-Za-z' -]+$/.test(s);
+}
+
 // ── Education credentials — year fields ───────────────────────────────────────
 
 /**

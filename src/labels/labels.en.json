@@ -217,6 +217,16 @@
     "country": {
       "title": "Where do you live?",
       "searchPlaceholder": "Search countries"
+    },
+    "residenceCity": {
+      "title": "Which city do you live in?",
+      "label": "City",
+      "placeholder": "e.g. London",
+      "errors": {
+        "tooShort": "Please enter your city name.",
+        "tooLong": "City name must be 40 characters or fewer.",
+        "invalidCharacters": "Only letters, spaces, hyphens, and apostrophes are allowed."
+      }
     }
   }
 }
