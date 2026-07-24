@@ -1,6 +1,6 @@
 phase: 4
 title: Religion + work (B3, pages 9-11)
-last_updated: 2026-07-24 (story 4.2)
+last_updated: 2026-07-24 (story 4.3)
 
 context_summary: |
   Phase 4 captures religion + subsect (with a dynamic Islam-only subsect list), professional category, and work details (employment type, job title, employer, office address, salary range). It introduces the first dynamic-branch pattern (page 9's Islam-conditional subsect list) and the first multi-field validated form (page 11's work details).
@@ -48,7 +48,7 @@ stories:
   - id: 4.3
     title: Page 11 - Work details (5 fields, all-required form)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 24
     acceptance_criteria:
@@ -61,4 +61,8 @@ stories:
       - Inline per-field validation errors are rendered (matching the Page 02 email/password pattern) — each field displays its own error `LabelKey` beneath it when invalid, so the user knows why Continue is disabled.
       - Continue is disabled until all five fields validate; on tap, all five values write to the draft and the screen advances to `Page12EducationLevelScreen`.
       - Screen wiring test covers: disabled-until-all-valid, inline error rendering per field, successful advance to `Page12EducationLevelScreen` on tap with all fields written to the draft.
-    notes: ""
+    notes: |
+      db-schema.json verified 2026-07-24: all string columns are TEXT (unbounded) — the schema explicitly states
+      "All string columns are TEXT (unbounded); frontend imposes its own max lengths". No column-level max widths
+      exist for job_title, employer_name, or office_address. The PRD target values (job_title=40, employer_name=50,
+      office_address=150) are therefore the authoritative frontend limits and were used as-is.

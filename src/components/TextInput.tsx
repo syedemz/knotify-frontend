@@ -96,6 +96,24 @@ export interface TextInputProps {
    * Forwarded directly to the underlying RN `TextInput`.
    */
   autoComplete?: RNTextInputProps['autoComplete'];
+  /**
+   * When true, the input grows vertically and allows multiple lines of text.
+   *
+   * Sets `textAlignVertical='top'` on Android so the cursor starts at the top
+   * of the field rather than being vertically centred.
+   *
+   * @default false
+   */
+  multiline?: boolean;
+  /**
+   * Number of visible text lines when `multiline` is true.
+   *
+   * Maps to `numberOfLines` on the underlying RN `TextInput`. Ignored when
+   * `multiline` is false.
+   *
+   * @default undefined
+   */
+  numberOfLines?: number;
 }
 
 /**
@@ -134,12 +152,14 @@ export function TextInput({
   autoFocus = false,
   textContentType,
   autoComplete,
+  multiline = false,
+  numberOfLines,
 }: TextInputProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const styles = useMemo(
-    () => createStyles(theme, focused, error, disabled),
-    [theme, focused, error, disabled],
+    () => createStyles(theme, focused, error, disabled, multiline),
+    [theme, focused, error, disabled, multiline],
   );
 
   return (
@@ -159,6 +179,10 @@ export function TextInput({
         autoFocus={autoFocus}
         textContentType={textContentType}
         autoComplete={autoComplete}
+        multiline={multiline}
+        numberOfLines={multiline ? numberOfLines : undefined}
+        // On Android, multiline inputs align the cursor to the top of the field.
+        textAlignVertical={multiline ? "top" : undefined}
         style={styles.input}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -174,6 +198,7 @@ function createStyles(
   focused: boolean,
   error: boolean,
   disabled: boolean,
+  multiline: boolean,
 ) {
   const borderColor = error
     ? theme.colors.status.error
@@ -188,8 +213,8 @@ function createStyles(
       borderWidth: 1,
       borderColor,
       opacity: disabled ? 0.5 : 1,
-      minHeight: 48,
-      justifyContent: "center",
+      minHeight: multiline ? 96 : 48,
+      justifyContent: multiline ? "flex-start" : "center",
     },
     input: {
       ...textStyles.body.lg,
