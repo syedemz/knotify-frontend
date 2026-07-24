@@ -1,6 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-07-23
-
+last_updated: 2026-07-24
 
 phases:
 
@@ -25,8 +24,8 @@ phases:
 - phase: 4
   title: Religion + work (B3, pages 9-11)
   file: implementationplan/phase-4-religion-work-b3.md
-  ready: false
-  done: false
+  ready: true
+  done: true
 
 - phase: 5
   title: Education + second checkpoint (B4, pages 12-14)
