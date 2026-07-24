@@ -32,6 +32,7 @@ import { Page09ReligionSubsectScreen as Page09ReligionSubsectScreenImpl } from "
 import { Page10ProfessionalCategoryScreen as Page10ProfessionalCategoryScreenImpl } from "@/features/onboarding/screens/Page10ProfessionalCategoryScreen";
 import { Page11WorkDetailsScreen as Page11WorkDetailsScreenImpl } from "@/features/onboarding/screens/Page11WorkDetailsScreen";
 import { Page12EducationLevelScreen as Page12EducationLevelScreenImpl } from "@/features/onboarding/screens/Page12EducationLevelScreen";
+import { Page13EducationCredentialsScreen as Page13EducationCredentialsScreenImpl } from "@/features/onboarding/screens/Page13EducationCredentialsScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -74,7 +75,8 @@ const Page10ProfessionalCategoryScreen = Page10ProfessionalCategoryScreenImpl;
 const Page11WorkDetailsScreen = Page11WorkDetailsScreenImpl;
 // Page 12: real screen landed in phase 5 (B4, story 5.1).
 const Page12EducationLevelScreen = Page12EducationLevelScreenImpl;
-const Page13EducationCredentialsScreen = makePlaceholderScreen("Page13EducationCredentialsScreen");
+// Page 13: real screen landed in phase 5 (B4, story 5.2).
+const Page13EducationCredentialsScreen = Page13EducationCredentialsScreenImpl;
 const Page14SecondCheckpointScreen = makePlaceholderScreen("Page14SecondCheckpointScreen");
 const Page15ResidenceCountryScreen = makePlaceholderScreen("Page15ResidenceCountryScreen");
 const Page16ResidenceCityScreen = makePlaceholderScreen("Page16ResidenceCityScreen");
