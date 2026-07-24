@@ -256,15 +256,16 @@ function renderWithSeed() {
 describe('Checkpoint-resume integration — firstCheckpoint initial route (story 3.4 AC)', () => {
   it('given a draft with lastCheckpoint=firstCheckpoint, when OnboardingStack mounts, then Page09ReligionSubsectScreen is the initial route', async () => {
     renderWithSeed();
-    // The Page09 placeholder renders its route name as the EmptyState title.
+    // Page09ReligionSubsectScreen is now a real screen (story 4.1).
+    // Its title label is the authoritative indicator that Page09 is mounted.
     await expect(
-      waitFor(() => screen.getByText('Page09ReligionSubsectScreen')),
+      waitFor(() => screen.getByText('What is your religion?')),
     ).resolves.toBeTruthy();
   });
 
   it('given a draft with lastCheckpoint=firstCheckpoint, when OnboardingStack mounts, then Page01WelcomeScreen is NOT rendered', async () => {
     renderWithSeed();
-    await waitFor(() => screen.getByText('Page09ReligionSubsectScreen'));
+    await waitFor(() => screen.getByText('What is your religion?'));
     // Welcome screen title must not be present.
     expect(screen.queryByText('Knotify')).toBeNull();
   });

@@ -261,10 +261,10 @@ describe("OnboardingStack — useCheckpointResume wiring", () => {
 
   it("given useCheckpointResume returns Page09ReligionSubsectScreen (firstCheckpoint), then stack mounts without throwing", async () => {
     mockCheckpointResume.mockReturnValue("Page09ReligionSubsectScreen");
-    // Stack renders with Page09 as initial route — EmptyState placeholder renders
+    // Stack renders with Page09 as initial route — real screen renders (story 4.1)
     const { findByText } = renderOnboardingStack();
-    // The placeholder for Page09 renders its route name as the EmptyState title
-    await expect(findByText("Page09ReligionSubsectScreen")).resolves.toBeTruthy();
+    // The real Page09ReligionSubsectScreen renders the religion title label
+    await expect(findByText(t("onboarding.religion.title"))).resolves.toBeTruthy();
   });
 
   it("given useCheckpointResume returns Page15ResidenceCountryScreen (secondCheckpoint), then stack mounts without throwing", async () => {

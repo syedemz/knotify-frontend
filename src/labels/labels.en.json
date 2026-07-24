@@ -114,6 +114,10 @@
     "firstCheckpoint": {
       "title": "You're all set!",
       "start": "Start"
+    },
+    "religion": {
+      "title": "What is your religion?",
+      "subsectTitle": "Which school of thought do you follow?"
     }
   }
 }
