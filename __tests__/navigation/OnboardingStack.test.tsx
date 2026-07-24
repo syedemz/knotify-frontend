@@ -165,6 +165,25 @@ jest.mock("expo-image", () => {
   };
 });
 
+// Mock react-native-country-flag — Page15CountryScreen renders CountryPicker which
+// uses CountryFlag. In tests the flag is a simple RN Image rendered from a CDN URI.
+// The library's CJS build is compatible with Jest but we still mock it to avoid
+// accidental network calls in unit tests.
+jest.mock("react-native-country-flag", () => {
+  const RN = require("react-native") as typeof import("react-native");
+  const Rct = require("react") as typeof import("react");
+  return {
+    __esModule: true,
+    default: function(props: any) {
+      return Rct.createElement(RN.Image, {
+        source: { uri: `https://flagcdn.com/w80/${props.isoCode.toLowerCase()}.png` },
+        accessibilityLabel: `flag-${props.isoCode}`,
+        testID: `flag-${props.isoCode}`,
+      });
+    },
+  };
+});
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Imports under test ────────────────────────────────────────────────────────
@@ -298,7 +317,8 @@ describe("OnboardingStack — useCheckpointResume wiring", () => {
   it("given useCheckpointResume returns Page15ResidenceCountryScreen (secondCheckpoint), then stack mounts without throwing", async () => {
     mockCheckpointResume.mockReturnValue("Page15ResidenceCountryScreen");
     const { findByText } = renderOnboardingStack();
-    await expect(findByText("Page15ResidenceCountryScreen")).resolves.toBeTruthy();
+    // Page15CountryScreen is now a real screen (story 6.1) — renders the country title label.
+    await expect(findByText(t("onboarding.country.title"))).resolves.toBeTruthy();
   });
 
   it("given useCheckpointResume is called, then its return value is passed as initialRouteName", () => {

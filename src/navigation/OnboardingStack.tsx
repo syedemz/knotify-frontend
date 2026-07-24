@@ -2,8 +2,8 @@
  * Onboarding wizard navigator.
  *
  * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
- * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-14
- * are real screens (phases 2-5, B1-B4); pages 15-31 remain as
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-15
+ * are real screens (phases 2-6, B1-B5 story 6.1); pages 16-31 remain as
  * `EmptyState` placeholders — real screens land in phases 6-11 (B5-B10).
  *
  * `useCheckpointResume` is wired as `initialRouteName` so users who resume
@@ -37,6 +37,7 @@ import { Page11WorkDetailsScreen as Page11WorkDetailsScreenImpl } from "@/featur
 import { Page12EducationLevelScreen as Page12EducationLevelScreenImpl } from "@/features/onboarding/screens/Page12EducationLevelScreen";
 import { Page13EducationCredentialsScreen as Page13EducationCredentialsScreenImpl } from "@/features/onboarding/screens/Page13EducationCredentialsScreen";
 import { Page14SecondCheckpointScreen as Page14SecondCheckpointScreenImpl } from "@/features/onboarding/screens/Page14SecondCheckpointScreen";
+import { Page15CountryScreen as Page15CountryScreenImpl } from "@/features/onboarding/screens/Page15CountryScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -83,7 +84,8 @@ const Page12EducationLevelScreen = Page12EducationLevelScreenImpl;
 const Page13EducationCredentialsScreen = Page13EducationCredentialsScreenImpl;
 // Page 14: real screen landed in phase 5 (B4, story 5.3).
 const Page14SecondCheckpointScreen = Page14SecondCheckpointScreenImpl;
-const Page15ResidenceCountryScreen = makePlaceholderScreen("Page15ResidenceCountryScreen");
+// Page 15: real screen landed in phase 6 (B5, story 6.1).
+const Page15ResidenceCountryScreen = Page15CountryScreenImpl;
 const Page16ResidenceCityScreen = makePlaceholderScreen("Page16ResidenceCityScreen");
 const Page17FamilyResidenceScreen = makePlaceholderScreen("Page17FamilyResidenceScreen");
 const Page18ParentsScreen = makePlaceholderScreen("Page18ParentsScreen");
@@ -157,7 +159,7 @@ function OnboardingStackNavigator(): React.JSX.Element | null {
       <Stack.Screen name="Page03ConfirmCodeScreen" component={Page03ConfirmCodeScreen} />
       <Stack.Screen name="Page04GetStartedScreen" component={Page04GetStartedScreen} />
 
-      {/* Pages 5-31: real screens for 5-12, EmptyState placeholders for 13-31 */}
+      {/* Pages 5-15: real screens for 5-15, EmptyState placeholders for 16-31 */}
       <Stack.Screen name="Page05SexScreen" component={Page05SexScreen} />
       <Stack.Screen name="Page06NameScreen" component={Page06NameScreen} />
       <Stack.Screen name="Page07BirthdayScreen" component={Page07BirthdayScreen} />

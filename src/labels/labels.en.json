@@ -213,6 +213,10 @@
           "required": "Please select your salary range."
         }
       }
+    },
+    "country": {
+      "title": "Where do you live?",
+      "searchPlaceholder": "Search countries"
     }
   }
 }

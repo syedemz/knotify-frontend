@@ -36,7 +36,7 @@ phases:
 - phase: 6
   title: Residence (B5, pages 15-17)
   file: implementationplan/phase-6-residence-b5.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 7
