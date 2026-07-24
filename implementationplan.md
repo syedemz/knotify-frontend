@@ -30,8 +30,8 @@ phases:
 - phase: 5
   title: Education + second checkpoint (B4, pages 12-14)
   file: implementationplan/phase-5-education-b4.md
-  ready: false
-  done: false
+  ready: true
+  done: true
 
 - phase: 6
   title: Residence (B5, pages 15-17)

@@ -130,16 +130,20 @@ const mockDraftHook: jest.Mock<{
   advance: jest.Mock;
   advanceWithCheckpoint: jest.Mock;
   reset: jest.Mock;
-  getDraft: jest.Mock<{ fields: Record<string, unknown>; lastCheckpoint: Checkpoint; currentPage: number }>;
+  getDraft: jest.Mock<{ fields: Record<string, unknown>; lastCheckpoint: Checkpoint; currentPage: number; notificationPermissionStatus: null; locationPermissionStatus: null }>;
   setSiblings: jest.Mock;
+  setNotificationPermissionStatus: jest.Mock;
+  setLocationPermissionStatus: jest.Mock;
   isLoading: boolean;
 }> = jest.fn(() => ({
   update: jest.fn(),
   advance: jest.fn(),
   advanceWithCheckpoint: jest.fn(),
   reset: jest.fn(),
-  getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null as Checkpoint, currentPage: 2 })),
+  getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null as Checkpoint, currentPage: 2, notificationPermissionStatus: null, locationPermissionStatus: null })),
   setSiblings: jest.fn(),
+  setNotificationPermissionStatus: jest.fn(),
+  setLocationPermissionStatus: jest.fn(),
   isLoading: false,
 }));
 jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
@@ -191,8 +195,10 @@ beforeEach(() => {
     advance: jest.fn(),
     advanceWithCheckpoint: jest.fn(),
     reset: jest.fn(),
-    getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 2 })),
+    getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 2, notificationPermissionStatus: null, locationPermissionStatus: null })),
     setSiblings: jest.fn(),
+    setNotificationPermissionStatus: jest.fn(),
+    setLocationPermissionStatus: jest.fn(),
     isLoading: false,
   });
 });
@@ -327,8 +333,10 @@ describe("OnboardingStack — async-draft hydration gate", () => {
       advance: jest.fn(),
       advanceWithCheckpoint: jest.fn(),
       reset: jest.fn(),
-      getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 1 })),
+      getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 1, notificationPermissionStatus: null, locationPermissionStatus: null })),
       setSiblings: jest.fn(),
+      setNotificationPermissionStatus: jest.fn(),
+      setLocationPermissionStatus: jest.fn(),
       isLoading: true,
     });
     mockCheckpointResume.mockReturnValue("Page01WelcomeScreen");
@@ -349,8 +357,10 @@ describe("OnboardingStack — async-draft hydration gate", () => {
       advance: jest.fn(),
       advanceWithCheckpoint: jest.fn(),
       reset: jest.fn(),
-      getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: "firstCheckpoint" as Checkpoint, currentPage: 9 })),
+      getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: "firstCheckpoint" as Checkpoint, currentPage: 9, notificationPermissionStatus: null, locationPermissionStatus: null })),
       setSiblings: jest.fn(),
+      setNotificationPermissionStatus: jest.fn(),
+      setLocationPermissionStatus: jest.fn(),
       isLoading: false,
     });
     mockCheckpointResume.mockReturnValue("Page09ReligionSubsectScreen");

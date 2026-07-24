@@ -195,6 +195,8 @@ jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
     reset: jest.fn(),
     getDraft: jest.fn(() => ({ fields: {}, lastCheckpoint: null, currentPage: 2 })),
     setSiblings: jest.fn(),
+    setNotificationPermissionStatus: jest.fn(),
+    setLocationPermissionStatus: jest.fn(),
     isLoading: false,
   }),
 }));

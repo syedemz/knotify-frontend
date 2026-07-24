@@ -1,6 +1,7 @@
 phase: 5
 title: Education + second checkpoint (B4, pages 12-14)
 last_updated: 2026-07-24
+done: true
 
 context_summary: |
   Phase 5 captures education level (page 12), the dynamic education credentials form driven by page 12's selection (page 13), and the second checkpoint that also collects notification + location permissions (page 14). Introduces the education branch matrix from architecture.md §11.2.3 and the centralized permissions surface from §11.2.5.
@@ -91,7 +92,7 @@ stories:
   - id: 5.3
     title: Page 14 - Second checkpoint + notification + location permissions
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 27
     acceptance_criteria:

@@ -397,3 +397,76 @@ describe('useOnboardingDraft — setSiblings()', () => {
     expect(result.current.getDraft().siblings[0]?.name).toBe('Umar');
   });
 });
+
+describe('useOnboardingDraft — setNotificationPermissionStatus()', () => {
+  it('given status granted, then notificationPermissionStatus on draft is granted', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.setNotificationPermissionStatus('granted');
+    });
+
+    expect(result.current.getDraft().notificationPermissionStatus).toBe('granted');
+  });
+
+  it('given status denied, then notificationPermissionStatus on draft is denied', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.setNotificationPermissionStatus('denied');
+    });
+
+    expect(result.current.getDraft().notificationPermissionStatus).toBe('denied');
+  });
+
+  it('given status set, then fields are unaffected', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.update({ first_name: 'Sara' });
+    });
+
+    act(() => {
+      result.current.setNotificationPermissionStatus('granted');
+    });
+
+    expect(result.current.getDraft().fields.first_name).toBe('Sara');
+  });
+});
+
+describe('useOnboardingDraft — setLocationPermissionStatus()', () => {
+  it('given status granted, then locationPermissionStatus on draft is granted', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.setLocationPermissionStatus('granted');
+    });
+
+    expect(result.current.getDraft().locationPermissionStatus).toBe('granted');
+  });
+
+  it('given status denied, then locationPermissionStatus on draft is denied', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.setLocationPermissionStatus('denied');
+    });
+
+    expect(result.current.getDraft().locationPermissionStatus).toBe('denied');
+  });
+
+  it('given status set, then siblings and fields are unaffected', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.setSiblings([{ name: 'Aisha', age: 25, maritalStatus: null }]);
+    });
+
+    act(() => {
+      result.current.setLocationPermissionStatus('granted');
+    });
+
+    expect(result.current.getDraft().siblings).toHaveLength(1);
+    expect(result.current.getDraft().locationPermissionStatus).toBe('granted');
+  });
+});

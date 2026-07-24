@@ -5,7 +5,8 @@
  * It follows the three-step flow documented in the Expo push notifications
  * guide:
  *
- *  1. Check and request OS-level notification permission.
+ *  1. Check and request OS-level notification permission (via the shared
+ *     `@/services/permissions` module — the single source of truth).
  *  2. Obtain the Expo push token (requires a physical device; simulators
  *     return `null` gracefully).
  *  3. POST the token to `/v1/push-tokens` via `httpClient`.
@@ -19,27 +20,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { request } from '../api/httpClient';
-
-// ── Internal helpers ──────────────────────────────────────────────────────
-
-/**
- * Requests notification permission if not already granted.
- *
- * Returns `'granted'` if the user approved (or previously approved),
- * `'denied'` if the user declined, and `'undetermined'` if the OS prevents
- * requesting.
- *
- * @returns Permission status string.
- */
-async function requestNotificationPermission(): Promise<'granted' | 'denied' | 'undetermined'> {
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  if (existingStatus === 'granted') {
-    return 'granted';
-  }
-
-  const { status: requestedStatus } = await Notifications.requestPermissionsAsync();
-  return requestedStatus === 'granted' ? 'granted' : 'denied';
-}
+import { requestNotificationPermission } from '@/services/permissions';
 
 // ── Public API ────────────────────────────────────────────────────────────
 

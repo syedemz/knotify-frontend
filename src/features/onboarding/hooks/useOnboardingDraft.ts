@@ -80,6 +80,32 @@ export interface UseOnboardingDraftReturn {
   setSiblings: (siblings: SiblingDraft[]) => void;
 
   /**
+   * Records the notification permission status on the top-level draft (not
+   * inside `fields`) and schedules a debounced write to secure-store.
+   *
+   * Modelled on `setSiblings` — writes directly to
+   * `OnboardingDraft.notificationPermissionStatus`.
+   *
+   * @param status - The observed or requested permission status.
+   */
+  setNotificationPermissionStatus: (
+    status: OnboardingDraft['notificationPermissionStatus'],
+  ) => void;
+
+  /**
+   * Records the location permission status on the top-level draft (not
+   * inside `fields`) and schedules a debounced write to secure-store.
+   *
+   * Modelled on `setSiblings` — writes directly to
+   * `OnboardingDraft.locationPermissionStatus`.
+   *
+   * @param status - The observed or requested permission status.
+   */
+  setLocationPermissionStatus: (
+    status: OnboardingDraft['locationPermissionStatus'],
+  ) => void;
+
+  /**
    * `true` while the initial draft is being loaded from secure-store on mount.
    */
   isLoading: boolean;
@@ -300,6 +326,44 @@ export function useOnboardingDraft(): UseOnboardingDraftReturn {
     [scheduleWrite],
   );
 
+  const setNotificationPermissionStatus = useCallback(
+    (status: OnboardingDraft['notificationPermissionStatus']): void => {
+      setDraft((prev) => {
+        const next: OnboardingDraft = {
+          ...prev,
+          notificationPermissionStatus: status,
+          timestamps: {
+            ...prev.timestamps,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        draftRef.current = next;
+        scheduleWrite();
+        return next;
+      });
+    },
+    [scheduleWrite],
+  );
+
+  const setLocationPermissionStatus = useCallback(
+    (status: OnboardingDraft['locationPermissionStatus']): void => {
+      setDraft((prev) => {
+        const next: OnboardingDraft = {
+          ...prev,
+          locationPermissionStatus: status,
+          timestamps: {
+            ...prev.timestamps,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        draftRef.current = next;
+        scheduleWrite();
+        return next;
+      });
+    },
+    [scheduleWrite],
+  );
+
   return {
     update,
     advance,
@@ -307,6 +371,8 @@ export function useOnboardingDraft(): UseOnboardingDraftReturn {
     reset,
     getDraft,
     setSiblings,
+    setNotificationPermissionStatus,
+    setLocationPermissionStatus,
     isLoading,
   };
 }

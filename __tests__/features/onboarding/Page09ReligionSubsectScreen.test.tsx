@@ -178,6 +178,8 @@ jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
       timestamps: { createdAt: '', updatedAt: '' },
     })),
     setSiblings: jest.fn(),
+    setNotificationPermissionStatus: jest.fn(),
+    setLocationPermissionStatus: jest.fn(),
     isLoading: false,
   }),
 }));

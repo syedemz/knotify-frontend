@@ -115,6 +115,12 @@
       "title": "You're all set!",
       "start": "Start"
     },
+    "secondCheckpoint": {
+      "title": "You're doing great!",
+      "subtitle": "Enable notifications so you don't miss new matches and messages, and share your approximate location so we can show you compatible matches nearby.",
+      "enableNotifications": "Enable Notifications",
+      "continue": "Continue"
+    },
     "religion": {
       "title": "What is your religion?",
       "subsectTitle": "Which school of thought do you follow?"
