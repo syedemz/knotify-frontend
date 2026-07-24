@@ -188,6 +188,7 @@ jest.mock("@/services/auth/cognitoClient", () => ({
 const mockUpdate = jest.fn();
 
 jest.mock("@/features/onboarding/hooks/useOnboardingDraft", () => ({
+  OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => ({
     update: mockUpdate,
     advance: jest.fn(),

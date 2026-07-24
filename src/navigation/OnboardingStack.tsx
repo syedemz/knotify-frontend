@@ -18,7 +18,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { EmptyState } from "@/components";
 import { t } from "@/labels";
 import { useCheckpointResume } from "@/features/onboarding/hooks/useCheckpointResume";
-import { useOnboardingDraft } from "@/features/onboarding/hooks/useOnboardingDraft";
+import {
+  OnboardingDraftProvider,
+  useOnboardingDraft,
+} from "@/features/onboarding/hooks/useOnboardingDraft";
 
 import { Page01WelcomeScreen } from "@/features/onboarding/screens/Page01WelcomeScreen";
 import { Page02EmailScreen } from "@/features/onboarding/screens/Page02EmailScreen";
@@ -120,7 +123,15 @@ const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen")
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
-export function OnboardingStack(): React.JSX.Element | null {
+export function OnboardingStack(): React.JSX.Element {
+  return (
+    <OnboardingDraftProvider>
+      <OnboardingStackNavigator />
+    </OnboardingDraftProvider>
+  );
+}
+
+function OnboardingStackNavigator(): React.JSX.Element | null {
   const { getDraft, isLoading } = useOnboardingDraft();
   const draft = getDraft();
   const initialRouteName = useCheckpointResume(draft.lastCheckpoint);

@@ -10,7 +10,10 @@
  */
 
 import { renderHook, act } from '@testing-library/react-native';
-import { useOnboardingDraft } from '@/features/onboarding/hooks/useOnboardingDraft';
+import {
+  OnboardingDraftProvider,
+  useOnboardingDraft,
+} from '@/features/onboarding/hooks/useOnboardingDraft';
 import { secureStorage } from '@/services/auth/secureStorage';
 
 // ── Mock expo-secure-store via the secureStorage facade ─────────────────────
@@ -42,7 +45,9 @@ afterEach(() => {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function renderDraftHook() {
-  const result = renderHook(() => useOnboardingDraft());
+  const result = renderHook(() => useOnboardingDraft(), {
+    wrapper: OnboardingDraftProvider,
+  });
   // Let the initial load settle
   await act(async () => {
     await Promise.resolve();
@@ -61,7 +66,9 @@ describe('useOnboardingDraft — initial load', () => {
       }),
     );
 
-    const { result } = renderHook(() => useOnboardingDraft());
+    const { result } = renderHook(() => useOnboardingDraft(), {
+      wrapper: OnboardingDraftProvider,
+    });
     expect(result.current.isLoading).toBe(true);
 
     await act(async () => {

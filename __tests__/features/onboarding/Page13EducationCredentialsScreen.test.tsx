@@ -154,6 +154,7 @@ const mockAdvance = jest.fn();
 const mockGetDraft = jest.fn();
 
 jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
+  OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => ({
     update: mockUpdate,
     advance: mockAdvance,
