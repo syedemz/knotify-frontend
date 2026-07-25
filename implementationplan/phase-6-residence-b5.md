@@ -28,7 +28,7 @@ stories:
   - id: 6.2
     title: Page 16 - Current residence city
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 94
     acceptance_criteria:
@@ -42,7 +42,7 @@ stories:
   - id: 6.3
     title: Page 17 - Kashmir district + family residence address
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 95
     acceptance_criteria:
