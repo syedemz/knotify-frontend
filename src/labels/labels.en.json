@@ -227,6 +227,17 @@
         "tooLong": "City name must be 40 characters or fewer.",
         "invalidCharacters": "Only letters, spaces, hyphens, and apostrophes are allowed."
       }
+    },
+    "kashmirDistrict": {
+      "title": "Which district do you live in?"
+    },
+    "familyResidenceAddress": {
+      "label": "Family home address",
+      "placeholder": "e.g. House #5, Street 3, Srinagar",
+      "errors": {
+        "tooShort": "Please enter your family home address.",
+        "tooLong": "Address must be 70 characters or fewer."
+      }
     }
   }
 }

@@ -2,9 +2,9 @@
  * Onboarding wizard navigator.
  *
  * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
- * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-16
- * are real screens (phases 2-6, B1-B5 stories 6.1-6.2); pages 17-31 remain as
- * `EmptyState` placeholders — real screens land in phases 6-11 (B5-B10).
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-17
+ * are real screens (phases 2-6, B1-B5 stories 6.1-6.3); pages 18-31 remain as
+ * `EmptyState` placeholders — real screens land in phases 7-11 (B6-B10).
  *
  * `useCheckpointResume` is wired as `initialRouteName` so users who resume
  * an in-progress wizard skip already-completed pages.
@@ -39,6 +39,7 @@ import { Page13EducationCredentialsScreen as Page13EducationCredentialsScreenImp
 import { Page14SecondCheckpointScreen as Page14SecondCheckpointScreenImpl } from "@/features/onboarding/screens/Page14SecondCheckpointScreen";
 import { Page15CountryScreen as Page15CountryScreenImpl } from "@/features/onboarding/screens/Page15CountryScreen";
 import { Page16ResidenceCityScreen as Page16ResidenceCityScreenImpl } from "@/features/onboarding/screens/Page16ResidenceCityScreen";
+import { Page17FamilyResidenceScreen as Page17FamilyResidenceScreenImpl } from "@/features/onboarding/screens/Page17FamilyResidenceScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -89,7 +90,8 @@ const Page14SecondCheckpointScreen = Page14SecondCheckpointScreenImpl;
 const Page15ResidenceCountryScreen = Page15CountryScreenImpl;
 // Page 16: real screen landed in phase 6 (B5, story 6.2).
 const Page16ResidenceCityScreen = Page16ResidenceCityScreenImpl;
-const Page17FamilyResidenceScreen = makePlaceholderScreen("Page17FamilyResidenceScreen");
+// Page 17: real screen landed in phase 6 (B5, story 6.3).
+const Page17FamilyResidenceScreen = Page17FamilyResidenceScreenImpl;
 const Page18ParentsScreen = makePlaceholderScreen("Page18ParentsScreen");
 const Page19SiblingsScreen = makePlaceholderScreen("Page19SiblingsScreen");
 const Page20MarriageTimelineScreen = makePlaceholderScreen("Page20MarriageTimelineScreen");
@@ -122,8 +124,8 @@ const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen")
  * - `'firstCheckpoint'`  → `Page09ReligionSubsectScreen`
  * - `null`               → `Page01WelcomeScreen`
  *
- * Pages 1-16 use real screens (phases 2-6 stories 6.1-6.2). Pages 17-31 are
- * `EmptyState` placeholders; real screens land in phases 6-11.
+ * Pages 1-17 use real screens (phases 2-6 stories 6.1-6.3). Pages 18-31 are
+ * `EmptyState` placeholders; real screens land in phases 7-11.
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
@@ -161,7 +163,7 @@ function OnboardingStackNavigator(): React.JSX.Element | null {
       <Stack.Screen name="Page03ConfirmCodeScreen" component={Page03ConfirmCodeScreen} />
       <Stack.Screen name="Page04GetStartedScreen" component={Page04GetStartedScreen} />
 
-      {/* Pages 5-15: real screens for 5-15, EmptyState placeholders for 16-31 */}
+      {/* Pages 5-17: real screens; EmptyState placeholders for 18-31 */}
       <Stack.Screen name="Page05SexScreen" component={Page05SexScreen} />
       <Stack.Screen name="Page06NameScreen" component={Page06NameScreen} />
       <Stack.Screen name="Page07BirthdayScreen" component={Page07BirthdayScreen} />

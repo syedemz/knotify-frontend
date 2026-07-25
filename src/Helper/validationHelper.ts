@@ -371,6 +371,45 @@ export function isValidCity(s: string): boolean {
   return /^[A-Za-z' -]+$/.test(s);
 }
 
+// ── Family residence address ──────────────────────────────────────────────────
+
+/**
+ * Maximum character length for the `family_residence_address` field.
+ *
+ * No character-class restriction is applied (mirrors `isValidOfficeAddress`);
+ * only length is enforced. The db column is TEXT (unbounded); the frontend
+ * imposes this 70-char limit per story 6.3 AC.
+ */
+export const MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH = 70;
+
+/**
+ * Returns `true` when `s` is a valid family residence address string.
+ *
+ * Rules:
+ * - Any printable character is allowed (no character-set restriction); this
+ *   mirrors `isValidOfficeAddress` which also has no character-class rule.
+ * - Length: 1–{@link MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH} characters (inclusive),
+ *   measured on the **trimmed** value so leading/trailing whitespace does not
+ *   count toward the useful content.
+ * - Special characters (`/`, `#`, `,`, `.`, digits, apostrophes) are all accepted.
+ *
+ * @param s - The string to validate.
+ * @returns `true` if `s` is a valid family residence address.
+ *
+ * @example
+ * ```ts
+ * isValidFamilyResidenceAddress('House #5, Street 3, Srinagar')  // true
+ * isValidFamilyResidenceAddress('')                               // false — empty
+ * isValidFamilyResidenceAddress('A'.repeat(71))                  // false — too long
+ * isValidFamilyResidenceAddress('A'.repeat(70))                  // true — at limit
+ * isValidFamilyResidenceAddress('A')                             // true — minimum
+ * ```
+ */
+export function isValidFamilyResidenceAddress(s: string): boolean {
+  const trimmed = s.trim();
+  return trimmed.length >= 1 && trimmed.length <= MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH;
+}
+
 // ── Education credentials — year fields ───────────────────────────────────────
 
 /**
