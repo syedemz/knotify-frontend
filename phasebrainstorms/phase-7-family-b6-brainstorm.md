@@ -43,3 +43,25 @@ Scope reviewed: `implementationplan/phase-7-family-b6.md` — stories 7.1 (Page 
 ### Labels
 
 14. **No phase-7 labels exist yet.** `onboarding.parents.*`, `onboarding.siblings.*` (and any sub-form field labels like `siblingForm.name.label`, `siblingForm.gender.title`, etc.) are all absent from `labels.en.json` and `labels.ur.json`. The parity Jest test enforces every EN key has a UR key. Standard reminder.
+
+## 2026-07-26 15:00 brainstorm (re-run after PRD refinement)
+
+PRD refined per answers in `QA/explanations.txt` and committed in `d7f48c7`. Re-read of the updated PRD surfaces two minor implementation-level ambiguities. Neither is a blocker — subagent can resolve either at implementation time; noting them for the audit trail.
+
+### Minor gaps (subagent can resolve; no PRD edit required)
+
+15. **Trigger to leave Initial state when count > 0 is not explicitly named.** Story 7.2 AC-4 hides the count input during Filling, but the trigger that transitions Initial → Filling for `count ∈ [1..4]` isn't spelled out. Two natural readings: (a) Continue button in Initial does double duty — writes `[]` + advances when `count === 0`, or expands into Filling when `count > 0`; (b) a separate action ("Add siblings"). Precedent across the wizard is a single Continue button per page. Recommend (a) — one button, behavior switches on count value. Subagent should pick this if the plan is silent.
+
+16. **`sibling_age` (UI) ↔ `age` (draft field) mapping is implicit.** AC-4 calls the field `sibling_age` (matching the DB column name); the `SiblingDraft` type calls it `age`. Not a bug — the DB column is `sibling_age` and the client type shortens it to `age` for ergonomics (this pre-dates phase 7). Subagent needs to know they map the `sibling_age` UI input to `SiblingDraft.age` on write.
+
+### Confirmations (all issues 1-7 from previous brainstorm are now resolved in the PRD)
+
+- Issue 1 (schema mismatch) → resolved via AC-1 + AC-2 of story 7.2 (extend type, bump version, discard policy).
+- Issue 2 (back-nav rendering) → resolved via AC-5 of story 7.2 (`currentPage >= 20` + `siblings.length` decision tree).
+- Issue 3 (profession validator) → resolved via AC-3 of story 7.2 (new `isValidProfession`, loose class, max 35).
+- Issue 4 (parent-job validator) → resolved via AC-1 of story 7.1 (two validators: `isValidParentName` strict + `isValidParentJob` loose, both max 40).
+- Issue 5 (YES/NO casing) → deferred to phase 11 PRD context_summary (unvalidated assumption block added).
+- Issue 6 (Cancel semantics) → resolved via AC-4 of story 7.2 ("MUST NOT modify `draft.siblings`").
+- Issue 7 (value-0 write timing) → resolved via AC-6 of story 7.2 ("button-state only, no draft write; write only on Continue tap").
+
+Recommendation: **proceed**. The two minor items above are small enough that the subagent can settle them at implementation time; escalating them to a PRD edit would be diminishing returns.
