@@ -144,3 +144,7 @@ export type { ScreenBackgroundProps } from "./ScreenBackground";
 // Catalog — selection tile (story 3.1)
 export { SelectionTile } from "./SelectionTile";
 export type { SelectionTileProps } from "./SelectionTile";
+
+// Catalog — country picker (story 6.1)
+export { CountryPicker } from "./CountryPicker";
+export type { CountryPickerProps } from "./CountryPicker";
