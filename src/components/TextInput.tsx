@@ -114,6 +114,14 @@ export interface TextInputProps {
    * @default undefined
    */
   numberOfLines?: number;
+  /**
+   * Callback fired when the input receives focus.
+   */
+  onFocus?: () => void;
+  /**
+   * Callback fired when the input loses focus.
+   */
+  onBlur?: () => void;
 }
 
 /**
@@ -154,6 +162,8 @@ export function TextInput({
   autoComplete,
   multiline = false,
   numberOfLines,
+  onFocus,
+  onBlur,
 }: TextInputProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -184,8 +194,14 @@ export function TextInput({
         // On Android, multiline inputs align the cursor to the top of the field.
         textAlignVertical={multiline ? "top" : undefined}
         style={styles.input}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        onFocus={() => {
+          setFocused(true);
+          onFocus?.();
+        }}
+        onBlur={() => {
+          setFocused(false);
+          onBlur?.();
+        }}
         accessibilityLabel={accessibilityLabel}
         accessibilityState={{ disabled }}
       />

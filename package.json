@@ -65,5 +65,8 @@
     "test": "jest --watchAll=false",
     "test:coverage": "jest --coverage"
   },
-  "private": true
+  "private": true,
+  "volta": {
+    "node": "20.20.2"
+  }
 }

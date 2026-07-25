@@ -1,15 +1,14 @@
 ================================================================================
-PHASE 5 — CONCERNS EXPLAINED IN PLAIN ENGLISH
+PHASE 6 — CONCERNS EXPLAINED IN PLAIN ENGLISH
 ================================================================================
 
-Phase 5 builds pages 12, 13, and 14 of the onboarding wizard:
-  - Page 12: pick your education level (5 choices)
-  - Page 13: fill in details based on that level (school name, year, etc.)
-  - Page 14: "second checkpoint" — save progress + ask for notification and
-             location permissions
+Phase 6 builds pages 15, 16, and 17 of the onboarding wizard:
+  - Page 15: pick your current country of residence (with flag + dial code)
+  - Page 16: type in your current city
+  - Page 17: pick your Kashmir district + type your family's residence address
 
-I audited the plan against the code we actually have today and found 15
-issues. They range from "the app will literally crash" to "small wording
+I audited the plan against the code we actually have today and found 13
+issues. They range from "the phase will not build" to "small wording
 cleanups." I've numbered them and rated severity. For each one you get
 three sections:
 
@@ -22,510 +21,465 @@ and I'll update the plan accordingly.
 
 
 ================================================================================
-BLOCKERS — things that would make the app crash or the plan not compile
+BLOCKERS — things that stop the phase from being buildable
 ================================================================================
 
 --------------------------------------------------------------------------------
 ISSUE 1 — SEVERITY: BLOCKER
-    "The plan asks for location permission but the phone doesn't know how"
+    "The plan says show flags — but the flag library isn't installed"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    Story 5.3 says to create a helper called `requestLocationPermission()`
-    using an Expo library called `expo-location`.
+WHAT THE PLAN SAYS
+  Story 6.1 (page 15) says: render each country row with a flag using the
+  library "react-native-country-flag".
 
-WHY IT MATTERS:
-    Analogy — it's like the plan says "the ambulance will use its siren,"
-    but the ambulance doesn't have a siren installed. `expo-location` is
-    not in our project's list of installed packages (`package.json`). If
-    the developer writes the code as-is, the app will build fine in unit
-    tests (they mock the module) but crash the first time a real phone
-    tries to run it, because the native code for asking iOS/Android for
-    GPS access isn't there.
+WHY IT MATTERS
+  Imagine a recipe that calls for saffron, but there's no saffron in the
+  pantry. You can't start cooking until someone goes to the store.
 
-    Also, iOS and Android both require you to declare, in an app config
-    file, WHY you want location — a short user-facing sentence like
-    "Knotify uses your location to show nearby matches." Without that,
-    Apple's App Store review will reject the build.
+  We wrote the recipe last month assuming saffron was already on the shelf.
+  It isn't. Our "package.json" file (the shopping list of libraries the app
+  uses) doesn't mention "react-native-country-flag" at all. So the very
+  first thing the subagent needs to do is install it — but the plan doesn't
+  tell them to. If they follow the plan literally, they'll try to import a
+  library that doesn't exist and the build will fail.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Add an explicit sub-task to story 5.3:
-       "Run `npx expo install expo-location`. Add
-       NSLocationWhenInUseUsageDescription (iOS) and ACCESS_FINE_LOCATION
-       + ACCESS_COARSE_LOCATION (Android) to `app.json` / `app.config.ts`
-       with the copy: '<your one-sentence justification>'." Then proceed.
-    B) Skip the location permission entirely for now — only ask for
-       notification permission on page 14. Location would be requested
-       later, from wherever it's actually first used.
-    C) Ask me for the exact justification copy right now so we bake it
-       into the plan.
+  This is easy to fix — we just need to be explicit about who installs it
+  and when.
 
-    If you pick A, I'll need one sentence of justification copy from you
-    for the OS prompt. If you don't have one in mind, a safe default is:
-    "Knotify uses your approximate location to show you compatible
-    matches nearby."
+YOUR CHOICES
+  A) [RECOMMENDED] Add a note to story 6.1: "Install react-native-country-flag
+     via 'npx expo install react-native-country-flag' as the first step of
+     this story; add jest mocking if the tests trip on native imports."
+     Then the subagent knows this is part of their job, not a bug.
 
-    ANSWER: Option A with the recommended safe default "Knotify uses your approximate location to show you compatible
-    matches nearby"
+  B) Install the library right now, outside of any story, and then let the
+     subagent proceed. Cleaner separation, one more step for you upfront.
+
+  C) Do nothing and hope the subagent figures it out. (Not recommended —
+     they might file a "missing dependency" report instead of just installing.)
+  
+Answer: Option A
 
 
 --------------------------------------------------------------------------------
-ISSUE 2 — SEVERITY: BLOCKER
-    "The plan tells us to build something that already exists"
+ISSUE 2 — SEVERITY: BLOCKER (but self-resolving)
+    "The plan says put the picker in a folder that doesn't exist yet"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    Story 5.3 says: create `src/services/permissions/index.ts` with a
-    function `requestNotificationPermission()` that wraps
-    `expo-notifications`.
+WHAT THE PLAN SAYS
+  Story 6.1 says the new CountryPicker component lives at
+  "src/features/onboarding/components/".
 
-WHY IT MATTERS:
-    Analogy — it's like the plan says "install a doorbell" but there's
-    already a working doorbell around the back of the house that nobody
-    told the planner about. In our code, `src/services/push/expoPush.ts`
-    already has a private function called EXACTLY `requestNotificationPermission`
-    doing exactly what the plan asks for. It's used to register the phone
-    for push notifications.
+WHY IT MATTERS
+  That folder doesn't exist today. Not a real problem — folders are created
+  on the fly — but it's a new organizational convention for this project.
+  Until now, reusable UI pieces have lived in "src/components/" (the shared
+  catalog). Story 6.1 is quietly introducing a second home: "feature-local"
+  components that only make sense inside onboarding.
 
-    If the developer just follows the plan blindly, we'll end up with
-    TWO functions with the same name doing the same thing. Six months
-    from now, someone will change one and forget the other, and we'll
-    get "notifications work sometimes" bugs.
+  Think of it like this: your kitchen has a drawer of general utensils
+  (spatulas, whisks) that any recipe might use. This story creates a
+  separate little drawer inside the "pasta cabinet" for the pasta-specific
+  gadgets that nobody else needs. That's a fine idea — but if we're
+  starting a new drawer, we should say so on purpose, not by accident.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Extract the existing function out of `expoPush.ts`
-       and move it into the new `services/permissions/index.ts`. Then
-       have `expoPush.ts` import it. One implementation, both callers
-       share it. The PRD should say this explicitly so the developer
-       doesn't accidentally duplicate.
-    B) Leave the existing one alone and put a separate copy in
-       `services/permissions/index.ts`. Two copies, guaranteed to drift.
-       (Do not pick this.)
-    C) Put the notification helper in `expoPush.ts` and have the new
-       `services/permissions/index.ts` re-export it. Backwards direction
-       — `permissions` is the lower-level building block; making it
-       depend on `push` is inside-out.
+YOUR CHOICES
+  A) [RECOMMENDED] Keep the plan as-is. This new "feature-local components"
+     pattern is a good idea for phase 6 and future phases. The subagent will
+     create the folder on the fly. We just acknowledge the pattern is new.
 
-    ANSWER: Option A
+  B) Move CountryPicker into the shared "src/components/" catalog to keep
+     one convention. Downside: pollutes the shared catalog with an
+     onboarding-only component.
 
+  C) Move CountryPicker inline into Page15CountryScreen (no separate file).
+     Downside: 200 lines of picker logic mixed with page-level wiring.
 
---------------------------------------------------------------------------------
-ISSUE 3 — SEVERITY: BLOCKER
-    "The plan writes to draft fields that have different names than what's
-     actually in the draft schema"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-    Story 5.3 says both permission results are "written to draft
-    (`notification_permission_status`, `location_permission_status`)."
-
-WHY IT MATTERS:
-    Analogy — imagine writing a check to "John Smith" when the account
-    is actually under "J. Smith". The check bounces. Same idea here in
-    two ways:
-
-    (a) NAMING STYLE: The plan uses snake_case
-        (`notification_permission_status`) but the draft file defines
-        these fields in camelCase (`notificationPermissionStatus`). One
-        of them is wrong.
-
-    (b) LOCATION IN THE SHAPE: The plan implies these live INSIDE
-        `draft.fields.*` (where all the profile-column stuff lives). But
-        the actual schema puts them at the TOP LEVEL of the draft —
-        siblings of `fields`, `siblings`, `photoPreviewUris`. Different
-        location, different setter.
-
-    On top of that, the draft hook (`useOnboardingDraft`) only exposes
-    ONE top-level setter today (`setSiblings`). Story 5.3 needs new
-    setters (something like `setNotificationPermissionStatus`) that
-    don't exist yet. The plan doesn't mention this — it's a hidden
-    sub-task that would surprise the developer mid-story.
-
-YOUR CHOICES:
-    A) (RECOMMENDED) Update the PRD to use the EXISTING camelCase names
-       (`notificationPermissionStatus`, `locationPermissionStatus`) and
-       add an explicit sub-task: "Extend `useOnboardingDraft` with two
-       new top-level setters modeled on `setSiblings`:
-       `setNotificationPermissionStatus(status)` and
-       `setLocationPermissionStatus(status)`."
-    B) Rename the draft-schema fields to snake_case to match the PRD.
-       (More churn — snake_case is what backend/DB uses, camelCase is
-       what all our JS/TS code uses. Client-side draft fields staying
-       camelCase is more consistent with the rest of the codebase.)
-
-ANSWER: Option A
+Answer: Option B
 
 
 ================================================================================
-STORY 5.1 (Page 12 — pick education level) — smaller cleanups
+GAPS — the plan is ambiguous; we need to decide the details
 ================================================================================
 
 --------------------------------------------------------------------------------
-ISSUE 4 — SEVERITY: MEDIUM
-    "Story 5.1 has an acceptance criterion that only story 5.2 can satisfy"
+ISSUE 3 — SEVERITY: GAP
+    "The plan says 'searchable list' but not how the search works"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    Story 5.1 acceptance criterion 3 reads: "Back-navigation from page 13
-    to page 12 is supported; changing the selection triggers page 13's
-    re-mount reconciliation (implemented in 5.2)."
+WHAT THE PLAN SAYS
+  Story 6.1: page 15 renders a "searchable list" of ~200 countries.
 
-WHY IT MATTERS:
-    Analogy — imagine a job description that says "You will hire your own
-    boss." That's a contradiction — you can't be tested against something
-    that requires another role to exist.
+WHY IT MATTERS
+  "Searchable" could mean many things. Does the user type "pak" and it
+  jumps to Pakistan? Does it match anywhere in the word, so typing "tan"
+  finds Pakistan AND Kazakhstan? Is it case-sensitive? Does it search
+  dial codes too, so typing "+92" jumps to Pakistan?
 
-    Story 5.1 is Page 12 only. The "reconciliation" (auto-clearing
-    obsolete fields when the user downgrades their education level) lives
-    in Page 13, which is story 5.2. So story 5.1 can't be tested against
-    this criterion — it would need story 5.2's code, which by definition
-    doesn't exist yet when we're building story 5.1.
+  If we don't pick, every developer (or subagent) will invent their own
+  answer and we'll get inconsistent behavior across the app.
 
-    It's not a bug per se; it's a testability issue. The story appears
-    to depend on 5.2, but `depends_on: []` (nothing) is what the PRD
-    declares.
+  Analogy: telling someone "make it searchable" is like telling a chef
+  "season to taste" — different chefs will make very different dishes.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Rephrase 5.1's AC 3 to only cover what 5.1 can
-       actually verify: "Back-navigation from page 13 to page 12 is
-       supported (the nav wiring works — no navigator errors, the
-       previous selection is still shown)." Move the reconciliation
-       clause into 5.2's AC set (it's basically already there as 5.2
-       AC 4).
-    B) Delete AC 3 from 5.1 entirely; 5.2's AC 4 covers the same idea.
+YOUR CHOICES
+  A) [RECOMMENDED] Case-insensitive PREFIX match on country name only.
+     Type "pak" → Pakistan matches. Type "tan" → nothing matches (because
+     no country name starts with "tan"). Simple, fast, predictable.
 
-ANSWER: Option A
+  B) Case-insensitive SUBSTRING match on country name. Type "tan" → both
+     Pakistan and Kazakhstan match. More flexible but more results per
+     keystroke.
+
+  C) Case-insensitive substring match on BOTH country name AND dial code.
+     Handles "user knows the +92 but forgot the name" case. Slightly more
+     work to implement.
+Answer: Option A
 
 
 --------------------------------------------------------------------------------
-ISSUE 5 — SEVERITY: LOW
-    "Which component should Page 12 use for the picker?"
+ISSUE 4 — SEVERITY: GAP
+    "Should we pre-select the user's country based on their phone locale?"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    "renders a selectable list."
+WHAT THE PLAN SAYS
+  Nothing — the plan doesn't mention a default.
 
-WHY IT MATTERS:
-    Analogy — the plan says "put a chair here" but there are two chair
-    shapes in the catalog (armchair vs. stool). We have two picker
-    components:
-      - `ListRowSelectable` — text rows in a list (what page 9 uses for
-        religions)
-      - `SelectionTile` — bigger image-forward tiles (what page 5 uses
-        for Male/Female)
-    Education is 5 text choices — matches the religion pattern. But if
-    we don't say so, the developer will guess.
+WHY IT MATTERS
+  Many onboarding apps notice you're in Pakistan and open the country
+  picker already scrolled to Pakistan, saving you a tap. But guessing wrong
+  can be worse than not guessing — a Pakistani-Canadian user visiting
+  Karachi shouldn't have "Pakistan" pre-picked for them.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Say explicitly: "Use `ListRowSelectable` (matches
-       page 9's religion picker pattern)."
-    B) Say `SelectionTile` — bigger tiles, more visual. Might be nice
-       if you want a "cards" feel here.
+YOUR CHOICES
+  A) [RECOMMENDED] No default. Picker opens at the top (Afghanistan).
+     Simplest, no assumptions, no wrong guesses. User taps their country.
 
-ANSWER: Option A
+  B) Pre-scroll (but don't pre-select) to the device's locale country.
+     Middle ground: helpful but doesn't auto-submit.
+
+  C) Pre-select AND pre-scroll to device locale country. Fastest but risky.
+
+Answer: Option A
+
+--------------------------------------------------------------------------------
+ISSUE 5 — SEVERITY: GAP
+    "The plan says 'letters/spaces/hyphens/apostrophes' — but we already
+     have a helper for that; can we reuse it?"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS
+  Story 6.2 (page 16, city): validate that the city name is
+  letters/spaces/hyphens/apostrophes, max 40 characters.
+
+WHY IT MATTERS
+  We already have a function called "isValidName" in the codebase that
+  does EXACTLY the same character check — but it caps at 35 characters
+  (because names cap at 35). Cities can be up to 40. So we can't just
+  reuse "isValidName" as-is.
+
+  Analogy: you have a measuring cup that goes up to 35ml. You need to
+  measure 40ml. You could get a bigger cup, or you could raise the
+  markings on the old one — but you have to pick.
+
+  If we don't pick, the subagent will either (a) reuse isValidName and
+  wrongly reject 36-40 character cities, or (b) invent a new helper with
+  a name we don't like ("isValidCityName"? "isCity"? "validateCity"?).
+
+YOUR CHOICES
+  A) [RECOMMENDED] Add a new helper "isValidCity" in validationHelper.ts
+     with "MAX_CITY_NAME_LENGTH = 40". Matches the naming pattern already
+     used for jobs, employers, and addresses (MAX_JOB_TITLE_LENGTH etc.).
+
+  B) Generalize "isValidName" to take a max-length parameter and call it
+     from both places. More DRY, but changes a shipped function's signature
+     (risk of breaking phase 3 tests).
+
+  C) Inline the regex + length check into Page16ResidenceCityScreen with
+     no helper. Fastest, but less testable.
+
+Answer: Option A
+
+--------------------------------------------------------------------------------
+ISSUE 6 — SEVERITY: GAP
+    "'Default preselected Srinagar' — but what does 'preselected' MEAN?"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS
+  Story 6.3 (page 17, Kashmir district): default preselected "Srinagar".
+
+WHY IT MATTERS
+  Two very different things could happen:
+
+  (a) On page load, we quietly write "Srinagar" into the draft AND paint
+      the Srinagar row as selected. If the user taps Continue without
+      touching anything, "Srinagar" gets saved.
+
+  (b) On page load, we just VISUALLY paint Srinagar as selected, but the
+      draft is still empty. Continue is disabled until the user taps
+      SOMETHING (even if that's Srinagar itself).
+
+  Option (a) matches what users expect from a "default" — they see it
+  selected, they trust it's selected, they hit Continue. Option (b) is
+  safer against silent auto-submits but confusing: "why is it highlighted
+  if it's not actually chosen?"
+
+  Every OTHER page in the wizard so far (page 5 sex, page 9 religion,
+  page 12 education) has NO pre-selection — user must tap. Page 17 would
+  be the first exception.
+
+YOUR CHOICES
+  A) [RECOMMENDED] Option (a): on mount, if kashmir_district is null in
+     the draft, immediately write "Srinagar". Row paints as selected AND
+     draft has the value. Consistent behavior. Back-navigation from a
+     later page never overwrites the user's real choice.
+
+  B) Option (b): visually highlight Srinagar but keep draft empty. Force
+     the user to explicitly tap a district before Continue enables.
+     Consistent with the "no pre-selection" pattern from other pages.
+
+  C) No preselect at all. Remove "Srinagar default" from the plan and
+     treat page 17 like all the other picker pages.
+
+Answer: Option A
 
 
 --------------------------------------------------------------------------------
-ISSUE 6 — SEVERITY: LOW
-    "The plan doesn't list the text label keys for Page 12"
+ISSUE 7 — SEVERITY: GAP
+    "What characters are allowed in the family residence address?"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    Nothing — no label keys are enumerated.
+WHAT THE PLAN SAYS
+  Story 6.3: multiline TextInput for family_residence_address, max 70
+  characters. Doesn't say what characters are allowed.
 
-WHY IT MATTERS:
-    Analogy — writing a play script without listing the props you need.
-    The actors will invent stand-ins on the day of the shoot.
+WHY IT MATTERS
+  Addresses in Pakistan and Kashmir include slashes ("H#12/A"), hash
+  signs ("Flat #4"), commas, dashes, apostrophes ("O'Malley Road"), and
+  house numbers. If we apply a strict letters-only rule, real addresses
+  will be rejected.
 
-    We enforce English + Urdu label parity across the app (CI checks
-    that every English key has an Urdu equivalent). If the developer
-    invents labels on the fly, they might add English but forget Urdu,
-    or use inconsistent naming. Being explicit up-front means Urdu
-    parity gets added in the same commit.
+  Page 11's office_address field solved this the same way: no character
+  restriction at all, just a max-length cap. Story 6.3 should probably
+  do the same but it doesn't say.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Enumerate at least: `onboarding.education.title`
-       ("What's your education level?" — Urdu parity required). The
-       developer picks nice English + Urdu copy.
-    B) Leave it to the developer's judgment (they'll do fine, but Urdu
-       parity might slip).
+  Analogy: a bouncer at the club door either has a list of "who's
+  allowed in" (whitelist) or a list of "who's banned" (blacklist).
+  If we skip both, everyone gets in. That's often the right call for
+  addresses.
 
-ANSWER: Option A
+YOUR CHOICES
+  A) [RECOMMENDED] No character rule. Only cap at 70 characters. Enable
+     autoCorrect. Mirrors office_address from phase 11 exactly.
+
+  B) Whitelist letters/digits/spaces/hyphens/commas/slashes/hash/period/
+     apostrophe. More restrictive, might miss weird-but-valid addresses.
+
+  C) Just letters and spaces. Way too restrictive — will reject real
+     addresses. (Only listed for completeness.)
+Answer: Option A
 
 
 ================================================================================
-STORY 5.2 (Page 13 — dynamic education-details form) — the biggest story
+DEPENDENCY-GRAPH NOTES — not gaps, just worth confirming
 ================================================================================
 
 --------------------------------------------------------------------------------
-ISSUE 7 — SEVERITY: MEDIUM
-    "One acceptance criterion is doing the work of three"
+ISSUE 8 — SEVERITY: FYI
+    "All three stories say depends_on: [] — is that really true?"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    Story 5.2 AC 5: "Screen wiring test covers each of the 5 branch
-    matrix rows including auto-default of hidden fields, the back-nav
-    downgrade reset, and Continue navigation to
-    `Page14SecondCheckpointScreen`."
+WHAT THE PLAN SAYS
+  Stories 6.1, 6.2, 6.3 all list "depends_on: []" — meaning "no other
+  story in this phase must finish first."
 
-WHY IT MATTERS:
-    Analogy — one test that says "check the engine, check the tires,
-    and check the brakes." If any one fails, you don't know which. And
-    if all three are jammed into one test function, it's harder to fix
-    the failing part.
+WHY IT MATTERS
+  Technically true — none of the three pages reads state written by
+  another. But the wizard walks 15 → 16 → 17 in order, so the on-emulator
+  check ("can I actually walk through phase 6?") only works after all
+  three ship.
 
-    Better practice: one AC per behavior, one test per AC. Easier to
-    read, easier to debug when something breaks, easier to see coverage
-    gaps.
+  This is only a problem if someone reads "depends_on: []" and thinks
+  "great, I can skip 6.2 and jump straight to 6.3." Our workspace rule
+  ("no parallelism, strict serial order") already prevents that. So this
+  is more of a note than a fix.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Split AC 5 into three bullets:
-       - For each of the 5 education-level values, the correct field
-         set renders and hidden fields are auto-defaulted to their
-         sentinels in the draft.
-       - Back-navigating to page 12 and picking a lesser level force-
-         resets the now-irrelevant fields to defaults before page 13
-         re-mounts.
-       - Continue is only enabled when every visible field validates;
-         tapping it navigates to `Page14SecondCheckpointScreen`.
-    B) Leave as one bullet — the test will still be written, it'll just
-       be one big test.
+YOUR CHOICES
+  A) [RECOMMENDED] Leave as-is. The serial-execution rule handles this
+     already.
 
-ANSWER: Option A
+  B) Add explicit "depends_on: [6.1]" to 6.2 and "depends_on: [6.2]" to
+     6.3 to make the linear order visible in the graph.
 
-
+Answer: Option A
 --------------------------------------------------------------------------------
-ISSUE 8 — SEVERITY: MEDIUM
-    "The plan doesn't say to test the edges of the length/year limits"
+ISSUE 9 — SEVERITY: FYI
+    "Page 17 navigates to Page18ParentsScreen, which doesn't exist"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    Text fields: max 40 chars. Year fields: 1950 ≤ year ≤ current year.
-    But no explicit "test 40 and 41", "test 1949, 1950, current year,
-    current year + 1."
+WHAT THE PLAN SAYS
+  Story 6.3: on Continue, navigate to "Page18ParentsScreen".
 
-WHY IT MATTERS:
-    Analogy — if you're building a shelf that holds books up to 12
-    inches tall, you don't just test with a 5-inch book. You test with
-    an 11.9-inch book (fits), a 12-inch book (fits), and a 12.1-inch
-    book (rejected). Bugs live at the boundaries.
+WHY IT MATTERS
+  Page 18 is a phase-7 story — it hasn't been built yet. But the
+  OnboardingStack (the app's navigation map) already has a placeholder
+  for it (created back in phase 2). So navigation.navigate('Page18...')
+  will land on the placeholder screen, not crash.
 
-    Phase 4 (story 4.3) explicitly required boundary tests for each
-    length-limited field, and we shipped ~5 boundary tests. Story 5.2
-    should do the same or we'll have inconsistent test rigor.
+  Just want to flag this so the subagent doesn't spend an hour thinking
+  the route is missing.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Add: "Boundary tests: 40/41 chars for each of the
-       four text fields; 1949/1950/currentYear/currentYear+1 for each of
-       the three year fields."
-    B) Leave to developer judgment (they'll probably do it, but the AC
-       doesn't require it).
-
-ANSWER: Option A
-
-
---------------------------------------------------------------------------------
-ISSUE 9 — SEVERITY: LOW
-    "The character rule rejects real school names"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-    Text fields allow "letters/digits/spaces/-/./&/,".
-
-WHY IT MATTERS:
-    Analogy — same problem we hit in phase 4 with employer names.
-    Real-world school names contain apostrophes: "St. Mary's High
-    School", "St. John's College". The rule as written would reject
-    them.
-
-YOUR CHOICES:
-    A) (RECOMMENDED) Add `'` (apostrophe) to the allowed character set
-       — same fix we made in phase 4 for `job_title` / `employer_name`.
-    B) Reject apostrophes; require users to type "St Mary's" as "St
-       Marys" or similar. (Bad UX.)
-
-ANSWER: Option A
-
-
---------------------------------------------------------------------------------
-ISSUE 10 — SEVERITY: LOW
-    "The 40-character limit isn't verified against the actual database"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-    "text fields max 40 chars."
-
-WHY IT MATTERS:
-    Analogy — imagine your form allows names up to 40 characters, but
-    the database column is actually 30. The user fills 40, the backend
-    truncates or rejects — either way, bad experience.
-
-    In story 4.3 we resolved this by having the developer check
-    `knotify-backend/db-schema.json` during implementation. Turned out
-    the DB uses `TEXT` (unbounded), so the 40 is a UI choice — not
-    database-driven. Should verify the same is true for education
-    fields.
-
-YOUR CHOICES:
-    A) (RECOMMENDED) Add a note: "Developer verifies max-40 against
-       `knotify-backend/db-schema.json` during implementation for
-       `college_name`, `high_school`, `higher_secondary`,
-       `highest_degree`. If DB is TEXT (unbounded), 40 is our choice;
-       if `VARCHAR(N)` and N differs, update to N."
-    B) Skip the verification and hope the schema aligns.
-
-ANSWER: Option A
-
-
---------------------------------------------------------------------------------
-ISSUE 11 — SEVERITY: MEDIUM
-    "The plan doesn't say to show WHY validation failed"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-    "Continue is disabled until every visible field validates."
-
-WHY IT MATTERS:
-    Analogy — the Continue button being gray tells the user "you can't
-    proceed," but not WHY. Users get frustrated. Every phase-2 and
-    phase-4 form we shipped shows inline errors ("Name is too long",
-    "Year must be between 1950 and 2026") right under the field so
-    users can self-correct.
-
-YOUR CHOICES:
-    A) (RECOMMENDED) Add explicitly: "Each field shows an inline
-       validation error keyed off a `LabelKey` when its value is
-       invalid — same pattern as pages 2 and 11."
-    B) Continue-only-disabled with no inline errors (leaves users
-       stuck).
-ANSWER: Option A
-
---------------------------------------------------------------------------------
-ISSUE 12 — SEVERITY: LOW
-    "The plan doesn't list the ~15 label keys Page 13 needs"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-    Nothing.
-
-WHY IT MATTERS:
-    Same as issue 6 (Urdu parity). Page 13 has 4 text fields and 3 year
-    fields, each needing label + placeholder + error copy, plus a
-    screen title. That's ~15 keys. Left to the developer, some might
-    slip through without Urdu.
-
-YOUR CHOICES:
-    A) (RECOMMENDED) Enumerate them in the PRD (title, then 7 sets of
-       label+placeholder+error). Developer fills in the actual English +
-       Urdu copy but the KEYS are pre-declared.
-    B) Leave to developer.
-
-ANSWER: Option A
-
+YOUR CHOICES
+  A) [RECOMMENDED] Leave as-is. Placeholder is fine — that's exactly
+     what it exists for.
+Answer: Option A
 
 ================================================================================
-STORY 5.3 (Page 14 — second checkpoint + permissions)
+DRIFT — the plan was written before recent code changes; needs a heads-up
 ================================================================================
 
 --------------------------------------------------------------------------------
-ISSUE 13 — SEVERITY: MEDIUM
-    "The plan says 'advance' but doesn't say WHERE"
+ISSUE 10 — SEVERITY: DRIFT (heads-up)
+    "The draft-store changed after this PRD was written"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    AC 5: "On advance the draft's `lastCheckpoint` is set to
-    `secondCheckpoint`; killing and relaunching mounts the stack at the
-    page after 14."
+WHAT THE PLAN SAYS
+  Nothing about it — the PRD predates the change.
 
-WHY IT MATTERS:
-    Analogy — "get on the highway" without saying which one. The developer
-    will infer "the page after 14 = Page 15 = `Page15ResidenceCountryScreen`",
-    which is correct, but every other story in the wizard states its
-    advance target explicitly. Missing it here is inconsistent and could
-    theoretically cause a wrong nav call.
+WHY IT MATTERS
+  On 2026-07-25 (yesterday), we shipped PR #92 which converted
+  "useOnboardingDraft" from a plain hook into a Context/Provider. Every
+  screen test now has to add a tiny mock line:
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Add: "auto-advances to
-       `Page15ResidenceCountryScreen` on Continue" — matching the
-       phrasing in every other story.
-    B) Leave implicit.
+      OnboardingDraftProvider: ({ children }) => children
 
-ANSWER: Option A
+  If the subagent copies test patterns from an OLDER screen (say, page 5
+  or page 9), they'll miss this and their tests will fail. But if they
+  copy from Page13EducationCredentialsScreen.test.tsx (the newest one),
+  they'll get it right automatically.
 
+  Analogy: the recipe says "preheat the oven" but yesterday we replaced
+  the oven with a smart oven that needs a phone-app tap first. Any cook
+  who's used the new oven knows; anyone who's been away won't.
 
---------------------------------------------------------------------------------
-ISSUE 14 — SEVERITY: MEDIUM
-    "What happens when only ONE of the two permissions is granted?"
---------------------------------------------------------------------------------
+YOUR CHOICES
+  A) [RECOMMENDED] Trust the subagent to look at the newest reference
+     (Page 13) and copy the current pattern. No PRD edit needed.
 
-WHAT THE PLAN SAYS:
-    "On resume when both permissions are already granted, the screen
-    shows a plain Continue button without re-prompting."
-
-WHY IT MATTERS:
-    Analogy — the plan tells you what to do when the light is green
-    (both granted) and implies what to do when it's red (both denied),
-    but says nothing about yellow (one granted, one denied). There are
-    actually 6 combinations, and iOS specifically will NOT let you
-    re-prompt once a user has denied — the OS returns 'denied'
-    immediately and shows nothing.
-
-    Combinations to cover:
-      - Both granted → plain Continue ✓ (in plan)
-      - Both null (fresh) → show "Enable Notifications" flow ✓ (in plan)
-      - Notif denied, location null → ??
-      - Notif null, location denied → ??
-      - Notif denied, location denied → ??
-      - Notif granted, location denied → ??
-
-    Simplest rule: if EITHER permission is 'denied' with `canAskAgain:
-    false`, show plain Continue (can't do anything anyway — user must
-    go to Settings). If either is null / undetermined, show the "Enable
-    Notifications" flow.
-
-YOUR CHOICES:
-    A) (RECOMMENDED) Add explicit rule: "On mount, if either permission
-       has status `null` or `undetermined`, show the 'Enable
-       Notifications' flow (which sequentially prompts for both). If
-       both statuses are terminal (`granted` OR `denied` with
-       `canAskAgain: false`), show plain Continue. Persist the observed
-       status on every mount."
-    B) Simpler rule: "Show 'Enable Notifications' flow unless BOTH are
-       granted. Prompting a denied permission is a no-op on iOS and
-       returns 'denied' again — that's acceptable." (Fewer edge cases,
-       but users may see the button not do anything on re-tap.)
-    C) Even simpler: never re-prompt. If we've asked before, show plain
-       Continue always. (Only ask once, first mount.)
-
-ANSWER: Option A
+  B) Add a note to every story in phase 6: "Test setup must include
+     OnboardingDraftProvider passthrough — see Page13...test.tsx."
+     Explicit but noisy.
+  Answer: Option B
 
 
 --------------------------------------------------------------------------------
-ISSUE 15 — SEVERITY: LOW
-    "The plan doesn't specify the return type of the permission helpers"
+ISSUE 11 — SEVERITY: DRIFT (heads-up)
+    "On-device testing now uses expo run:android, not expo start"
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS:
-    "typed `requestNotificationPermission()` and
-    `requestLocationPermission()`."
+WHAT THE PLAN SAYS
+  Nothing — this changed yesterday.
 
-WHY IT MATTERS:
-    Analogy — the plan says "add a temperature gauge" but not "degrees
-    Celsius or Fahrenheit." Developer will pick one, and if it doesn't
-    match what the caller expects, we get bugs.
+WHY IT MATTERS
+  As of PR #91, the Android testing workflow uses a development build
+  (via "npx expo run:android") instead of Expo Go. If the subagent runs
+  an on-device smoke check, they need to know this. Also, to reset the
+  onboarding state between runs, they run "adb shell pm clear
+  com.knotify.app" — not a full uninstall.
 
-    We already have a template — `expoPush.ts` uses
-    `Promise<'granted' | 'denied' | 'undetermined'>`. Standardizing on
-    that avoids surprises.
+  This is already documented in context.md, which the main agent reads
+  at session start. The subagent inherits this context. So it's likely
+  covered, but calling it out.
 
-YOUR CHOICES:
-    A) (RECOMMENDED) Add: "Return type
-       `Promise<'granted' | 'denied' | 'undetermined'>` — matches the
-       existing pattern in `expoPush.ts`."
-    B) Return a boolean (granted / not granted). Less info, but
-       simpler.
-    C) Return the raw Expo permission object. More info than we need
-       and couples callers to the SDK shape.
+YOUR CHOICES
+  A) [RECOMMENDED] No PRD change needed. Context.md already carries
+     this info and subagents load it.
 
-ANSWER: Option A
 
+--------------------------------------------------------------------------------
+ISSUE 12 — SEVERITY: DRIFT (heads-up)
+    "Labels-parity test: we need Urdu translations for every new label"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS
+  Nothing specific — but the pattern is well established.
+
+WHY IT MATTERS
+  Every English label added to labels.en.json must have a matching Urdu
+  entry in labels.ur.json, or the labels-parity Jest test will fail.
+  Phase 6 will need many new labels:
+
+    - onboarding.country.title / searchPlaceholder / etc.
+    - onboarding.residenceCity.title / label / placeholder / errors...
+    - onboarding.kashmirDistrict.title
+    - onboarding.familyResidenceAddress.label / placeholder / errors...
+
+  The subagent knows this from prior phases (2, 3, 4, 5 all did it), so
+  it's more a reminder than a gap.
+
+YOUR CHOICES
+  A) [RECOMMENDED] No PRD change. Standard practice.
+
+
+--------------------------------------------------------------------------------
+ISSUE 13 — SEVERITY: DRIFT (heads-up)
+    "The Jest tests might need a manual mock for the flag library"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS
+  Nothing about test setup for react-native-country-flag.
+
+WHY IT MATTERS
+  Some native-oriented libraries (that use SVG or platform-specific
+  code) can't run under Jest's Node environment without a mock. Back in
+  phase 2 we had to add a "moduleNameMapper" entry in jest.config.js to
+  point "lucide-react-native" to a CommonJS build. Same might apply here.
+
+  Won't know until we install the library and try — could be zero work,
+  could be five minutes. Worth budgeting for.
+
+  Analogy: you buy a new appliance and only find out at unboxing
+  whether it needs a plug adapter for your outlets.
+
+YOUR CHOICES
+  A) [RECOMMENDED] Let the subagent handle it as it arises during
+     story 6.1. Don't over-specify.
+
+  B) Add a note to story 6.1: "If jest chokes on the flag library,
+     add a moduleNameMapper entry mirroring the lucide-react-native
+     pattern from phase 2."
+Answer: Option A
+
+
+================================================================================
+CONFIRMED NON-ISSUES (for your peace of mind)
+================================================================================
+
+  • All 5 residence fields (current_residence_country, resident_country_code,
+    current_residence_city, kashmir_district, family_residence_address)
+    are already declared in the profile type. No draftSchema.ts edits
+    needed.
+
+  • kashmirDistricts.json has exactly 22 entries as the plan expects. ✓
+
+  • countries.ts has ~200 entries. Some dial codes are shared (US, Canada,
+    and several Caribbean islands all use +1) — the picker keys off ISO-2
+    country code, so no conflict.
+
+  • Page18ParentsScreen placeholder exists — page 17's navigation call
+    won't crash.
+
+
+================================================================================
+HOW TO REPLY
+================================================================================
+
+Just say something like:
+    "1: A, 2: A, 3: A, 4: A, 5: A, 6: A, 7: A, 10: B, 13: B"
+
+Or if you want to talk about any single issue in more depth, just tell me
+the number and I'll go deeper.
+
+Issues 8, 9, 11, 12 have only one recommended option (leave-as-is); you
+can skip them unless you want to override.

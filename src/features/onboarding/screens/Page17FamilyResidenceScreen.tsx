@@ -21,8 +21,8 @@
  * @module features/onboarding/screens/Page17FamilyResidenceScreen
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Keyboard, ScrollView, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import {
@@ -61,6 +61,28 @@ const DEFAULT_DISTRICT = 'Srinagar';
  */
 export function Page17FamilyResidenceScreen({ navigation }: Props): React.JSX.Element {
   const { update, advance, getDraft } = useOnboardingDraft();
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // ── Keyboard tracking ────────────────────────────────────────────────────────
+  //
+  // Android targetSdk 36 is edge-to-edge by default, which disables the
+  // `adjustResize` window behaviour that would normally push the WizardFooter
+  // above the keyboard. Track the keyboard height ourselves and add matching
+  // bottom padding to the content wrapper so the footer stays visible.
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // ── Local state ──────────────────────────────────────────────────────────────
 
@@ -140,50 +162,61 @@ export function Page17FamilyResidenceScreen({ navigation }: Props): React.JSX.El
   return (
     <Screen paddingX="lg">
       <WizardHeader currentPage={17} onBack={() => navigation.goBack()} />
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Heading variant="display.md" color="primary">
-          {t('onboarding.kashmirDistrict.title')}
-        </Heading>
-
-        <Column gap="sm" paddingY="lg">
-          {options.kashmirDistricts.map((district) => (
-            <ListRowSelectable
-              key={district}
-              label={district}
-              selected={selectedDistrict === district}
-              onToggle={() => handleDistrictPress(district)}
-              control="radio"
-            />
-          ))}
-        </Column>
-
-        <FormField
-          label={t('onboarding.familyResidenceAddress.label')}
-          error={addressError}
-          required
+      <View style={{ flex: 1, paddingBottom: keyboardHeight }}>
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <TextInput
-            value={address}
-            onChangeText={(text) => {
-              setAddress(text);
-              if (!addressTouched) setAddressTouched(true);
-            }}
-            placeholder={t('onboarding.familyResidenceAddress.placeholder')}
-            // maxLength = MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH + 1 so the user can
-            // type past the limit and see the "tooLong" inline error rather than
-            // a silent hard-stop (mirrors the phase-11 / page-11 pattern).
-            maxLength={MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH + 1}
-            autoCorrect
-            multiline
-            numberOfLines={4}
-            returnKeyType="default"
-            error={!!addressError}
-            accessibilityLabel={t('onboarding.familyResidenceAddress.label')}
-          />
-        </FormField>
-      </ScrollView>
+          <Heading variant="display.md" color="primary">
+            {t('onboarding.kashmirDistrict.title')}
+          </Heading>
 
-      <WizardFooter onContinue={handleContinue} disabled={!continueEnabled} />
+          <Column gap="sm" paddingY="lg">
+            {options.kashmirDistricts.map((district) => (
+              <ListRowSelectable
+                key={district}
+                label={district}
+                selected={selectedDistrict === district}
+                onToggle={() => handleDistrictPress(district)}
+                control="radio"
+              />
+            ))}
+          </Column>
+
+          <FormField
+            label={t('onboarding.familyResidenceAddress.label')}
+            error={addressError}
+            required
+          >
+            <TextInput
+              value={address}
+              onChangeText={(text) => {
+                setAddress(text);
+                if (!addressTouched) setAddressTouched(true);
+              }}
+              onFocus={() => {
+                // Delay so the keyboard has time to open before we scroll.
+                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
+              }}
+              placeholder={t('onboarding.familyResidenceAddress.placeholder')}
+              // maxLength = MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH + 1 so the user can
+              // type past the limit and see the "tooLong" inline error rather than
+              // a silent hard-stop (mirrors the phase-11 / page-11 pattern).
+              maxLength={MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH + 1}
+              autoCorrect
+              multiline
+              numberOfLines={4}
+              returnKeyType="default"
+              error={!!addressError}
+              accessibilityLabel={t('onboarding.familyResidenceAddress.label')}
+            />
+          </FormField>
+        </ScrollView>
+
+        <WizardFooter onContinue={handleContinue} disabled={!continueEnabled} />
+      </View>
     </Screen>
   );
 }
