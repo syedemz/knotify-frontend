@@ -21,6 +21,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: []
+    tracking_issue: 31
     acceptance_criteria:
       - Two new validators are added to `src/Helper/validationHelper.ts` alongside constants `MAX_PARENT_NAME_LENGTH = 40` and `MAX_PARENT_JOB_LENGTH = 40` - (a) `isValidParentName(input: string): boolean` allows letters, spaces, hyphens, apostrophes only (mirrors `isValidName` character class but with the 40-char cap); (b) `isValidParentJob(input: string): boolean` allows letters, spaces, hyphens, apostrophes, ampersands, periods, digits (cap 40). Both trim leading/trailing whitespace before validating and reject empty strings.
       - `Page18ParentsScreen` renders four catalog `TextInput`s - `fathers_name` and `mothers_name` gated by `isValidParentName`; `fathers_job` and `mothers_job` gated by `isValidParentJob`. Each field renders inline error messages under the touched-flag pattern established in phase 4 (tooLong / invalidCharacters).
@@ -36,6 +37,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: []
+    tracking_issue: 32
     acceptance_criteria:
       - Extend `SiblingDraft` in `src/features/onboarding/draftSchema.ts` to add `gender: 'Male' | 'Female' | null` and `profession: string | null` fields alongside the existing `name` / `age` / `maritalStatus`. Bump `schemaVersion` from `1` to `2`. Update the JSDoc on `SiblingDraft.age` to keep the TEXT-in-DB caveat; add JSDoc for the two new fields matching the file's tone.
       - Implement the schemaVersion-2 DISCARD load policy in `useOnboardingDraft` - on hydration from secure-store, if the loaded draft's `schemaVersion !== 2`, discard it and call `createEmptyDraft()` instead. Add unit tests covering (a) v1 draft on disk → discarded → fresh empty draft returned; (b) v2 draft on disk → loaded as-is; (c) missing / corrupt draft → fresh empty draft. Update the migration-policy comment at the top of `draftSchema.ts` to state the current policy is "discard on version mismatch (pre-launch)."
