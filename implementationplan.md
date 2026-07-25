@@ -42,7 +42,7 @@ phases:
 - phase: 7
   title: Family - parents + siblings (B6, pages 18-19)
   file: implementationplan/phase-7-family-b6.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 8

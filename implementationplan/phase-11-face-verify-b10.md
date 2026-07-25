@@ -1,9 +1,12 @@
 phase: 11
 title: Face verification + final PATCH (B10, pages 30-31)
-last_updated: 2026-07-23
+last_updated: 2026-07-26
 
 context_summary: |
   Phase 11 finishes the onboarding wizard with the face verification intro (page 30, camera permission gate) and the auto-capture face screen (page 31, face-oval overlay + face detection + final PATCH /profile/me). After this phase a completed onboarding flow causes `profile_complete_verified` to flip server-side, the JWT refreshes, and `RootNavigator` swaps in `AppTabs`. This marks the end of the onboarding delivery stream; phases 12+ are the thin post-onboarding features.
+
+  UNVALIDATED ASSUMPTIONS (verify before wiring the PATCH body):
+    - `options.yesNo = ["YES", "NO"]` (uppercase) is written verbatim to draft fields `father_retired`, `mother_retired` (phase 7) and later `has_children`, `move_abroad` (phases 8-9). Confirm the backend accepts this exact casing for the two TEXT columns before submitting the final PATCH. If a CHECK constraint or serializer expects `"Yes"/"No"` or a different token entirely, update `src/config/options/yesNo.json` (single source of truth) and the affected screens will pick it up automatically. Also note: `has_children` and `move_abroad` are boolean columns in the DB, so those two require a string→boolean coercion at PATCH-body build time regardless of the string casing.
 
 stories:
   - id: 11.1

@@ -1,16 +1,21 @@
 ================================================================================
-PHASE 6 — CONCERNS EXPLAINED IN PLAIN ENGLISH
+PHASE 7 — CONCERNS EXPLAINED IN PLAIN ENGLISH
 ================================================================================
 
-Phase 6 builds pages 15, 16, and 17 of the onboarding wizard:
-  - Page 15: pick your current country of residence (with flag + dial code)
-  - Page 16: type in your current city
-  - Page 17: pick your Kashmir district + type your family's residence address
+Phase 7 builds pages 18 and 19 of the onboarding wizard:
+  - Page 18: type in your parents' info (father's name, father's job, is he
+             retired?; same three for mother — 6 fields total)
+  - Page 19: how many siblings do you have (0-4), then fill in a small form
+             for each one (name, gender, age, marital status, profession)
 
-I audited the plan against the code we actually have today and found 13
-issues. They range from "the phase will not build" to "small wording
-cleanups." I've numbered them and rated severity. For each one you get
-three sections:
+I audited the plan against the code we actually have today and found 14
+issues. Item 1 is a hard blocker (the code will not type-check as written).
+Items 2-7 are ambiguities where the plan says something like "sanity rule"
+or "immediately" without saying what that actually means — if we don't
+decide, the subagent will guess, and its guess may not match what you want.
+Items 8-14 are drift/reminders (mostly non-blocking).
+
+For each one you get three sections:
 
   WHAT THE PLAN SAYS  — the exact instruction in the PRD
   WHY IT MATTERS      — what will happen if we don't decide
@@ -26,460 +31,488 @@ BLOCKERS — things that stop the phase from being buildable
 
 --------------------------------------------------------------------------------
 ISSUE 1 — SEVERITY: BLOCKER
-    "The plan says show flags — but the flag library isn't installed"
+    "The sibling record has 3 fields; the plan wants us to fill 5"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Story 6.1 (page 15) says: render each country row with a flag using the
-  library "react-native-country-flag".
+    Story 7.2 says each sibling entry captures five things:
+        name, gender, sibling_age, marital_status, profession
 
 WHY IT MATTERS
-  Imagine a recipe that calls for saffron, but there's no saffron in the
-  pantry. You can't start cooking until someone goes to the store.
+    Think of the app's "sibling notebook" as a form with only 3 lines:
+        Line 1: Name
+        Line 2: Age
+        Line 3: Marital status
+    The plan is telling us to write "Gender" and "Profession" on the form,
+    but there are no lines for them. The form has to be redesigned first —
+    someone has to add two new lines before we can fill them in.
 
-  We wrote the recipe last month assuming saffron was already on the shelf.
-  It isn't. Our "package.json" file (the shopping list of libraries the app
-  uses) doesn't mention "react-native-country-flag" at all. So the very
-  first thing the subagent needs to do is install it — but the plan doesn't
-  tell them to. If they follow the plan literally, they'll try to import a
-  library that doesn't exist and the build will fail.
+    That "form" is a TypeScript type called `SiblingDraft` in
+    `src/features/onboarding/draftSchema.ts`. Right now it only has name,
+    age, and maritalStatus. As long as the type is missing fields, the code
+    will not compile if you try to write a `gender` or `profession` value
+    into it. This is a hard stop — the phase cannot ship until we fix it.
 
-  This is easy to fix — we just need to be explicit about who installs it
-  and when.
+    There's a secondary wrinkle. The draft file has a "schema version"
+    number stamped on it (currently version 1). If we add two new fields,
+    that's a shape change, and the convention says we should bump it to
+    version 2. The doc comment on the file explicitly says:
 
-YOUR CHOICES
-  A) [RECOMMENDED] Add a note to story 6.1: "Install react-native-country-flag
-     via 'npx expo install react-native-country-flag' as the first step of
-     this story; add jest mocking if the tests trip on native imports."
-     Then the subagent knows this is part of their job, not a bug.
+        "When bumping, decide before merge whether to migrate, discard,
+         or prompt."
 
-  B) Install the library right now, outside of any story, and then let the
-     subagent proceed. Cleaner separation, one more step for you upfront.
+    Translation: if a real user has a half-finished draft saved on their
+    phone under the old shape (version 1) and the app updates to a new
+    shape (version 2), what happens when they open the app?
 
-  C) Do nothing and hope the subagent figures it out. (Not recommended —
-     they might file a "missing dependency" report instead of just installing.)
-  
-Answer: Option A
-
-
---------------------------------------------------------------------------------
-ISSUE 2 — SEVERITY: BLOCKER (but self-resolving)
-    "The plan says put the picker in a folder that doesn't exist yet"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS
-  Story 6.1 says the new CountryPicker component lives at
-  "src/features/onboarding/components/".
-
-WHY IT MATTERS
-  That folder doesn't exist today. Not a real problem — folders are created
-  on the fly — but it's a new organizational convention for this project.
-  Until now, reusable UI pieces have lived in "src/components/" (the shared
-  catalog). Story 6.1 is quietly introducing a second home: "feature-local"
-  components that only make sense inside onboarding.
-
-  Think of it like this: your kitchen has a drawer of general utensils
-  (spatulas, whisks) that any recipe might use. This story creates a
-  separate little drawer inside the "pasta cabinet" for the pasta-specific
-  gadgets that nobody else needs. That's a fine idea — but if we're
-  starting a new drawer, we should say so on purpose, not by accident.
+      - "migrate" = automatically add the two new empty fields to their
+                    saved draft and keep going where they left off
+      - "discard" = throw their saved draft away and send them back to
+                    page 1 to start over
+      - "prompt"  = show them a dialog: "your saved progress can't be
+                    loaded, start over?"
 
 YOUR CHOICES
-  A) [RECOMMENDED] Keep the plan as-is. This new "feature-local components"
-     pattern is a good idea for phase 6 and future phases. The subagent will
-     create the folder on the fly. We just acknowledge the pattern is new.
+    A) [RECOMMENDED] Extend the type inside story 7.2 (add gender +
+       profession fields) AND bump schemaVersion 1 → 2 with the DISCARD
+       policy. Reason: this is pre-launch. Nobody is on the real app yet.
+       Discard is 5 lines of code; migrate is 30+ lines you'll delete
+       before launch anyway.
+    B) Extend the type AND bump schemaVersion with the MIGRATE policy.
+       More work, no user-visible benefit right now.
+    C) Extend the type but DO NOT bump schemaVersion. Fastest, but breaks
+       the convention documented in the file itself. If we bump later
+       (which we will, for real launch), we'll owe a proper migration
+       policy then.
+    D) Drop `gender` and `profession` from story 7.2 AC-2. Simplest, but
+       the user then can't record their siblings' gender or profession
+       anywhere — matchmaking-quality data lost.
 
-  B) Move CountryPicker into the shared "src/components/" catalog to keep
-     one convention. Downside: pollutes the shared catalog with an
-     onboarding-only component.
-
-  C) Move CountryPicker inline into Page15CountryScreen (no separate file).
-     Downside: 200 lines of picker logic mixed with page-level wiring.
-
-Answer: Option B
+  ANSWER: Option A
 
 
 ================================================================================
-GAPS — the plan is ambiguous; we need to decide the details
+AMBIGUITIES — the plan is vague and the subagent will have to guess
 ================================================================================
 
 --------------------------------------------------------------------------------
-ISSUE 3 — SEVERITY: GAP
-    "The plan says 'searchable list' but not how the search works"
+ISSUE 2 — SEVERITY: HIGH
+    "What does Page 19 look like when you come BACK to it?"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Story 6.1: page 15 renders a "searchable list" of ~200 countries.
+    Page 19 has three states:
+      - Initial:  "How many siblings do you have?" (a number input)
+      - Filling:  N sibling cards visible, fill each one in
+      - Complete: All valid, Continue button lit up
+
+    The plan describes moving forward through those states. It says
+    nothing about what happens when you go BACKWARD to the page.
 
 WHY IT MATTERS
-  "Searchable" could mean many things. Does the user type "pak" and it
-  jumps to Pakistan? Does it match anywhere in the word, so typing "tan"
-  finds Pakistan AND Kazakhstan? Is it case-sensitive? Does it search
-  dial codes too, so typing "+92" jumps to Pakistan?
+    Imagine you filled out a paper form: "I have 3 siblings" → then filled
+    in all 3 boxes → moved to the next page. Now you tap the back arrow.
+    You're back on the siblings page. What do you see?
 
-  If we don't pick, every developer (or subagent) will invent their own
-  answer and we'll get inconsistent behavior across the app.
+      - A blank number input? (Feels broken — "wait, I already did this")
+      - The 3 filled-in boxes ready to edit? (Matches expectation)
+      - A "you already have 3 siblings, edit them?" prompt? (Extra tap)
 
-  Analogy: telling someone "make it searchable" is like telling a chef
-  "season to taste" — different chefs will make very different dishes.
+    Every other page in the wizard re-hydrates from your saved data when
+    you back-nav. Page 13 (education credentials) is the closest cousin —
+    it fills all the fields back in from the draft. Page 19 should
+    probably do the same, but the plan doesn't say so.
 
 YOUR CHOICES
-  A) [RECOMMENDED] Case-insensitive PREFIX match on country name only.
-     Type "pak" → Pakistan matches. Type "tan" → nothing matches (because
-     no country name starts with "tan"). Simple, fast, predictable.
+    A) [RECOMMENDED] On mount, if the draft already has siblings saved:
+       open in Filling state with the cards pre-populated. If the count
+       was 0 (user explicitly said "no siblings"): open in Complete state
+       with Continue lit. Only open in Initial state if the user has
+       never been to this page before.
+    B) Always open in Initial state (blank count). User has to redo the
+       count and re-fill every time they back-nav. Simple, annoying.
+    C) Open in a hybrid state: show the count as a read-only badge
+       ("You said: 3 siblings") plus the filled cards. Extra design work.
 
-  B) Case-insensitive SUBSTRING match on country name. Type "tan" → both
-     Pakistan and Kazakhstan match. More flexible but more results per
-     keystroke.
-
-  C) Case-insensitive substring match on BOTH country name AND dial code.
-     Handles "user knows the +92 but forgot the name" case. Slightly more
-     work to implement.
-Answer: Option A
+ANSWER: Go with Option A
 
 
 --------------------------------------------------------------------------------
-ISSUE 4 — SEVERITY: GAP
-    "Should we pre-select the user's country based on their phone locale?"
+ISSUE 3 — SEVERITY: HIGH
+    "What counts as a valid 'profession' for a sibling?"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Nothing — the plan doesn't mention a default.
+    Story 7.2 AC-2:
+        `profession (max 35, sanity rule)`
 
 WHY IT MATTERS
-  Many onboarding apps notice you're in Pakistan and open the country
-  picker already scrolled to Pakistan, saving you a tap. But guessing wrong
-  can be worse than not guessing — a Pakistani-Canadian user visiting
-  Karachi shouldn't have "Pakistan" pre-picked for them.
+    "Sanity rule" is not an instruction — it's a hand-wave. There are two
+    kinds of validators in the codebase:
+
+      - `isValidName` (from phase 3): allows letters, spaces, hyphens,
+        apostrophes only. Rejects numbers, punctuation, ampersands, etc.
+        Max 35 characters. Meant for people's names.
+
+      - `isValidOfficeAddress` (from phase 4): only checks max length.
+        Allows any characters (numbers, slashes, hashes, etc.). Meant for
+        freeform text like "Flat 4B, 12/A Rajbagh".
+
+    Profession sits between these. "Engineer" passes both. But:
+      - "Ph.D. researcher" fails `isValidName` (periods)
+      - "Marketing & Sales" fails `isValidName` (ampersand)
+      - "Software Engineer II" fails `isValidName` (digit)
+
+    If we use `isValidName`, a lot of real-world job descriptions get
+    rejected and users get frustrated. If we use `isValidOfficeAddress`,
+    someone can type "@#$%" as a profession and it goes into the database.
 
 YOUR CHOICES
-  A) [RECOMMENDED] No default. Picker opens at the top (Afghanistan).
-     Simplest, no assumptions, no wrong guesses. User taps their country.
+    A) [RECOMMENDED] Use whatever validator we pick for the parent-job
+       fields on Page 18 (see Issue 4). Both are jobs; same rules should
+       apply. Update Story 7.2 AC-2 to say `use isValidParentJob`
+       (or whatever name we settle on).
+    B) Use `isValidName` (strict): letters, spaces, hyphens, apostrophes
+       only. Cleanest data, most user rejections.
+    C) Use `isValidOfficeAddress`-style (loose): only enforce max length.
+       Most permissive, allows garbage.
+    D) Create a new `isValidProfession` validator: allow letters, spaces,
+       hyphens, apostrophes, ampersands, periods, digits. Most work,
+       best fit for the data.
+    
+    ANSWER: Go with option D
 
-  B) Pre-scroll (but don't pre-select) to the device's locale country.
-     Middle ground: helpful but doesn't auto-submit.
-
-  C) Pre-select AND pre-scroll to device locale country. Fastest but risky.
-
-Answer: Option A
 
 --------------------------------------------------------------------------------
-ISSUE 5 — SEVERITY: GAP
-    "The plan says 'letters/spaces/hyphens/apostrophes' — but we already
-     have a helper for that; can we reuse it?"
+ISSUE 4 — SEVERITY: HIGH
+    "What counts as a valid 'father's job' / 'mother's job'?"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Story 6.2 (page 16, city): validate that the city name is
-  letters/spaces/hyphens/apostrophes, max 40 characters.
+    Story 7.1 AC-1:
+        "each max 40 chars with letters/spaces/hyphens/apostrophes
+         validation"
+    …applied to fathers_name, fathers_job, mothers_name, mothers_job
+    (all four fields lumped together).
 
 WHY IT MATTERS
-  We already have a function called "isValidName" in the codebase that
-  does EXACTLY the same character check — but it caps at 35 characters
-  (because names cap at 35). Cities can be up to 40. So we can't just
-  reuse "isValidName" as-is.
+    Same problem as Issue 3, but for the parents' jobs on Page 18. The
+    plan says the SAME rule applies to both the parent's NAME and the
+    parent's JOB.
 
-  Analogy: you have a measuring cup that goes up to 35ml. You need to
-  measure 40ml. You could get a bigger cup, or you could raise the
-  markings on the old one — but you have to pick.
+    For names, letters/spaces/hyphens/apostrophes is fine ("Mary-Anne
+    O'Connor"). For jobs, it's the same trap as Issue 3:
 
-  If we don't pick, the subagent will either (a) reuse isValidName and
-  wrongly reject 36-40 character cities, or (b) invent a new helper with
-  a name we don't like ("isValidCityName"? "isCity"? "validateCity"?).
+      - "Ph.D." — period rejected
+      - "Sales & Marketing" — ampersand rejected
+      - "IT Level 2" — digit rejected
+
+    Also worth noting: Page 11 already has an office/job story from phase
+    4. Whatever validator IT uses is a natural precedent. If phase 4 was
+    strict, we should probably be strict here for consistency. If phase 4
+    was loose, we should be loose here.
+
+    (I haven't verified the phase 4 validator's exact character class —
+    the subagent will confirm at implementation time if we pick option A.)
 
 YOUR CHOICES
-  A) [RECOMMENDED] Add a new helper "isValidCity" in validationHelper.ts
-     with "MAX_CITY_NAME_LENGTH = 40". Matches the naming pattern already
-     used for jobs, employers, and addresses (MAX_JOB_TITLE_LENGTH etc.).
+    A) [RECOMMENDED] Match whatever validator phase 4's job_title field
+       uses. Consistency across the wizard. Length may need to bump to
+       40 if phase 4 used a different cap.
+    B) Keep the plan as written (letters/spaces/hyphens/apostrophes only,
+       max 40). Rejects "Ph.D." and "Sales & Marketing". User-hostile.
+    C) Loosen the rule to allow ampersands, periods, and digits for the
+       JOB fields only (keep names strict). Two different validators —
+       `isValidParentName` and `isValidParentJob`. Cleanest data model.
+    ANSWER: Option C
 
-  B) Generalize "isValidName" to take a max-length parameter and call it
-     from both places. More DRY, but changes a shipped function's signature
-     (risk of breaking phase 3 tests).
-
-  C) Inline the regex + length check into Page16ResidenceCityScreen with
-     no helper. Fastest, but less testable.
-
-Answer: Option A
 
 --------------------------------------------------------------------------------
-ISSUE 6 — SEVERITY: GAP
-    "'Default preselected Srinagar' — but what does 'preselected' MEAN?"
+ISSUE 5 — SEVERITY: MEDIUM
+    "Will the backend accept the words 'YES' and 'NO' in all caps?"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Story 6.3 (page 17, Kashmir district): default preselected "Srinagar".
+    Story 7.1 AC-2 uses `options.yesNo` for the "is your father retired?"
+    and "is your mother retired?" questions. That options file contains
+    exactly two values: ["YES", "NO"] — uppercase.
 
 WHY IT MATTERS
-  Two very different things could happen:
+    Think of the backend as a strict receptionist with a checklist. When
+    you say "father retired: YES", they check their list to see if "YES"
+    is one of the allowed answers. If their list actually says
+    "Yes" / "No" (capital Y, lowercase e-s), or "Retired" / "Working",
+    they'll reject the whole form.
 
-  (a) On page load, we quietly write "Srinagar" into the draft AND paint
-      the Srinagar row as selected. If the user taps Continue without
-      touching anything, "Srinagar" gets saved.
+    Right now, nobody has verified what the backend's list actually says.
+    The `father_retired` column in the database is a plain TEXT column,
+    so on paper it accepts anything. But there may be a check constraint
+    (a rule saying "only these exact values allowed") that we haven't
+    looked at.
 
-  (b) On page load, we just VISUALLY paint Srinagar as selected, but the
-      draft is still empty. Continue is disabled until the user taps
-      SOMETHING (even if that's Srinagar itself).
+    This is NOT a blocker for phase 7 — phase 7 only writes to the
+    draft on your phone, not to the backend. The backend PATCH doesn't
+    happen until phase 11 (the final "submit everything" step). But if
+    we discover the casing is wrong at phase 11, we'll be re-touching
+    every YES/NO input in the whole wizard. Better to catch it now.
 
-  Option (a) matches what users expect from a "default" — they see it
-  selected, they trust it's selected, they hit Continue. Option (b) is
-  safer against silent auto-submits but confusing: "why is it highlighted
-  if it's not actually chosen?"
-
-  Every OTHER page in the wizard so far (page 5 sex, page 9 religion,
-  page 12 education) has NO pre-selection — user must tap. Page 17 would
-  be the first exception.
+    Related note for later: `has_children` and `move_abroad` also use
+    `options.yesNo` in phases 8 and 9, but the database stores those as
+    booleans (true/false), not text. So those two need a string→boolean
+    conversion at PATCH time regardless of what we decide here.
 
 YOUR CHOICES
-  A) [RECOMMENDED] Option (a): on mount, if kashmir_district is null in
-     the draft, immediately write "Srinagar". Row paints as selected AND
-     draft has the value. Consistent behavior. Back-navigation from a
-     later page never overwrites the user's real choice.
+    A) [RECOMMENDED] Add an "unvalidated assumption" note to phase 11's
+       PRD saying "verify backend accepts YES/NO uppercase before wiring
+       the PATCH". Ship phase 7 as planned. Fix casing later if needed.
+    B) Check the backend right now (grep `knotify-backend` for the
+       column's check constraint, or ask the backend team). Adds delay
+       to phase 7 for a question that doesn't need answering yet.
+    C) Change `options.yesNo` to "Yes"/"No" (title case) preemptively.
+       Might be right, might be wrong — coin flip without checking.
 
-  B) Option (b): visually highlight Srinagar but keep draft empty. Force
-     the user to explicitly tap a district before Continue enables.
-     Consistent with the "no pre-selection" pattern from other pages.
-
-  C) No preselect at all. Remove "Srinagar default" from the plan and
-     treat page 17 like all the other picker pages.
-
-Answer: Option A
-
+ANSWER: Option A
 
 --------------------------------------------------------------------------------
-ISSUE 7 — SEVERITY: GAP
-    "What characters are allowed in the family residence address?"
+ISSUE 6 — SEVERITY: MEDIUM
+    "What does 'Cancel' do if you already saved siblings before?"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Story 6.3: multiline TextInput for family_residence_address, max 70
-  characters. Doesn't say what characters are allowed.
+    Page 19 has a Cancel button in the Filling state. The plan says
+    "Cancel returns to Initial with blank count."
 
 WHY IT MATTERS
-  Addresses in Pakistan and Kashmir include slashes ("H#12/A"), hash
-  signs ("Flat #4"), commas, dashes, apostrophes ("O'Malley Road"), and
-  house numbers. If we apply a strict letters-only rule, real addresses
-  will be rejected.
+    Imagine you filled out the sibling page yesterday with 3 siblings.
+    Today you come back, back-nav to Page 19 (per Issue 2 we decided to
+    show your saved cards). You edit one field, then change your mind
+    and tap Cancel. What should happen?
 
-  Page 11's office_address field solved this the same way: no character
-  restriction at all, just a max-length cap. Story 6.3 should probably
-  do the same but it doesn't say.
+    Two readings of the plan:
 
-  Analogy: a bouncer at the club door either has a list of "who's
-  allowed in" (whitelist) or a list of "who's banned" (blacklist).
-  If we skip both, everyone gets in. That's often the right call for
-  addresses.
+      (a) Cancel discards ONLY today's edits. Your 3 saved siblings from
+          yesterday are still there — you just haven't changed them.
+          (Matches "undo my current changes" — what most apps do.)
+
+      (b) Cancel wipes both today's edits AND yesterday's saved siblings.
+          You're back at "how many siblings do you have?" with nothing.
+          (Matches "start this section over from scratch" — nuclear.)
+
+    The plan is ambiguous. The subagent will pick one; if they pick (b)
+    and you meant (a), users lose data.
 
 YOUR CHOICES
-  A) [RECOMMENDED] No character rule. Only cap at 70 characters. Enable
-     autoCorrect. Mirrors office_address from phase 11 exactly.
+    A) [RECOMMENDED] Cancel only discards in-progress local state; it
+       does NOT touch the previously-saved siblings in the draft.
+       If the user wants to fully redo, they can back-nav and go
+       forward again.
+    B) Cancel wipes everything. Simpler code, worse UX.
+    C) Cancel shows a confirmation ("Discard your 3 siblings?") — extra
+       design work, more flexibility.
 
-  B) Whitelist letters/digits/spaces/hyphens/commas/slashes/hash/period/
-     apostrophe. More restrictive, might miss weird-but-valid addresses.
+    ANSWER: OPtion A
 
-  C) Just letters and spaces. Way too restrictive — will reject real
-     addresses. (Only listed for completeness.)
-Answer: Option A
+--------------------------------------------------------------------------------
+ISSUE 7 — SEVERITY: LOW
+    "When exactly does 'I have 0 siblings' get saved?"
+--------------------------------------------------------------------------------
+
+WHAT THE PLAN SAYS
+    Story 7.2 AC-3:
+        "Value `0` in the count input immediately enables Continue and
+         writes an empty siblings array."
+
+WHY IT MATTERS
+    The word "immediately" is doing a lot of work here. Two readings:
+
+      (a) The moment the user types "0" in the count box, the app writes
+          an empty array to the draft (before they tap Continue).
+      (b) When the user types "0", the Continue button lights up
+          immediately, but the write to the draft only happens when
+          they actually tap Continue (like every other page).
+
+    Reading (a) creates a minor bug scenario: user types "0", changes
+    their mind, types "3", now goes through the 3-sibling flow. In
+    between there was an extra `setSiblings([])` write that got
+    overwritten. Not broken, but noisy — extra writes to secure storage.
+
+    Reading (b) matches every other page's pattern: writes happen on
+    Continue tap, never on input change.
+
+YOUR CHOICES
+    A) [RECOMMENDED] Reading (b). "Immediately" refers only to the
+       button state (lights up right away), not the write. Write happens
+       on Continue tap like every other page. Consistent, no wasted
+       writes.
+    B) Reading (a). Write happens on input change. Matches a literal
+       reading of "immediately" but breaks the pattern.
+
+ANSWER: Option A
+
 
 
 ================================================================================
-DEPENDENCY-GRAPH NOTES — not gaps, just worth confirming
+DEPENDENCY GRAPH — story ordering
 ================================================================================
 
 --------------------------------------------------------------------------------
-ISSUE 8 — SEVERITY: FYI
-    "All three stories say depends_on: [] — is that really true?"
+ISSUE 8 — SEVERITY: INFORMATIONAL
+    "Both stories say they don't depend on each other"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Stories 6.1, 6.2, 6.3 all list "depends_on: []" — meaning "no other
-  story in this phase must finish first."
+    Story 7.1 depends_on: []
+    Story 7.2 depends_on: []
 
 WHY IT MATTERS
-  Technically true — none of the three pages reads state written by
-  another. But the wizard walks 15 → 16 → 17 in order, so the on-emulator
-  check ("can I actually walk through phase 6?") only works after all
-  three ship.
+    This is technically correct — Page 19 (siblings) does not read
+    anything Page 18 (parents) wrote. But the wizard goes 18 → 19 in
+    order, and testing on the emulator is easier if 18 exists first.
+    Workspace rule already forces stories to run one at a time in the
+    plan's listed order, so this is not a plan defect. Just flagging
+    so the subagent doesn't misread an empty array as "safe to build
+    7.2 before 7.1."
 
-  This is only a problem if someone reads "depends_on: []" and thinks
-  "great, I can skip 6.2 and jump straight to 6.3." Our workspace rule
-  ("no parallelism, strict serial order") already prevents that. So this
-  is more of a note than a fix.
+    No action needed. Reminder only.
 
-YOUR CHOICES
-  A) [RECOMMENDED] Leave as-is. The serial-execution rule handles this
-     already.
 
-  B) Add explicit "depends_on: [6.1]" to 6.2 and "depends_on: [6.2]" to
-     6.3 to make the linear order visible in the graph.
-
-Answer: Option A
 --------------------------------------------------------------------------------
-ISSUE 9 — SEVERITY: FYI
-    "Page 17 navigates to Page18ParentsScreen, which doesn't exist"
+ISSUE 9 — SEVERITY: INFORMATIONAL
+    "Story 7.2 will end up touching the schema — plan is silent on this"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Story 6.3: on Continue, navigate to "Page18ParentsScreen".
+    Nothing about draft schema changes.
 
 WHY IT MATTERS
-  Page 18 is a phase-7 story — it hasn't been built yet. But the
-  OnboardingStack (the app's navigation map) already has a placeholder
-  for it (created back in phase 2). So navigation.navigate('Page18...')
-  will land on the placeholder screen, not crash.
+    If we resolve Issue 1 by extending `SiblingDraft` inside story 7.2,
+    then story 7.2 also touches:
+      - `src/features/onboarding/draftSchema.ts`
+      - `src/features/onboarding/hooks/useOnboardingDraft.tsx` (the
+        `setSiblings` typing propagates through)
 
-  Just want to flag this so the subagent doesn't spend an hour thinking
-  the route is missing.
+    Story 7.1 (parents) does NOT touch these files. No inter-story
+    dependency, but the story-7.2 subagent needs to understand that
+    schema surgery is in-scope.
 
-YOUR CHOICES
-  A) [RECOMMENDED] Leave as-is. Placeholder is fine — that's exactly
-     what it exists for.
-Answer: Option A
+    No action needed if we go with Issue 1 option A. Reminder for the
+    subagent brief.
+
 
 ================================================================================
-DRIFT — the plan was written before recent code changes; needs a heads-up
+DRIFT SINCE PLAN AUTHORED — things that changed while the PRD sat idle
 ================================================================================
 
 --------------------------------------------------------------------------------
-ISSUE 10 — SEVERITY: DRIFT (heads-up)
-    "The draft-store changed after this PRD was written"
+ISSUE 10 — SEVERITY: INFORMATIONAL
+    "The draft store was refactored on 2026-07-25; PRD predates it"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Nothing about it — the PRD predates the change.
+    Nothing about the Context/Provider refactor.
 
 WHY IT MATTERS
-  On 2026-07-25 (yesterday), we shipped PR #92 which converted
-  "useOnboardingDraft" from a plain hook into a Context/Provider. Every
-  screen test now has to add a tiny mock line:
+    On 2026-07-25 (PR #92) `useOnboardingDraft` moved from a plain hook
+    to a Context/Provider pattern. As a consequence, all screen wiring
+    tests need to mock `OnboardingDraftProvider: ({ children }) => children`
+    as a passthrough. Phase 6 stories already dealt with this and there
+    are 3 recent screen tests using the new pattern the subagent can
+    copy from.
 
-      OnboardingDraftProvider: ({ children }) => children
-
-  If the subagent copies test patterns from an OLDER screen (say, page 5
-  or page 9), they'll miss this and their tests will fail. But if they
-  copy from Page13EducationCredentialsScreen.test.tsx (the newest one),
-  they'll get it right automatically.
-
-  Analogy: the recipe says "preheat the oven" but yesterday we replaced
-  the oven with a smart oven that needs a phone-app tap first. Any cook
-  who's used the new oven knows; anyone who's been away won't.
-
-YOUR CHOICES
-  A) [RECOMMENDED] Trust the subagent to look at the newest reference
-     (Page 13) and copy the current pattern. No PRD edit needed.
-
-  B) Add a note to every story in phase 6: "Test setup must include
-     OnboardingDraftProvider passthrough — see Page13...test.tsx."
-     Explicit but noisy.
-  Answer: Option B
+    No action needed. The subagent will discover the pattern by looking
+    at `Page17FamilyResidenceScreen.test.tsx`.
 
 
 --------------------------------------------------------------------------------
-ISSUE 11 — SEVERITY: DRIFT (heads-up)
-    "On-device testing now uses expo run:android, not expo start"
+ISSUE 11 — SEVERITY: INFORMATIONAL
+    "On-device testing uses `expo run:android`, not Expo Go"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Nothing — this changed yesterday.
+    Nothing about it (PRD predates the workflow change).
 
 WHY IT MATTERS
-  As of PR #91, the Android testing workflow uses a development build
-  (via "npx expo run:android") instead of Expo Go. If the subagent runs
-  an on-device smoke check, they need to know this. Also, to reset the
-  onboarding state between runs, they run "adb shell pm clear
-  com.knotify.app" — not a full uninstall.
+    Since 2026-07-25 (PR #91), on-device verification is via
+    `npx expo run:android` on a real emulator, and secure-store gets
+    wiped between runs with `adb shell pm clear com.knotify.app`.
+    Expo Go / QR-code testing was retired.
 
-  This is already documented in context.md, which the main agent reads
-  at session start. The subagent inherits this context. So it's likely
-  covered, but calling it out.
-
-YOUR CHOICES
-  A) [RECOMMENDED] No PRD change needed. Context.md already carries
-     this info and subagents load it.
+    This is already documented in CLAUDE.md and context.md, so the
+    subagent will load it automatically. Reminder only.
 
 
 --------------------------------------------------------------------------------
-ISSUE 12 — SEVERITY: DRIFT (heads-up)
-    "Labels-parity test: we need Urdu translations for every new label"
+ISSUE 12 — SEVERITY: INFORMATIONAL
+    "Where should the new SiblingForm component live?"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Nothing specific — but the pattern is well established.
+    "Feature-local component" — no path specified.
 
 WHY IT MATTERS
-  Every English label added to labels.en.json must have a matching Urdu
-  entry in labels.ur.json, or the labels-parity Jest test will fail.
-  Phase 6 will need many new labels:
+    Phase 6 introduced the convention of a feature-local components
+    folder at `src/features/onboarding/components/`. `SiblingForm.tsx`
+    should live there (or a subfolder if the form breaks into row-level
+    sub-components).
 
-    - onboarding.country.title / searchPlaceholder / etc.
-    - onboarding.residenceCity.title / label / placeholder / errors...
-    - onboarding.kashmirDistrict.title
-    - onboarding.familyResidenceAddress.label / placeholder / errors...
+    No action needed. Reminder for the subagent brief.
 
-  The subagent knows this from prior phases (2, 3, 4, 5 all did it), so
-  it's more a reminder than a gap.
 
-YOUR CHOICES
-  A) [RECOMMENDED] No PRD change. Standard practice.
-
+================================================================================
+DOWNSTREAM NAVIGATION — the next page
+================================================================================
 
 --------------------------------------------------------------------------------
-ISSUE 13 — SEVERITY: DRIFT (heads-up)
-    "The Jest tests might need a manual mock for the flag library"
+ISSUE 13 — SEVERITY: INFORMATIONAL
+    "Page 20 (nav target from story 7.2) doesn't exist yet"
 --------------------------------------------------------------------------------
 
 WHAT THE PLAN SAYS
-  Nothing about test setup for react-native-country-flag.
+    Story 7.2 advances to `Page20MarriageTimeScreen`.
 
 WHY IT MATTERS
-  Some native-oriented libraries (that use SVG or platform-specific
-  code) can't run under Jest's Node environment without a mock. Back in
-  phase 2 we had to add a "moduleNameMapper" entry in jest.config.js to
-  point "lucide-react-native" to a CommonJS build. Same might apply here.
+    Page 20 is a phase-8 story — it hasn't been built yet. `OnboardingStack`
+    has a placeholder screen registered for Page 20 (per phase-2's
+    pattern), so `navigation.navigate('Page20MarriageTimeScreen')` will
+    resolve to that placeholder and not crash. Same situation existed at
+    the end of every prior phase (5→6, 6→7 both crossed this line
+    without issue).
 
-  Won't know until we install the library and try — could be zero work,
-  could be five minutes. Worth budgeting for.
-
-  Analogy: you buy a new appliance and only find out at unboxing
-  whether it needs a plug adapter for your outlets.
-
-YOUR CHOICES
-  A) [RECOMMENDED] Let the subagent handle it as it arises during
-     story 6.1. Don't over-specify.
-
-  B) Add a note to story 6.1: "If jest chokes on the flag library,
-     add a moduleNameMapper entry mirroring the lucide-react-native
-     pattern from phase 2."
-Answer: Option A
+    No action needed. Reminder only.
 
 
 ================================================================================
-CONFIRMED NON-ISSUES (for your peace of mind)
+LABELS — the bilingual strings file
 ================================================================================
 
-  • All 5 residence fields (current_residence_country, resident_country_code,
-    current_residence_city, kashmir_district, family_residence_address)
-    are already declared in the profile type. No draftSchema.ts edits
-    needed.
+--------------------------------------------------------------------------------
+ISSUE 14 — SEVERITY: INFORMATIONAL
+    "New English + Urdu labels need adding for phase 7 pages"
+--------------------------------------------------------------------------------
 
-  • kashmirDistricts.json has exactly 22 entries as the plan expects. ✓
+WHAT THE PLAN SAYS
+    Nothing explicit. (Standard for every phase.)
 
-  • countries.ts has ~200 entries. Some dial codes are shared (US, Canada,
-    and several Caribbean islands all use +1) — the picker keys off ISO-2
-    country code, so no conflict.
+WHY IT MATTERS
+    Both pages need new label keys — probably `onboarding.parents.*`
+    for Page 18 (field labels, placeholders, error messages) and
+    `onboarding.siblings.*` + `siblingForm.*` for Page 19 (count prompt,
+    add/cancel buttons, per-field labels inside the sibling card).
+    Both `labels.en.json` and `labels.ur.json` need to grow in parity —
+    a Jest test enforces every English key has an Urdu twin.
 
-  • Page18ParentsScreen placeholder exists — page 17's navigation call
-    won't crash.
+    No action needed. Standard practice for every phase.
 
 
 ================================================================================
-HOW TO REPLY
+END — WAITING FOR YOUR ANSWERS
 ================================================================================
 
-Just say something like:
-    "1: A, 2: A, 3: A, 4: A, 5: A, 6: A, 7: A, 10: B, 13: B"
+Reply with the issue number + your letter choice for the ones that need a
+decision (1 through 7). Items 8-14 are informational and don't need a
+pick. Example:
 
-Or if you want to talk about any single issue in more depth, just tell me
-the number and I'll go deeper.
+    1: A, 2: A, 3: A, 4: A, 5: A, 6: A, 7: A
 
-Issues 8, 9, 11, 12 have only one recommended option (leave-as-is); you
-can skip them unless you want to override.
+…if you agree with all my recommendations. Or override any of them —
+"3: C" tells me you want the loose validator for professions, etc.
