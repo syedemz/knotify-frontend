@@ -295,6 +295,9 @@
       "secondary": {
         "label": "I’d like to be married within"
       }
+    },
+    "ownReligiousLevel": {
+      "title": "How religious are you?"
     }
   },
   "siblingForm": {

@@ -295,6 +295,9 @@
       "secondary": {
         "label": "میں اس عرصے میں شادی کرنا چاہتا ہوں"
       }
+    },
+    "ownReligiousLevel": {
+      "title": "آپ کتنے مذہبی ہیں؟"
     }
   },
   "siblingForm": {

@@ -27,7 +27,7 @@ stories:
   - id: 8.2
     title: Page 21 - Own religious level
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 99
     depends_on: []
     acceptance_criteria:
