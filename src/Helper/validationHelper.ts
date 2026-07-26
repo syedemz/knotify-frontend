@@ -410,6 +410,148 @@ export function isValidFamilyResidenceAddress(s: string): boolean {
   return trimmed.length >= 1 && trimmed.length <= MAX_FAMILY_RESIDENCE_ADDRESS_LENGTH;
 }
 
+// ── Parents — name ────────────────────────────────────────────────────────────
+
+/**
+ * Maximum character length for parent name fields
+ * (`fathers_name`, `mothers_name`).
+ *
+ * Mirrors `isValidName`'s character class but with a 40-char cap instead of 35.
+ * db-schema columns are TEXT (unbounded); the frontend enforces this limit per
+ * story 7.1 AC.
+ */
+export const MAX_PARENT_NAME_LENGTH = 40;
+
+/**
+ * Returns `true` when `input` is a valid parent name string.
+ *
+ * Rules:
+ * - Allowed characters: `[A-Za-z]`, space (` `), hyphen (`-`), apostrophe (`'`).
+ * - No leading or trailing whitespace.
+ * - Length: 1–{@link MAX_PARENT_NAME_LENGTH} characters (inclusive), measured on
+ *   the **trimmed** value.
+ *
+ * Mirrors {@link isValidName}'s character class; the only difference is the
+ * maximum length (40 here vs. 35 for first/last names). `isValidName` is NOT
+ * reused because it hard-codes a 35-char cap.
+ *
+ * @param input - The string to validate.
+ * @returns `true` if `input` is a valid parent name.
+ *
+ * @example
+ * ```ts
+ * isValidParentName('Muhammad Ali')      // true
+ * isValidParentName("O'Brien-Smith")     // true
+ * isValidParentName(' Ali')              // false — leading space
+ * isValidParentName('Ali1')             // false — digit not allowed
+ * isValidParentName('')                  // false — empty
+ * isValidParentName('A'.repeat(41))      // false — too long
+ * ```
+ */
+export function isValidParentName(input: string): boolean {
+  const trimmed = input.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_PARENT_NAME_LENGTH) return false;
+  // Reject leading or trailing whitespace on the original input
+  if (input !== trimmed) return false;
+  // Only letters, spaces, hyphens, and apostrophes are allowed
+  return /^[A-Za-z' -]+$/.test(trimmed);
+}
+
+// ── Parents — job ─────────────────────────────────────────────────────────────
+
+/**
+ * Maximum character length for parent job fields
+ * (`fathers_job`, `mothers_job`).
+ *
+ * db-schema columns are TEXT (unbounded); the frontend enforces this limit per
+ * story 7.1 AC.
+ */
+export const MAX_PARENT_JOB_LENGTH = 40;
+
+/**
+ * Returns `true` when `input` is a valid parent job string.
+ *
+ * Rules:
+ * - Allowed characters: `[A-Za-z]`, digits `[0-9]`, space (` `), hyphen (`-`),
+ *   apostrophe (`'`), ampersand (`&`), period (`.`).
+ * - No leading or trailing whitespace.
+ * - Length: 1–{@link MAX_PARENT_JOB_LENGTH} characters (inclusive), measured on
+ *   the **trimmed** value.
+ *
+ * This is a loose character class that accommodates job descriptions such as
+ * `"AT&T Manager"`, `"Sr. Engineer"`, and `"O'Reilly Author"`.
+ *
+ * @param input - The string to validate.
+ * @returns `true` if `input` is a valid parent job.
+ *
+ * @example
+ * ```ts
+ * isValidParentJob('Retired Farmer')    // true
+ * isValidParentJob('AT&T Manager')      // true
+ * isValidParentJob("O'Reilly Author")   // true
+ * isValidParentJob('Sr. Engineer')      // true
+ * isValidParentJob(' Farmer')           // false — leading space
+ * isValidParentJob('Farmer!')           // false — invalid char
+ * isValidParentJob('')                  // false — empty
+ * isValidParentJob('A'.repeat(41))      // false — too long
+ * ```
+ */
+export function isValidParentJob(input: string): boolean {
+  const trimmed = input.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_PARENT_JOB_LENGTH) return false;
+  // Reject leading or trailing whitespace on the original input
+  if (input !== trimmed) return false;
+  // Letters, digits, spaces, hyphens, apostrophes, ampersands, and periods
+  return /^[A-Za-z0-9 \-'&.]+$/.test(trimmed);
+}
+
+// ── Sibling — profession ──────────────────────────────────────────────────────
+
+/**
+ * Maximum character length for the sibling `profession` field.
+ *
+ * db-schema columns are TEXT (unbounded); the frontend enforces this limit per
+ * story 7.2 AC.
+ */
+export const MAX_SIBLING_PROFESSION_LENGTH = 35;
+
+/**
+ * Returns `true` when `input` is a valid sibling profession string.
+ *
+ * Rules:
+ * - Allowed characters: `[A-Za-z]`, digits `[0-9]`, space (` `), hyphen (`-`),
+ *   apostrophe (`'`), ampersand (`&`), period (`.`).
+ * - No leading or trailing whitespace.
+ * - Length: 1–{@link MAX_SIBLING_PROFESSION_LENGTH} characters (inclusive),
+ *   measured on the **trimmed** value.
+ *
+ * This is a loose character class that accommodates profession values such as
+ * `"AT&T Engineer"`, `"Sr. Manager"`, and `"O'Reilly Author"`.
+ *
+ * @param input - The string to validate.
+ * @returns `true` if `input` is a valid sibling profession.
+ *
+ * @example
+ * ```ts
+ * isValidProfession('Teacher')          // true
+ * isValidProfession('AT&T Manager')     // true
+ * isValidProfession("O'Reilly Author")  // true
+ * isValidProfession('Sr. Engineer')     // true
+ * isValidProfession(' Teacher')         // false — leading space
+ * isValidProfession('Teacher!')         // false — invalid char
+ * isValidProfession('')                 // false — empty
+ * isValidProfession('A'.repeat(36))     // false — too long
+ * ```
+ */
+export function isValidProfession(input: string): boolean {
+  const trimmed = input.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_SIBLING_PROFESSION_LENGTH) return false;
+  // Reject leading or trailing whitespace on the original input
+  if (input !== trimmed) return false;
+  // Letters, digits, spaces, hyphens, apostrophes, ampersands, and periods
+  return /^[A-Za-z0-9 \-'&.]+$/.test(trimmed);
+}
+
 // ── Education credentials — year fields ───────────────────────────────────────
 
 /**

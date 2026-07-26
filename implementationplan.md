@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-07-25
+last_updated: 2026-07-26
 
 phases:
 
@@ -43,7 +43,7 @@ phases:
   title: Family - parents + siblings (B6, pages 18-19)
   file: implementationplan/phase-7-family-b6.md
   ready: true
-  done: false
+  done: true
 
 - phase: 8
   title: Lifestyle + marital status (B7, pages 20-24)

@@ -81,7 +81,7 @@ describe('useOnboardingDraft — initial load', () => {
 
   it('loads a previously persisted draft from secure-store', async () => {
     const stored = JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       lastCheckpoint: 'firstCheckpoint',
       currentPage: 9,
       fields: { email: 'test@example.com' },
@@ -107,7 +107,79 @@ describe('useOnboardingDraft — initial load', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(1);
+    expect(draft.schemaVersion).toBe(2);
+    expect(draft.currentPage).toBe(1);
+    expect(draft.lastCheckpoint).toBeNull();
+  });
+});
+
+describe('useOnboardingDraft — schemaVersion discard policy', () => {
+  it('given a v1 draft on disk, then it is discarded and a fresh empty draft is returned', async () => {
+    const v1Draft = JSON.stringify({
+      schemaVersion: 1,
+      lastCheckpoint: 'secondCheckpoint',
+      currentPage: 18,
+      fields: { first_name: 'OldUser' },
+      siblings: [],
+      photoPreviewUris: [],
+      notificationPermissionStatus: null,
+      locationPermissionStatus: null,
+      timestamps: { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+    });
+    mockSecureStorage.getOnboardingDraft.mockResolvedValue(v1Draft);
+
+    const { result } = await renderDraftHook();
+
+    const draft = result.current.getDraft();
+    // Must be a fresh empty draft — the v1 data is discarded
+    expect(draft.schemaVersion).toBe(2);
+    expect(draft.currentPage).toBe(1);
+    expect(draft.lastCheckpoint).toBeNull();
+    expect(draft.fields).toEqual({});
+  });
+
+  it('given a v2 draft on disk, then it is loaded as-is', async () => {
+    const v2Draft = JSON.stringify({
+      schemaVersion: 2,
+      lastCheckpoint: 'secondCheckpoint',
+      currentPage: 18,
+      fields: { first_name: 'CurrentUser' },
+      siblings: [],
+      photoPreviewUris: [],
+      notificationPermissionStatus: null,
+      locationPermissionStatus: null,
+      timestamps: { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+    });
+    mockSecureStorage.getOnboardingDraft.mockResolvedValue(v2Draft);
+
+    const { result } = await renderDraftHook();
+
+    const draft = result.current.getDraft();
+    expect(draft.schemaVersion).toBe(2);
+    expect(draft.currentPage).toBe(18);
+    expect(draft.lastCheckpoint).toBe('secondCheckpoint');
+    expect(draft.fields.first_name).toBe('CurrentUser');
+  });
+
+  it('given a missing draft (null from secure-store), then a fresh empty draft is returned', async () => {
+    mockSecureStorage.getOnboardingDraft.mockResolvedValue(null);
+
+    const { result } = await renderDraftHook();
+
+    const draft = result.current.getDraft();
+    expect(draft.schemaVersion).toBe(2);
+    expect(draft.currentPage).toBe(1);
+    expect(draft.lastCheckpoint).toBeNull();
+    expect(draft.fields).toEqual({});
+  });
+
+  it('given a corrupt draft (unparseable JSON), then a fresh empty draft is returned', async () => {
+    mockSecureStorage.getOnboardingDraft.mockResolvedValue('{not: valid json}');
+
+    const { result } = await renderDraftHook();
+
+    const draft = result.current.getDraft();
+    expect(draft.schemaVersion).toBe(2);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
   });
@@ -396,7 +468,7 @@ describe('useOnboardingDraft — setSiblings()', () => {
 
     act(() => {
       result.current.setSiblings([
-        { name: 'Umar', age: 28, maritalStatus: 'Never Married' },
+        { name: 'Umar', age: 28, maritalStatus: 'Never Married', gender: 'Male', profession: 'Engineer' },
       ]);
     });
 
@@ -466,7 +538,7 @@ describe('useOnboardingDraft — setLocationPermissionStatus()', () => {
     const { result } = await renderDraftHook();
 
     act(() => {
-      result.current.setSiblings([{ name: 'Aisha', age: 25, maritalStatus: null }]);
+      result.current.setSiblings([{ name: 'Aisha', age: 25, maritalStatus: null, gender: 'Female', profession: null }]);
     });
 
     act(() => {

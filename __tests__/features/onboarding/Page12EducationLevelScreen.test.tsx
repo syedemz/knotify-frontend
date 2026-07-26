@@ -204,7 +204,7 @@ function mockRoute() {
  */
 function makeDraft(educationLevel: string | null = null) {
   return {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     lastCheckpoint: 'firstCheckpoint' as const,
     currentPage: 12,
     fields: educationLevel !== null ? { education_level: educationLevel } : {},

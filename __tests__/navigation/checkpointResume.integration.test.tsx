@@ -171,7 +171,7 @@ jest.mock('@/state/auth/AuthProvider', () => ({
 // ── Seeded draft ──────────────────────────────────────────────────────────────
 
 const SEED_DRAFT = {
-  schemaVersion: 1 as const,
+  schemaVersion: 2 as const,
   lastCheckpoint: 'firstCheckpoint' as const,
   currentPage: 9,
   fields: {

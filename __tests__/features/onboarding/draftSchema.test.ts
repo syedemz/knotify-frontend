@@ -7,9 +7,9 @@
 import { createEmptyDraft } from '@/features/onboarding/draftSchema';
 
 describe('createEmptyDraft', () => {
-  it('returns a draft with schemaVersion 1', () => {
+  it('returns a draft with schemaVersion 2', () => {
     const draft = createEmptyDraft();
-    expect(draft.schemaVersion).toBe(1);
+    expect(draft.schemaVersion).toBe(2);
   });
 
   it('returns a draft with lastCheckpoint null', () => {
@@ -61,7 +61,7 @@ describe('createEmptyDraft', () => {
     const draft1 = createEmptyDraft();
     const draft2 = createEmptyDraft();
 
-    draft1.siblings.push({ name: 'Ali', age: 25, maritalStatus: null });
+    draft1.siblings.push({ name: 'Ali', age: 25, maritalStatus: null, gender: null, profession: null });
 
     expect(draft2.siblings).toHaveLength(0);
   });
