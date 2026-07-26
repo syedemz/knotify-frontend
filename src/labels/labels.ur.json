@@ -301,6 +301,12 @@
     },
     "partnersReligiousLevel": {
       "title": "آپ اپنے ساتھی کو کتنا مذہبی دیکھنا چاہتے ہیں؟"
+    },
+    "maritalStatus": {
+      "title": "آپ کی ازدواجی حیثیت کیا ہے؟",
+      "hasChildren": {
+        "label": "کیا آپ کے بچے ہیں؟"
+      }
     }
   },
   "siblingForm": {

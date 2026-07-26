@@ -301,6 +301,12 @@
     },
     "partnersReligiousLevel": {
       "title": "How Religious would you like your partner to be?"
+    },
+    "maritalStatus": {
+      "title": "What is your marital status?",
+      "hasChildren": {
+        "label": "Do you have children?"
+      }
     }
   },
   "siblingForm": {

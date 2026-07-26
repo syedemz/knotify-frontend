@@ -55,7 +55,7 @@ stories:
   - id: 8.4
     title: Page 23 - Marital status + reactive children question
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 101
     depends_on: []
     acceptance_criteria:
