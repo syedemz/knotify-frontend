@@ -162,7 +162,7 @@ jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
     advanceWithCheckpoint: mockAdvanceWithCheckpoint,
     reset: jest.fn(),
     getDraft: jest.fn(() => ({
-      schemaVersion: 1,
+      schemaVersion: 2,
       lastCheckpoint: null,
       currentPage: 8,
       fields: {},

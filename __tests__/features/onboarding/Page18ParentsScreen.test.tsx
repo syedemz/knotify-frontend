@@ -155,7 +155,7 @@ function mockRoute() {
  */
 function makeDraft(fields: Record<string, string> = {}) {
   return {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     lastCheckpoint: 'secondCheckpoint' as const,
     currentPage: 18,
     fields,

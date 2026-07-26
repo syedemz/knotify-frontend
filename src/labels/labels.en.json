@@ -239,6 +239,13 @@
         "tooLong": "Address must be 70 characters or fewer."
       }
     },
+    "siblings": {
+      "title": "Tell us about your siblings",
+      "countPrompt": "How many siblings do you have? (0–4)",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "completeSummary": "Siblings saved. You can continue."
+    },
     "parents": {
       "title": "Tell us about your parents",
       "fathersName": {
@@ -278,6 +285,38 @@
       },
       "motherRetired": {
         "prompt": "Is your mother retired?"
+      }
+    }
+  },
+  "siblingForm": {
+    "cardTitle": "Sibling",
+    "name": {
+      "label": "Sibling's name",
+      "placeholder": "e.g. Umar",
+      "errors": {
+        "tooLong": "Name must be 35 characters or fewer.",
+        "invalidCharacters": "Only letters, spaces, hyphens, and apostrophes are allowed."
+      }
+    },
+    "gender": {
+      "prompt": "Sibling's gender"
+    },
+    "siblingAge": {
+      "label": "sibling_age",
+      "placeholder": "e.g. 25",
+      "errors": {
+        "invalid": "Enter a whole number between 0 and 99."
+      }
+    },
+    "maritalStatus": {
+      "prompt": "Sibling's marital status"
+    },
+    "profession": {
+      "label": "Sibling's profession",
+      "placeholder": "e.g. Teacher",
+      "errors": {
+        "tooLong": "Profession must be 35 characters or fewer.",
+        "invalidCharacters": "Only letters, digits, spaces, hyphens, apostrophes, ampersands, and periods are allowed."
       }
     }
   }

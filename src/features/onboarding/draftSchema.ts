@@ -1,9 +1,10 @@
 /**
- * Onboarding wizard draft schema (schemaVersion 1).
+ * Onboarding wizard draft schema (schemaVersion 2).
  *
- * Migration policy for schemaVersion bumps is deferred; the current schema is
- * version 1 and no bump handler exists yet. When bumping, decide before merge
- * whether to migrate, discard, or prompt.
+ * Migration policy: DISCARD on version mismatch (pre-launch).
+ * When the loaded draft's `schemaVersion !== 2`, discard it and start fresh.
+ * This is safe pre-launch because there are no real users with persisted v1 data.
+ * On post-launch bumps, migrate or prompt before discarding.
  *
  * @module features/onboarding/draftSchema
  */
@@ -39,8 +40,8 @@ export type DraftFields = Partial<Omit<UserProfileWritable, 'sex'>> & {
  * A single sibling entry captured on page 19 (Page19SiblingsScreen).
  *
  * This is a client-side scaffold — the backend `siblings` table stores
- * additional columns (`sibling_id`, `user_id`, `gender`, `profession`,
- * `created_at`). Those are server-assigned and not part of the draft.
+ * additional columns (`sibling_id`, `user_id`, `created_at`). Those are
+ * server-assigned and not part of the draft.
  */
 export interface SiblingDraft {
   /** Sibling's name. */
@@ -53,6 +54,16 @@ export interface SiblingDraft {
   age: number | null;
   /** Sibling's marital status, or `null` if not provided. */
   maritalStatus: string | null;
+  /**
+   * Sibling's gender (`'Male'` or `'Female'`), or `null` if not yet selected.
+   * Sourced from `options.gender`.
+   */
+  gender: 'Male' | 'Female' | null;
+  /**
+   * Sibling's profession, or `null` if not provided.
+   * Validated by `isValidProfession` (max 35 chars).
+   */
+  profession: string | null;
 }
 
 /**
@@ -65,10 +76,10 @@ export interface SiblingDraft {
  */
 export interface OnboardingDraft {
   /**
-   * Schema version. Always `1` for the current draft shape.
+   * Schema version. Always `2` for the current draft shape.
    * Increment this number when the shape changes in a breaking way.
    */
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
 
   /**
    * The furthest checkpoint the user has reached.
@@ -141,12 +152,12 @@ export interface OnboardingDraft {
 /**
  * Returns a fresh, empty draft for a new onboarding session.
  *
- * @returns A default {@link OnboardingDraft} with schemaVersion 1.
+ * @returns A default {@link OnboardingDraft} with schemaVersion 2.
  */
 export function createEmptyDraft(): OnboardingDraft {
   const now = new Date().toISOString();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     lastCheckpoint: null,
     currentPage: 1,
     fields: {},

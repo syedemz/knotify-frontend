@@ -505,6 +505,53 @@ export function isValidParentJob(input: string): boolean {
   return /^[A-Za-z0-9 \-'&.]+$/.test(trimmed);
 }
 
+// ── Sibling — profession ──────────────────────────────────────────────────────
+
+/**
+ * Maximum character length for the sibling `profession` field.
+ *
+ * db-schema columns are TEXT (unbounded); the frontend enforces this limit per
+ * story 7.2 AC.
+ */
+export const MAX_SIBLING_PROFESSION_LENGTH = 35;
+
+/**
+ * Returns `true` when `input` is a valid sibling profession string.
+ *
+ * Rules:
+ * - Allowed characters: `[A-Za-z]`, digits `[0-9]`, space (` `), hyphen (`-`),
+ *   apostrophe (`'`), ampersand (`&`), period (`.`).
+ * - No leading or trailing whitespace.
+ * - Length: 1–{@link MAX_SIBLING_PROFESSION_LENGTH} characters (inclusive),
+ *   measured on the **trimmed** value.
+ *
+ * This is a loose character class that accommodates profession values such as
+ * `"AT&T Engineer"`, `"Sr. Manager"`, and `"O'Reilly Author"`.
+ *
+ * @param input - The string to validate.
+ * @returns `true` if `input` is a valid sibling profession.
+ *
+ * @example
+ * ```ts
+ * isValidProfession('Teacher')          // true
+ * isValidProfession('AT&T Manager')     // true
+ * isValidProfession("O'Reilly Author")  // true
+ * isValidProfession('Sr. Engineer')     // true
+ * isValidProfession(' Teacher')         // false — leading space
+ * isValidProfession('Teacher!')         // false — invalid char
+ * isValidProfession('')                 // false — empty
+ * isValidProfession('A'.repeat(36))     // false — too long
+ * ```
+ */
+export function isValidProfession(input: string): boolean {
+  const trimmed = input.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_SIBLING_PROFESSION_LENGTH) return false;
+  // Reject leading or trailing whitespace on the original input
+  if (input !== trimmed) return false;
+  // Letters, digits, spaces, hyphens, apostrophes, ampersands, and periods
+  return /^[A-Za-z0-9 \-'&.]+$/.test(trimmed);
+}
+
 // ── Education credentials — year fields ───────────────────────────────────────
 
 /**
