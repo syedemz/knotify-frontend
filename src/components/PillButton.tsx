@@ -13,6 +13,21 @@ import type { Theme } from "@/theme/theme";
 export type PillButtonVariant = "default" | "selected";
 
 /**
+ * Border weight variant for unselected pills.
+ *
+ * - `'default'`: 1px border using `border.strong` (#D4D7DC). Standard weight,
+ *   suitable for most contexts.
+ * - `'subtle'`: `StyleSheet.hairlineWidth` border using `border.default`
+ *   (#E8EAED). Near-invisible on white backgrounds — used on Page 25
+ *   personality traits to match the Muzz reference design.
+ *
+ * Has no effect on selected pills (the accent fill overrides the border).
+ *
+ * @default 'default'
+ */
+export type PillButtonBorderVariant = "default" | "subtle";
+
+/**
  * Props for the `PillButton` component.
  */
 export interface PillButtonProps {
@@ -31,13 +46,41 @@ export interface PillButtonProps {
    */
   variant?: PillButtonVariant;
   /**
+   * Controls the border weight and color of unselected pills.
+   *
+   * Use `'subtle'` when the pill sits on a white background and the design
+   * calls for near-invisible hairline borders (e.g., Page 25 personality
+   * traits). Has no effect when `variant === 'selected'`.
+   *
+   * @default 'default'
+   */
+  borderVariant?: PillButtonBorderVariant;
+  /**
    * When true, the pill is non-interactive.
    *
    * @default false
    */
   disabled?: boolean;
   /**
-   * Optional icon rendered to the left of the label.
+   * Optional emoji string rendered to the left of the label.
+   *
+   * Prefer this over `iconLeft` when the icon is a Unicode emoji — the
+   * component renders it internally as a `Text` element so callers (screens)
+   * do not need to import React Native primitives directly.
+   *
+   * When both `icon` and `iconLeft` are provided, `icon` takes precedence.
+   *
+   * @example
+   * ```tsx
+   * <PillButton label="Adventurous" icon="👰" onPress={() => {}} />
+   * ```
+   */
+  icon?: string;
+  /**
+   * Optional React node rendered to the left of the label.
+   *
+   * Use when the icon is a custom component (e.g., an SVG icon). For emoji,
+   * prefer the `icon` string prop instead.
    */
   iconLeft?: React.ReactNode;
   /**
@@ -65,15 +108,25 @@ export function PillButton({
   label,
   onPress,
   variant = "default",
+  borderVariant = "default",
   disabled = false,
+  icon,
   iconLeft,
   accessibilityLabel,
 }: PillButtonProps) {
   const theme = useTheme();
   const styles = useMemo(
-    () => createStyles(theme, variant),
-    [theme, variant],
+    () => createStyles(theme, variant, borderVariant),
+    [theme, variant, borderVariant],
   );
+
+  // `icon` string takes precedence over `iconLeft` node when both are supplied.
+  const leadingSlot: React.ReactNode =
+    icon !== undefined ? (
+      <RNText style={styles.iconEmoji}>{icon}</RNText>
+    ) : iconLeft !== undefined ? (
+      iconLeft
+    ) : null;
 
   return (
     <Pressable
@@ -89,7 +142,7 @@ export function PillButton({
       accessibilityState={{ disabled, selected: variant === "selected" }}
     >
       <View style={styles.row}>
-        {iconLeft !== undefined && <View style={styles.iconLeft}>{iconLeft}</View>}
+        {leadingSlot !== null && <View style={styles.iconLeft}>{leadingSlot}</View>}
         <RNText style={[styles.label, disabled && styles.labelDisabled]}>
           {label}
         </RNText>
@@ -98,18 +151,30 @@ export function PillButton({
   );
 }
 
-function createStyles(theme: Theme, variant: PillButtonVariant) {
+function createStyles(
+  theme: Theme,
+  variant: PillButtonVariant,
+  borderVariant: PillButtonBorderVariant,
+) {
   const isSelected = variant === "selected";
+  const borderWidth = isSelected
+    ? 1
+    : borderVariant === "subtle"
+      ? StyleSheet.hairlineWidth
+      : 1;
+  const borderColor = isSelected
+    ? theme.colors.accent.primary
+    : borderVariant === "subtle"
+      ? theme.colors.border.default
+      : theme.colors.border.strong;
 
   return StyleSheet.create({
     pill: {
       backgroundColor: isSelected
         ? theme.colors.accent.primary
         : "transparent",
-      borderWidth: 1,
-      borderColor: isSelected
-        ? theme.colors.accent.primary
-        : theme.colors.border.strong,
+      borderWidth,
+      borderColor,
       borderRadius: theme.radii.pill,
       paddingVertical: theme.spacing.xs,
       paddingHorizontal: theme.spacing.md,
@@ -138,6 +203,10 @@ function createStyles(theme: Theme, variant: PillButtonVariant) {
     },
     iconLeft: {
       marginRight: theme.spacing.xxs,
+    },
+    iconEmoji: {
+      fontSize: 16,
+      lineHeight: 20,
     },
   });
 }

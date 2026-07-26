@@ -1,16 +1,17 @@
 /**
- * Wiring tests for Page25PersonalityTraitsScreen (story 9.1).
+ * Wiring tests for Page25PersonalityTraitsScreen (story 9.1 + fix/page-25-personality-pill-layout).
  *
  * AC coverage:
- * (i)   Mount with empty preferences → no pills selected, Continue disabled, Skip enabled.
- * (ii)  Tap 1 pill → Continue shows "Select (1)", enabled.
+ * (i)   Mount with empty preferences → no pills selected, Continue ENABLED with "Continue" label,
+ *        no Skip button present.
+ * (ii)  Tap 1 pill → Continue shows "Select (1)", still enabled.
  * (iii) Tap 5 pills → 6th tap rejected (cap-exceeded toast shown).
  * (iv)  Tap Continue with 3 traits → writes preferences: { personalityTraits: [...3 traits] },
  *        advances to Page27.
- * (v)   Tap Skip → does not write, advances to Page27.
+ * (v)   Tap Continue with 0 traits → does NOT write, advances to Page27.
  * (vi)  Re-visit with 3 traits in draft → 3 pills pre-selected, Continue "Select (3)",
  *        no auto-advance.
- * (vii) Re-visit and deselect all → Continue disabled at 0, Skip still enabled.
+ * (vii) Re-visit and deselect all → Continue shows "Continue" and is still enabled.
  */
 
 import React from 'react';
@@ -166,8 +167,8 @@ beforeEach(() => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC (i): Mount with empty preferences → no pills selected, Continue disabled,
-//          Skip enabled
+// AC (i): Mount with empty preferences → no pills selected, Continue ENABLED,
+//          label "Continue", no Skip button present
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('Page25PersonalityTraitsScreen — AC (i): empty mount', () => {
@@ -197,16 +198,19 @@ describe('Page25PersonalityTraitsScreen — AC (i): empty mount', () => {
     expect(pill.props.accessibilityState?.selected).not.toBe(true);
   });
 
-  it('given a fresh mount, then the Continue button is disabled (no selection)', () => {
+  it('given a fresh mount, then the Continue button is enabled with label "Continue"', () => {
     renderScreen();
-    // Continue is disabled at 0 selections — button label shows "Select (0)"
-    const continueBtn = screen.getByLabelText('Select (0)');
-    expect(continueBtn.props.accessibilityState?.disabled).toBe(true);
+    const continueLabel = t('onboarding.personalityTraits.continueLabelEmpty');
+    const continueBtn = screen.getByLabelText(continueLabel);
+    expect(continueBtn.props.accessibilityState?.disabled).not.toBe(true);
   });
 
-  it('given a fresh mount, then the Skip button is rendered and enabled', () => {
+  it('given a fresh mount, then no Skip button is present', () => {
     renderScreen();
-    expect(screen.getByLabelText(t('onboarding.personalityTraits.skip'))).toBeTruthy();
+    // The skip label key no longer exists — querying by any skip-related text
+    // should return nothing.
+    expect(screen.queryByLabelText('Skip')).toBeNull();
+    expect(screen.queryByLabelText('چھوڑ دیں')).toBeNull();
   });
 
   it('given a fresh mount, then update is NOT called on mount', () => {
@@ -226,7 +230,7 @@ describe('Page25PersonalityTraitsScreen — AC (i): empty mount', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC (ii): Tap 1 pill → Continue shows "Select (1)", enabled
+// AC (ii): Tap 1 pill → Continue shows "Select (1)", still enabled
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('Page25PersonalityTraitsScreen — AC (ii): tap 1 pill', () => {
@@ -365,35 +369,29 @@ describe('Page25PersonalityTraitsScreen — AC (iv): Continue tap with 3 traits'
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC (v): Tap Skip → does NOT write, advances to Page27
+// AC (v): Tap Continue with 0 traits → does NOT write, still advances to Page27
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('Page25PersonalityTraitsScreen — AC (v): Skip tap', () => {
-  it('given a tap on Skip, then update is NOT called', () => {
+describe('Page25PersonalityTraitsScreen — AC (v): Continue tap with 0 traits', () => {
+  it('given 0 traits selected, when Continue is tapped, then update is NOT called', () => {
     renderScreen();
-    fireEvent.press(screen.getByLabelText(t('onboarding.personalityTraits.skip')));
+    const continueLabel = t('onboarding.personalityTraits.continueLabelEmpty');
+    fireEvent.press(screen.getByLabelText(continueLabel));
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('given a tap on Skip, then advance(27) is called', () => {
+  it('given 0 traits selected, when Continue is tapped, then advance(27) is called', () => {
     renderScreen();
-    fireEvent.press(screen.getByLabelText(t('onboarding.personalityTraits.skip')));
+    const continueLabel = t('onboarding.personalityTraits.continueLabelEmpty');
+    fireEvent.press(screen.getByLabelText(continueLabel));
     expect(mockAdvance).toHaveBeenCalledWith(27);
   });
 
-  it('given a tap on Skip, then navigate to Page27RelationScreen is called', () => {
+  it('given 0 traits selected, when Continue is tapped, then navigate to Page27RelationScreen is called', () => {
     const { nav } = renderScreen();
-    fireEvent.press(screen.getByLabelText(t('onboarding.personalityTraits.skip')));
+    const continueLabel = t('onboarding.personalityTraits.continueLabelEmpty');
+    fireEvent.press(screen.getByLabelText(continueLabel));
     expect(nav.navigate).toHaveBeenCalledWith('Page27RelationScreen');
-  });
-
-  it('given 2 traits selected and then Skip is tapped, then update is NOT called', () => {
-    renderScreen();
-    fireEvent.press(screen.getByLabelText('Adventurous'));
-    fireEvent.press(screen.getByLabelText('Creative'));
-    mockUpdate.mockClear();
-    fireEvent.press(screen.getByLabelText(t('onboarding.personalityTraits.skip')));
-    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
 
@@ -446,34 +444,33 @@ describe('Page25PersonalityTraitsScreen — AC (vi): re-visit with saved traits'
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC (vii): Re-visit and deselect all → Continue disabled at 0
+// AC (vii): Re-visit and deselect all → Continue shows "Continue" and is enabled
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('Page25PersonalityTraitsScreen — AC (vii): deselect all on re-visit', () => {
-  it('given 1 saved trait, when that trait is deselected, then Continue is disabled', () => {
-    renderScreen({ preferences: { personalityTraits: ['Adventurous'] } });
-    // Deselect the saved trait
-    fireEvent.press(screen.getByLabelText('Adventurous'));
-    // Continue label shows "Select (0)" and is disabled
-    const continueBtn = screen.getByLabelText('Select (0)');
-    expect(continueBtn.props.accessibilityState?.disabled).toBe(true);
-  });
-
-  it('given 1 saved trait deselected, then Skip is still enabled', () => {
+  it('given 1 saved trait, when that trait is deselected, then Continue label reverts to "Continue"', () => {
     renderScreen({ preferences: { personalityTraits: ['Adventurous'] } });
     fireEvent.press(screen.getByLabelText('Adventurous'));
-    // Skip is still accessible and not disabled
-    const skipBtn = screen.getByLabelText(t('onboarding.personalityTraits.skip'));
-    expect(skipBtn).toBeTruthy();
+    const continueLabel = t('onboarding.personalityTraits.continueLabelEmpty');
+    expect(screen.getByLabelText(continueLabel)).toBeTruthy();
   });
 
-  it('given all deselected, when Skip is tapped, then advance fires to page 27', () => {
+  it('given 1 saved trait deselected, then Continue is still enabled', () => {
+    renderScreen({ preferences: { personalityTraits: ['Adventurous'] } });
+    fireEvent.press(screen.getByLabelText('Adventurous'));
+    const continueLabel = t('onboarding.personalityTraits.continueLabelEmpty');
+    const continueBtn = screen.getByLabelText(continueLabel);
+    expect(continueBtn.props.accessibilityState?.disabled).not.toBe(true);
+  });
+
+  it('given all deselected, when Continue is tapped, then advance fires to page 27 without writing', () => {
     const { nav } = renderScreen({ preferences: { personalityTraits: ['Adventurous'] } });
     fireEvent.press(screen.getByLabelText('Adventurous'));
-    fireEvent.press(screen.getByLabelText(t('onboarding.personalityTraits.skip')));
+    const continueLabel = t('onboarding.personalityTraits.continueLabelEmpty');
+    fireEvent.press(screen.getByLabelText(continueLabel));
     expect(mockAdvance).toHaveBeenCalledWith(27);
     expect(nav.navigate).toHaveBeenCalledWith('Page27RelationScreen');
-    // update NOT called (Skip does not write)
+    // update NOT called — 0 selections skips draft write
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 });

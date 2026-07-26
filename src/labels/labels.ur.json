@@ -315,7 +315,7 @@
       "title": "آپ اپنی شخصیت کو کیسے بیان کریں گے؟",
       "subtitle": "اپنی شخصیت کو ظاہر کرنے کے لیے 5 خصوصیات تک منتخب کریں!",
       "continueLabel": "منتخب کریں ({count})",
-      "skip": "چھوڑ دیں",
+      "continueLabelEmpty": "جاری رکھیں",
       "capExceededToast": "آپ 5 خصوصیات تک منتخب کر سکتے ہیں",
       "options": {
         "Active Listener": "فعال سننے والا",
