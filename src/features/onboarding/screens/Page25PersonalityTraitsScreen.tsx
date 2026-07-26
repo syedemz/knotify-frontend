@@ -7,13 +7,10 @@
  * traits") and rejects the tap.
  *
  * **Continue button:**
- * Enabled when N >= 1 selected traits. Label reads "Select (N)". On tap,
- * writes `preferences: { personalityTraits: [...] }` to the draft and
- * navigates to `Page27RelationScreen` (skipping the unused page 26 slot).
- *
- * **Skip button:**
- * Below the Continue button. On tap, does NOT write preferences to the
- * draft — left untouched. Advances to `Page27RelationScreen`.
+ * Always enabled (regardless of selection count). When N === 0, label reads
+ * "Continue" and no draft write occurs. When N >= 1, label reads "Select (N)"
+ * and `preferences: { personalityTraits: [...] }` is written to the draft
+ * before navigating to `Page27RelationScreen`.
  *
  * **Re-visit (back-nav from page 27):**
  * On mount the screen reads `draft.fields.preferences?.personalityTraits`
@@ -21,9 +18,9 @@
  * auto-advance from firing on mount.
  *
  * **Auto-advance rule:**
- * Navigation to `Page27RelationScreen` fires ONLY from the Continue or
- * Skip tap handlers — never from a `useEffect` watching state. This
- * prevents back-nav rubber-banding.
+ * Navigation to `Page27RelationScreen` fires ONLY from the Continue tap
+ * handler — never from a `useEffect` watching state. This prevents
+ * back-nav rubber-banding.
  *
  * @module features/onboarding/screens/Page25PersonalityTraitsScreen
  */
@@ -33,7 +30,6 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import {
-  Button,
   Heading,
   PillButton,
   Screen,
@@ -48,11 +44,19 @@ import { useTheme } from '@/theme';
 import type { Theme } from '@/theme/theme';
 import { useOnboardingDraft } from '../hooks/useOnboardingDraft';
 import type { OnboardingStackParamList } from '@/navigation/types';
+import iconMap from '@/config/options/preferences1Icons.json';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 /** Maximum number of personality traits the user may select. */
 const MAX_TRAITS = 5;
+
+/**
+ * Typed emoji icon map keyed by the same trait strings used in
+ * `options.preferences1`. Sourced from `preferences1Icons.json` so the DB
+ * key (English trait string) is never changed.
+ */
+const TRAIT_ICONS = iconMap as Record<string, string>;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -63,10 +67,11 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Page25Preferences
 /**
  * Onboarding page 25: personality traits multi-select.
  *
- * Pill grid of 57 traits with a 5-trait selection cap. On Continue, writes
+ * Pill grid of 57 traits with a 5-trait selection cap. Continue is always
+ * enabled. With N >= 1 selected, tapping Continue writes
  * `preferences: { personalityTraits: [...] }` to the draft and advances to
- * page 27. On Skip, advances without writing. Re-visit pre-selects previously
- * saved traits without auto-advancing.
+ * page 27. With N === 0, tapping Continue advances without writing. Re-visit
+ * pre-selects previously saved traits without auto-advancing.
  */
 export function Page25PersonalityTraitsScreen({ navigation }: Props): React.JSX.Element {
   const { update, advance, getDraft } = useOnboardingDraft();
@@ -151,28 +156,19 @@ export function Page25PersonalityTraitsScreen({ navigation }: Props): React.JSX.
   /**
    * Handles the Continue button tap.
    *
-   * Writes `preferences: { personalityTraits: [...] }` to the draft and
-   * advances to page 27. Continue is only enabled when N >= 1 trait is
-   * selected — this handler is only called in that state.
+   * When N >= 1 traits are selected, writes
+   * `preferences: { personalityTraits: [...] }` to the draft. When N === 0,
+   * skips the write (draft is left unchanged). Always advances to page 27.
    */
   const handleContinue = useCallback((): void => {
-    update({
-      preferences: { personalityTraits: Array.from(selected) },
-    });
+    if (selected.size > 0) {
+      update({
+        preferences: { personalityTraits: Array.from(selected) },
+      });
+    }
     advance(27);
     navigation.navigate('Page27RelationScreen');
   }, [selected, update, advance, navigation]);
-
-  /**
-   * Handles the Skip button tap.
-   *
-   * Does NOT write preferences to the draft — any previously-saved value
-   * stays; if none existed it remains null. Advances to page 27.
-   */
-  const handleSkip = useCallback((): void => {
-    advance(27);
-    navigation.navigate('Page27RelationScreen');
-  }, [advance, navigation]);
 
   /**
    * Dismisses the cap-exceeded Snackbar toast.
@@ -184,17 +180,19 @@ export function Page25PersonalityTraitsScreen({ navigation }: Props): React.JSX.
   // ── Derived values ────────────────────────────────────────────────────────────
 
   const selectedCount = selected.size;
-  const isContinueEnabled = selectedCount >= 1;
 
   /**
-   * Continue label reads "Select (N)" where N is the current selection count.
-   * Uses string replacement rather than `t()` interpolation because the
-   * labels bundle uses `{count}` as a placeholder.
+   * Continue label:
+   * - 0 selected → "Continue" (plain, from `continueLabelEmpty` label key)
+   * - N >= 1     → "Select (N)" (from `continueLabel` with `{count}` replaced)
    */
-  const continueLabel = t('onboarding.personalityTraits.continueLabel').replace(
-    '{count}',
-    String(selectedCount),
-  );
+  const continueLabel =
+    selectedCount === 0
+      ? t('onboarding.personalityTraits.continueLabelEmpty')
+      : t('onboarding.personalityTraits.continueLabel').replace(
+          '{count}',
+          String(selectedCount),
+        );
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -212,36 +210,27 @@ export function Page25PersonalityTraitsScreen({ navigation }: Props): React.JSX.
           </Text>
         </View>
 
-        {/* Pill grid — two-column wrapping layout */}
+        {/* Pill grid — natural flex-wrap, content-width pills */}
         <View style={styles.pillGrid}>
           {options.preferences1.map((trait) => (
-            <View key={trait} style={styles.pillWrapper}>
-              <PillButton
-                label={trait}
-                variant={selected.has(trait) ? 'selected' : 'default'}
-                onPress={() => handlePillPress(trait)}
-                accessibilityLabel={trait}
-              />
-            </View>
+            <PillButton
+              key={trait}
+              label={trait}
+              variant={selected.has(trait) ? 'selected' : 'default'}
+              borderVariant="subtle"
+              onPress={() => handlePillPress(trait)}
+              accessibilityLabel={trait}
+              icon={TRAIT_ICONS[trait]}
+            />
           ))}
         </View>
       </ScrollView>
 
-      {/* Footer — Continue button */}
+      {/* Footer — Continue button (always enabled) */}
       <WizardFooter
         onContinue={handleContinue}
-        disabled={!isContinueEnabled}
         continueLabel={continueLabel}
       />
-      {/* Skip button — does NOT write preferences; advances to page 27 */}
-      <View style={styles.skipWrapper}>
-        <Button
-          label={t('onboarding.personalityTraits.skip')}
-          onPress={handleSkip}
-          variant="ghost"
-          accessibilityLabel={t('onboarding.personalityTraits.skip')}
-        />
-      </View>
 
       {/* Cap-exceeded toast */}
       <Snackbar
@@ -270,16 +259,6 @@ function createStyles(theme: Theme) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.sm,
-    },
-    pillWrapper: {
-      // Each pill takes roughly half the available width.
-      // Using flexBasis rather than width% so the pill's natural content
-      // width is respected when labels are short.
-      flexBasis: '47%',
-    },
-    skipWrapper: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.lg,
     },
   });
 }

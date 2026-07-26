@@ -30,7 +30,7 @@ export { IconButton } from "./IconButton";
 export type { IconButtonProps, IconButtonSize } from "./IconButton";
 
 export { PillButton } from "./PillButton";
-export type { PillButtonProps, PillButtonVariant } from "./PillButton";
+export type { PillButtonProps, PillButtonVariant, PillButtonBorderVariant } from "./PillButton";
 
 export { TouchableArea } from "./TouchableArea";
 export type { TouchableAreaProps } from "./TouchableArea";
