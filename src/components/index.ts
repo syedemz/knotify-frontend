@@ -148,3 +148,7 @@ export type { SelectionTileProps } from "./SelectionTile";
 // Catalog — country picker (story 6.1)
 export { CountryPicker } from "./CountryPicker";
 export type { CountryPickerProps } from "./CountryPicker";
+
+// Catalog — pill pick-one group (story 8.1)
+export { PillPickOneGroup } from "./PillPickOneGroup";
+export type { PillPickOneGroupProps } from "./PillPickOneGroup";

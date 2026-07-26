@@ -286,6 +286,30 @@
       "motherRetired": {
         "prompt": "Is your mother retired?"
       }
+    },
+    "marriageTimeline": {
+      "title": "What are your intentions for marriage?",
+      "primary": {
+        "label": "I’d like to know someone on knotify for"
+      },
+      "secondary": {
+        "label": "I’d like to be married within"
+      }
+    },
+    "ownReligiousLevel": {
+      "title": "How religious are you?"
+    },
+    "partnersReligiousLevel": {
+      "title": "How Religious would you like your partner to be?"
+    },
+    "maritalStatus": {
+      "title": "What is your marital status?",
+      "hasChildren": {
+        "label": "Do you have children?"
+      }
+    },
+    "moveAbroad": {
+      "title": "Would you be willing to move abroad after marriage?"
     }
   },
   "siblingForm": {

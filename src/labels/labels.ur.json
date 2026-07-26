@@ -286,6 +286,30 @@
       "motherRetired": {
         "prompt": "کیا آپ کی والدہ ریٹائرڈ ہیں؟"
       }
+    },
+    "marriageTimeline": {
+      "title": "آپ شادی کے بارے میں کیا سوچتے ہیں؟",
+      "primary": {
+        "label": "میں کنٹیفائی پر کسی کو جاننا چاہتا ہوں"
+      },
+      "secondary": {
+        "label": "میں اس عرصے میں شادی کرنا چاہتا ہوں"
+      }
+    },
+    "ownReligiousLevel": {
+      "title": "آپ کتنے مذہبی ہیں؟"
+    },
+    "partnersReligiousLevel": {
+      "title": "آپ اپنے ساتھی کو کتنا مذہبی دیکھنا چاہتے ہیں؟"
+    },
+    "maritalStatus": {
+      "title": "آپ کی ازدواجی حیثیت کیا ہے؟",
+      "hasChildren": {
+        "label": "کیا آپ کے بچے ہیں؟"
+      }
+    },
+    "moveAbroad": {
+      "title": "کیا آپ شادی کے بعد بیرون ملک جانے کے لیے تیار ہیں؟"
     }
   },
   "siblingForm": {

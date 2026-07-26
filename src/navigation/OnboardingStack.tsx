@@ -2,9 +2,9 @@
  * Onboarding wizard navigator.
  *
  * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
- * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-19
- * are real screens (phases 2-7, B1-B6 story 7.2); pages 20-31 remain as
- * `EmptyState` placeholders — real screens land in phases 7-11 (B6-B10).
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-24
+ * are real screens (phases 2-8, B1-B7 story 8.5); pages 25-31 remain as
+ * `EmptyState` placeholders — real screens land in phases 9-11 (B8-B10).
  *
  * `useCheckpointResume` is wired as `initialRouteName` so users who resume
  * an in-progress wizard skip already-completed pages.
@@ -42,6 +42,11 @@ import { Page16ResidenceCityScreen as Page16ResidenceCityScreenImpl } from "@/fe
 import { Page17FamilyResidenceScreen as Page17FamilyResidenceScreenImpl } from "@/features/onboarding/screens/Page17FamilyResidenceScreen";
 import { Page18ParentsScreen as Page18ParentsScreenImpl } from "@/features/onboarding/screens/Page18ParentsScreen";
 import { Page19SiblingsScreen as Page19SiblingsScreenImpl } from "@/features/onboarding/screens/Page19SiblingsScreen";
+import { Page20MarriageTimelineScreen as Page20MarriageTimelineScreenImpl } from "@/features/onboarding/screens/Page20MarriageTimelineScreen";
+import { Page21OwnReligiousLevelScreen as Page21OwnReligiousLevelScreenImpl } from "@/features/onboarding/screens/Page21OwnReligiousLevelScreen";
+import { Page22PartnersReligiousLevelScreen as Page22PartnersReligiousLevelScreenImpl } from "@/features/onboarding/screens/Page22PartnersReligiousLevelScreen";
+import { Page23MaritalStatusScreen as Page23MaritalStatusScreenImpl } from "@/features/onboarding/screens/Page23MaritalStatusScreen";
+import { Page24MoveAbroadScreen as Page24MoveAbroadScreenImpl } from "@/features/onboarding/screens/Page24MoveAbroadScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -98,11 +103,16 @@ const Page17FamilyResidenceScreen = Page17FamilyResidenceScreenImpl;
 const Page18ParentsScreen = Page18ParentsScreenImpl;
 // Page 19: real screen landed in phase 7 (B6, story 7.2).
 const Page19SiblingsScreen = Page19SiblingsScreenImpl;
-const Page20MarriageTimelineScreen = makePlaceholderScreen("Page20MarriageTimelineScreen");
-const Page21OwnReligiousLevelScreen = makePlaceholderScreen("Page21OwnReligiousLevelScreen");
-const Page22PartnersReligiousLevelScreen = makePlaceholderScreen("Page22PartnersReligiousLevelScreen");
-const Page23MaritalStatusScreen = makePlaceholderScreen("Page23MaritalStatusScreen");
-const Page24MoveAbroadScreen = makePlaceholderScreen("Page24MoveAbroadScreen");
+// Page 20: real screen landed in phase 8 (B7, story 8.1).
+const Page20MarriageTimelineScreen = Page20MarriageTimelineScreenImpl;
+// Page 21: real screen landed in phase 8 (B7, story 8.2).
+const Page21OwnReligiousLevelScreen = Page21OwnReligiousLevelScreenImpl;
+// Page 22: real screen landed in phase 8 (B7, story 8.3).
+const Page22PartnersReligiousLevelScreen = Page22PartnersReligiousLevelScreenImpl;
+// Page 23: real screen landed in phase 8 (B7, story 8.4).
+const Page23MaritalStatusScreen = Page23MaritalStatusScreenImpl;
+// Page 24: real screen landed in phase 8 (B7, story 8.5).
+const Page24MoveAbroadScreen = Page24MoveAbroadScreenImpl;
 const Page25Preferences1Screen = makePlaceholderScreen("Page25Preferences1Screen");
 const Page26Preferences2Screen = makePlaceholderScreen("Page26Preferences2Screen");
 const Page27RelationScreen = makePlaceholderScreen("Page27RelationScreen");
@@ -128,8 +138,8 @@ const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen")
  * - `'firstCheckpoint'`  → `Page09ReligionSubsectScreen`
  * - `null`               → `Page01WelcomeScreen`
  *
- * Pages 1-19 use real screens (phases 2-7, story 7.2). Pages 20-31 are
- * `EmptyState` placeholders; real screens land in phases 7-11.
+ * Pages 1-24 use real screens (phases 2-8, stories 8.1-8.5). Pages 25-31 are
+ * `EmptyState` placeholders; real screens land in phases 9-11.
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
@@ -167,7 +177,7 @@ function OnboardingStackNavigator(): React.JSX.Element | null {
       <Stack.Screen name="Page03ConfirmCodeScreen" component={Page03ConfirmCodeScreen} />
       <Stack.Screen name="Page04GetStartedScreen" component={Page04GetStartedScreen} />
 
-      {/* Pages 5-18: real screens; EmptyState placeholders for 19-31 */}
+      {/* Pages 5-20: real screens; EmptyState placeholders for 21-31 */}
       <Stack.Screen name="Page05SexScreen" component={Page05SexScreen} />
       <Stack.Screen name="Page06NameScreen" component={Page06NameScreen} />
       <Stack.Screen name="Page07BirthdayScreen" component={Page07BirthdayScreen} />

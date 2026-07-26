@@ -1,518 +1,309 @@
-================================================================================
-PHASE 7 — CONCERNS EXPLAINED IN PLAIN ENGLISH
-================================================================================
+I have a few questions: What happens if in the education level section, i pick class 10th, what happens to other higher education fields,
+Are they kept empty or with some default values, like what would be the value of College Name, Higher Secondary School etc
 
-Phase 7 builds pages 18 and 19 of the onboarding wizard:
-  - Page 18: type in your parents' info (father's name, father's job, is he
-             retired?; same three for mother — 6 fields total)
-  - Page 19: how many siblings do you have (0-4), then fill in a small form
-             for each one (name, gender, age, marital status, profession)
 
-I audited the plan against the code we actually have today and found 14
-issues. Item 1 is a hard blocker (the code will not type-check as written).
-Items 2-7 are ambiguities where the plan says something like "sanity rule"
-or "immediately" without saying what that actually means — if we don't
-decide, the subagent will guess, and its guess may not match what you want.
-Items 8-14 are drift/reminders (mostly non-blocking).
+when i close the app, and resume
+it, the parents section is filled with what i have entered previously
+why does the siblings section get reset. Also if i set the sibling number to 0, what will be
+the value saved for siblings field
 
-For each one you get three sections:
-
-  WHAT THE PLAN SAYS  — the exact instruction in the PRD
-  WHY IT MATTERS      — what will happen if we don't decide
-  YOUR CHOICES        — the options I see, with the recommended one marked
-
-Just tell me the number and letter for each one (e.g., "1: A, 2: B, 3: A")
-and I'll update the plan accordingly.
+where is the page which captures phone nunber of the user, was it missed, or is it yet to be implemented.
 
 
 ================================================================================
-BLOCKERS — things that stop the phase from being buildable
+PHASE 8 BRAINSTORM — CONCERNS FOR YOU TO RULE ON (2026-07-26)
 ================================================================================
 
---------------------------------------------------------------------------------
-ISSUE 1 — SEVERITY: BLOCKER
-    "The sibling record has 3 fields; the plan wants us to fill 5"
---------------------------------------------------------------------------------
+Phase 8 covers pages 20-24: marriage timeline, own religious level, partner's
+religious level, marital status (with a reactive children question), and
+willingness to move abroad. The PRD is written. Before I hand it off to the
+frontend developer subagent, I did a sanity check against the current code
+and found seven concerns. The first two block the build; the rest are just
+things that will surprise the subagent unless you decide up front.
 
-WHAT THE PLAN SAYS
-    Story 7.2 says each sibling entry captures five things:
-        name, gender, sibling_age, marital_status, profession
-
-WHY IT MATTERS
-    Think of the app's "sibling notebook" as a form with only 3 lines:
-        Line 1: Name
-        Line 2: Age
-        Line 3: Marital status
-    The plan is telling us to write "Gender" and "Profession" on the form,
-    but there are no lines for them. The form has to be redesigned first —
-    someone has to add two new lines before we can fill them in.
-
-    That "form" is a TypeScript type called `SiblingDraft` in
-    `src/features/onboarding/draftSchema.ts`. Right now it only has name,
-    age, and maritalStatus. As long as the type is missing fields, the code
-    will not compile if you try to write a `gender` or `profession` value
-    into it. This is a hard stop — the phase cannot ship until we fix it.
-
-    There's a secondary wrinkle. The draft file has a "schema version"
-    number stamped on it (currently version 1). If we add two new fields,
-    that's a shape change, and the convention says we should bump it to
-    version 2. The doc comment on the file explicitly says:
-
-        "When bumping, decide before merge whether to migrate, discard,
-         or prompt."
-
-    Translation: if a real user has a half-finished draft saved on their
-    phone under the old shape (version 1) and the app updates to a new
-    shape (version 2), what happens when they open the app?
-
-      - "migrate" = automatically add the two new empty fields to their
-                    saved draft and keep going where they left off
-      - "discard" = throw their saved draft away and send them back to
-                    page 1 to start over
-      - "prompt"  = show them a dialog: "your saved progress can't be
-                    loaded, start over?"
-
-YOUR CHOICES
-    A) [RECOMMENDED] Extend the type inside story 7.2 (add gender +
-       profession fields) AND bump schemaVersion 1 → 2 with the DISCARD
-       policy. Reason: this is pre-launch. Nobody is on the real app yet.
-       Discard is 5 lines of code; migrate is 30+ lines you'll delete
-       before launch anyway.
-    B) Extend the type AND bump schemaVersion with the MIGRATE policy.
-       More work, no user-visible benefit right now.
-    C) Extend the type but DO NOT bump schemaVersion. Fastest, but breaks
-       the convention documented in the file itself. If we bump later
-       (which we will, for real launch), we'll owe a proper migration
-       policy then.
-    D) Drop `gender` and `profession` from story 7.2 AC-2. Simplest, but
-       the user then can't record their siblings' gender or profession
-       anywhere — matchmaking-quality data lost.
-
-  ANSWER: Option A
-
-
-================================================================================
-AMBIGUITIES — the plan is vague and the subagent will have to guess
-================================================================================
+Each concern below has: (1) what's happening in plain English, (2) why it's a
+problem, (3) an analogy to make it concrete, and (4) the options you can pick
+from. Read all seven, then tell me which option you want for each and I'll
+either amend the PRD myself or hand your decisions straight to the subagent.
 
 --------------------------------------------------------------------------------
-ISSUE 2 — SEVERITY: HIGH
-    "What does Page 19 look like when you come BACK to it?"
+CONCERN #1 — "Do you have children?" and "Willing to move abroad?" want to
+             save the word "YES" or "NO", but the backend expects true/false
+             (BLOCKS THE BUILD)
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS
-    Page 19 has three states:
-      - Initial:  "How many siblings do you have?" (a number input)
-      - Filling:  N sibling cards visible, fill each one in
-      - Complete: All valid, Continue button lit up
+What's happening:
 
-    The plan describes moving forward through those states. It says
-    nothing about what happens when you go BACKWARD to the page.
+On page 23, if the user picks "Divorced" or "Widowed", we ask "Do you have
+children?" and offer two buttons: YES / NO. On page 24, we ask "Would you be
+willing to move abroad after marriage?", again with YES / NO.
 
-WHY IT MATTERS
-    Imagine you filled out a paper form: "I have 3 siblings" → then filled
-    in all 3 boxes → moved to the next page. Now you tap the back arrow.
-    You're back on the siblings page. What do you see?
+The PRD says: when the user taps YES, save the text "YES" into the field
+called `has_children` (page 23) or `move_abroad` (page 24). When they tap NO,
+save the text "NO".
 
-      - A blank number input? (Feels broken — "wait, I already did this")
-      - The 3 filled-in boxes ready to edit? (Matches expectation)
-      - A "you already have 3 siblings, edit them?" prompt? (Extra tap)
+But if I go read the file that defines what shape those fields have, they are
+declared as true/false fields — not text fields. So writing the word "YES"
+into a true/false slot is like trying to slide a square peg into a round hole.
+TypeScript (the compiler) will refuse to build the app.
 
-    Every other page in the wizard re-hydrates from your saved data when
-    you back-nav. Page 13 (education credentials) is the closest cousin —
-    it fills all the fields back in from the draft. Page 19 should
-    probably do the same, but the plan doesn't say so.
+Analogy:
 
-YOUR CHOICES
-    A) [RECOMMENDED] On mount, if the draft already has siblings saved:
-       open in Filling state with the cards pre-populated. If the count
-       was 0 (user explicitly said "no siblings"): open in Complete state
-       with Continue lit. Only open in Initial state if the user has
-       never been to this page before.
-    B) Always open in Initial state (blank count). User has to redo the
-       count and re-fill every time they back-nav. Simple, annoying.
-    C) Open in a hybrid state: show the count as a read-only badge
-       ("You said: 3 siblings") plus the filled cards. Extra design work.
+Imagine a form at the DMV that has a checkbox labeled "Are you an organ
+donor?" The checkbox can only be checked or unchecked — it's a yes/no
+switch. The PRD is telling the developer to write the actual English letters
+"Y-E-S" onto the checkbox instead of just checking it. The checkbox has no
+place for letters. The form rejects it.
 
-ANSWER: Go with Option A
+Meanwhile in phase 7 (parents page, "Is your father retired?"), a similar
+YES/NO question worked fine because the `father_retired` field was
+specifically declared as a text field — so writing "YES" and "NO" as text was
+fine there. Two fields, same question style, different underlying type.
+That's the inconsistency biting us here.
 
+Options:
 
+(a) COERCE AT SAVE TIME (recommended — smallest change). When the user taps
+    YES on the children question, save `true` into `has_children`. When they
+    tap NO, save `false`. Same for `move_abroad`. On page revisit, we read
+    the boolean back and light up the correct button. The user still sees
+    YES/NO on screen; only the internal storage changes.
+
+(b) WIDEN THE FIELD TYPES. Change `has_children` and `move_abroad` in
+    `UserProfile.ts` from boolean to text, matching the phase-7 precedent.
+    This is bigger — it touches other files, other tests, and might
+    contradict what the backend schema actually stores. Only pick this if
+    you know the backend stores text and the type file is currently wrong.
+
+(c) DO BOTH — pick option (a) at the code level AND amend the PRD wording so
+    it no longer says the misleading `has_children='NO'`. Same effort as (a)
+    but leaves cleaner documentation.
+
+ANSWER: go with Option C
 --------------------------------------------------------------------------------
-ISSUE 3 — SEVERITY: HIGH
-    "What counts as a valid 'profession' for a sibling?"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS
-    Story 7.2 AC-2:
-        `profession (max 35, sanity rule)`
-
-WHY IT MATTERS
-    "Sanity rule" is not an instruction — it's a hand-wave. There are two
-    kinds of validators in the codebase:
-
-      - `isValidName` (from phase 3): allows letters, spaces, hyphens,
-        apostrophes only. Rejects numbers, punctuation, ampersands, etc.
-        Max 35 characters. Meant for people's names.
-
-      - `isValidOfficeAddress` (from phase 4): only checks max length.
-        Allows any characters (numbers, slashes, hashes, etc.). Meant for
-        freeform text like "Flat 4B, 12/A Rajbagh".
-
-    Profession sits between these. "Engineer" passes both. But:
-      - "Ph.D. researcher" fails `isValidName` (periods)
-      - "Marketing & Sales" fails `isValidName` (ampersand)
-      - "Software Engineer II" fails `isValidName` (digit)
-
-    If we use `isValidName`, a lot of real-world job descriptions get
-    rejected and users get frustrated. If we use `isValidOfficeAddress`,
-    someone can type "@#$%" as a profession and it goes into the database.
-
-YOUR CHOICES
-    A) [RECOMMENDED] Use whatever validator we pick for the parent-job
-       fields on Page 18 (see Issue 4). Both are jobs; same rules should
-       apply. Update Story 7.2 AC-2 to say `use isValidParentJob`
-       (or whatever name we settle on).
-    B) Use `isValidName` (strict): letters, spaces, hyphens, apostrophes
-       only. Cleanest data, most user rejections.
-    C) Use `isValidOfficeAddress`-style (loose): only enforce max length.
-       Most permissive, allows garbage.
-    D) Create a new `isValidProfession` validator: allow letters, spaces,
-       hyphens, apostrophes, ampersands, periods, digits. Most work,
-       best fit for the data.
-    
-    ANSWER: Go with option D
-
-
---------------------------------------------------------------------------------
-ISSUE 4 — SEVERITY: HIGH
-    "What counts as a valid 'father's job' / 'mother's job'?"
+CONCERN #2 — Page 20 has a "placeholder" question with nowhere to store the
+             answer
+             (BLOCKS THE BUILD)
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS
-    Story 7.1 AC-1:
-        "each max 40 chars with letters/spaces/hyphens/apostrophes
-         validation"
-    …applied to fathers_name, fathers_job, mothers_name, mothers_job
-    (all four fields lumped together).
+What's happening:
 
-WHY IT MATTERS
-    Same problem as Issue 3, but for the parents' jobs on Page 18. The
-    plan says the SAME rule applies to both the parent's NAME and the
-    parent's JOB.
+Page 20 shows two pick-one questions stacked on top of each other. The second
+one (marriage timing — "Within 3 months", "Within 6 months", etc.) has a
+proper home in the database: it saves to a field called `marriage_time`.
 
-    For names, letters/spaces/hyphens/apostrophes is fine ("Mary-Anne
-    O'Connor"). For jobs, it's the same trap as Issue 3:
+The first one is a "placeholder" — the PRD explicitly says it has no
+database field yet, and asks us to store it under a made-up name
+`marriageTimelinePrimary`. But the piece of the app that holds all the
+draft data (the "draft") only has slots for real database fields. There's
+no drawer for made-up fields.
 
-      - "Ph.D." — period rejected
-      - "Sales & Marketing" — ampersand rejected
-      - "IT Level 2" — digit rejected
+Analogy:
 
-    Also worth noting: Page 11 already has an office/job story from phase
-    4. Whatever validator IT uses is a natural precedent. If phase 4 was
-    strict, we should probably be strict here for consistency. If phase 4
-    was loose, we should be loose here.
+Imagine you're filling out an online tax form. Every field on the form has
+a matching slot in the tax office's records — name, income, dependents, etc.
+Now your accountant says "and add a field for the user's favorite color."
+There's no slot for that in the tax records. Either you build a new drawer
+just for it, or you write it on a scratch pad on the desk and throw the
+scratch pad away when you leave the office.
 
-    (I haven't verified the phase 4 validator's exact character class —
-    the subagent will confirm at implementation time if we pick option A.)
+Options:
 
-YOUR CHOICES
-    A) [RECOMMENDED] Match whatever validator phase 4's job_title field
-       uses. Consistency across the wizard. Length may need to bump to
-       40 if phase 4 used a different cap.
-    B) Keep the plan as written (letters/spaces/hyphens/apostrophes only,
-       max 40). Rejects "Ph.D." and "Sales & Marketing". User-hostile.
-    C) Loosen the rule to allow ampersands, periods, and digits for the
-       JOB fields only (keep names strict). Two different validators —
-       `isValidParentName` and `isValidParentJob`. Cleanest data model.
-    ANSWER: Option C
+(a) SCRATCH PAD (recommended). Store the first pick-one's answer only in
+    the screen's local memory. If the user closes the app or navigates
+    forward past page 20, the answer is forgotten. This is fine because
+    the PRD calls it a "placeholder" — it will get a real database field
+    later, and there's no user-facing consequence to losing it now (the
+    only gate it drives is auto-advance to page 21).
 
+(b) BUILD A NEW DRAWER. Add `marriageTimelinePrimary` to the draft's
+    shape as an optional client-only field. Answer survives across
+    back-navigation and app restart. Slightly more code, requires updating
+    the draft schema and probably some tests.
 
---------------------------------------------------------------------------------
-ISSUE 5 — SEVERITY: MEDIUM
-    "Will the backend accept the words 'YES' and 'NO' in all caps?"
---------------------------------------------------------------------------------
+Related sub-question: WHAT ARE THE OPTIONS for this placeholder pick-one?
+The PRD doesn't list them. Options:
+    (i)   You tell me the actual list you want (best).
+    (ii)  Stub something like ["Option A", "Option B", "Option C"] and
+          flag it in a comment for later replacement.
+    (iii) Skip this pick-one entirely for now and re-add when you have
+          the real question wording. (Would require amending 8.1's AC.)
 
-WHAT THE PLAN SAYS
-    Story 7.1 AC-2 uses `options.yesNo` for the "is your father retired?"
-    and "is your mother retired?" questions. That options file contains
-    exactly two values: ["YES", "NO"] — uppercase.
-
-WHY IT MATTERS
-    Think of the backend as a strict receptionist with a checklist. When
-    you say "father retired: YES", they check their list to see if "YES"
-    is one of the allowed answers. If their list actually says
-    "Yes" / "No" (capital Y, lowercase e-s), or "Retired" / "Working",
-    they'll reject the whole form.
-
-    Right now, nobody has verified what the backend's list actually says.
-    The `father_retired` column in the database is a plain TEXT column,
-    so on paper it accepts anything. But there may be a check constraint
-    (a rule saying "only these exact values allowed") that we haven't
-    looked at.
-
-    This is NOT a blocker for phase 7 — phase 7 only writes to the
-    draft on your phone, not to the backend. The backend PATCH doesn't
-    happen until phase 11 (the final "submit everything" step). But if
-    we discover the casing is wrong at phase 11, we'll be re-touching
-    every YES/NO input in the whole wizard. Better to catch it now.
-
-    Related note for later: `has_children` and `move_abroad` also use
-    `options.yesNo` in phases 8 and 9, but the database stores those as
-    booleans (true/false), not text. So those two need a string→boolean
-    conversion at PATCH time regardless of what we decide here.
-
-YOUR CHOICES
-    A) [RECOMMENDED] Add an "unvalidated assumption" note to phase 11's
-       PRD saying "verify backend accepts YES/NO uppercase before wiring
-       the PATCH". Ship phase 7 as planned. Fix casing later if needed.
-    B) Check the backend right now (grep `knotify-backend` for the
-       column's check constraint, or ask the backend team). Adds delay
-       to phase 7 for a question that doesn't need answering yet.
-    C) Change `options.yesNo` to "Yes"/"No" (title case) preemptively.
-       Might be right, might be wrong — coin flip without checking.
-
-ANSWER: Option A
+ANSWER: Go with Option A, and option i for the sub question
 
 --------------------------------------------------------------------------------
-ISSUE 6 — SEVERITY: MEDIUM
-    "What does 'Cancel' do if you already saved siblings before?"
+CONCERN #3 — "Back-navigating from Divorced+Yes to Never Married" is
+             confusing wording
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS
-    Page 19 has a Cancel button in the Filling state. The plan says
-    "Cancel returns to Initial with blank count."
+What's happening:
 
-WHY IT MATTERS
-    Imagine you filled out the sibling page yesterday with 3 siblings.
-    Today you come back, back-nav to Page 19 (per Issue 2 we decided to
-    show your saved cards). You edit one field, then change your mind
-    and tap Cancel. What should happen?
+Page 23 has a marital status question. If the user picks "Divorced" or
+"Widowed", a second question appears below it: "Do you have children?"
+YES/NO. Once they answer, the page auto-advances.
 
-    Two readings of the plan:
+The PRD says: "Back-navigating from a Divorced + Yes selection to Never
+Married force-resets `has_children` to NO before advancing."
 
-      (a) Cancel discards ONLY today's edits. Your 3 saved siblings from
-          yesterday are still there — you just haven't changed them.
-          (Matches "undo my current changes" — what most apps do.)
+The words "back-navigating" usually mean "hit the back arrow on the
+navigation bar, go from page 24 back to page 23." But that's not what this
+rule is describing. It's actually describing the user changing their mind
+ON page 23 — they had tapped Divorced, then tapped Yes, but now they tap
+Never Married on the same page instead. In that case we should wipe out
+the "yes I have children" answer, because Never Married logically means no
+children.
 
-      (b) Cancel wipes both today's edits AND yesterday's saved siblings.
-          You're back at "how many siblings do you have?" with nothing.
-          (Matches "start this section over from scratch" — nuclear.)
+Analogy:
 
-    The plan is ambiguous. The subagent will pick one; if they pick (b)
-    and you meant (a), users lose data.
+Imagine a restaurant menu. You order the steak (Divorced) and the waiter
+asks "how would you like it cooked?" (Yes/No). You say medium-rare. Then
+you change your mind and order the pasta (Never Married). The waiter still
+has "medium-rare" scribbled next to your order — that no longer applies to
+pasta. The waiter needs to erase it. The PRD says "erase it before serving
+the food" but uses the phrase "when you back-navigate to the menu" which
+sounds like you left the restaurant, came back, and reordered.
 
-YOUR CHOICES
-    A) [RECOMMENDED] Cancel only discards in-progress local state; it
-       does NOT touch the previously-saved siblings in the draft.
-       If the user wants to fully redo, they can back-nav and go
-       forward again.
-    B) Cancel wipes everything. Simpler code, worse UX.
-    C) Cancel shows a confirmation ("Discard your 3 siblings?") — extra
-       design work, more flexibility.
+Also missing: the rule only mentions Divorced+Yes → Never Married. What
+about Widowed+Yes → Never Married? What about Divorced+No → Never Married?
+Any change TO Never Married should wipe the children answer.
 
-    ANSWER: OPtion A
+Options:
 
---------------------------------------------------------------------------------
-ISSUE 7 — SEVERITY: LOW
-    "When exactly does 'I have 0 siblings' get saved?"
---------------------------------------------------------------------------------
+(a) REWRITE THE RULE (recommended): "Selecting Never Married after having
+    previously selected Divorced or Widowed on this page — regardless of
+    what has_children was set to — writes has_children to `false` in the
+    same atomic update as marital_status." Covers all four transitions
+    symmetrically.
 
-WHAT THE PLAN SAYS
-    Story 7.2 AC-3:
-        "Value `0` in the count input immediately enables Continue and
-         writes an empty siblings array."
+(b) LEAVE THE RULE AS-IS and just interpret it broadly. Slightly risky —
+    the subagent might implement literally what's written and miss the
+    other three transitions.
 
-WHY IT MATTERS
-    The word "immediately" is doing a lot of work here. Two readings:
-
-      (a) The moment the user types "0" in the count box, the app writes
-          an empty array to the draft (before they tap Continue).
-      (b) When the user types "0", the Continue button lights up
-          immediately, but the write to the draft only happens when
-          they actually tap Continue (like every other page).
-
-    Reading (a) creates a minor bug scenario: user types "0", changes
-    their mind, types "3", now goes through the 3-sibling flow. In
-    between there was an extra `setSiblings([])` write that got
-    overwritten. Not broken, but noisy — extra writes to secure storage.
-
-    Reading (b) matches every other page's pattern: writes happen on
-    Continue tap, never on input change.
-
-YOUR CHOICES
-    A) [RECOMMENDED] Reading (b). "Immediately" refers only to the
-       button state (lights up right away), not the write. Write happens
-       on Continue tap like every other page. Consistent, no wasted
-       writes.
-    B) Reading (a). Write happens on input change. Matches a literal
-       reading of "immediately" but breaks the pattern.
 
 ANSWER: Option A
 
 
-
-================================================================================
-DEPENDENCY GRAPH — story ordering
-================================================================================
-
 --------------------------------------------------------------------------------
-ISSUE 8 — SEVERITY: INFORMATIONAL
-    "Both stories say they don't depend on each other"
+CONCERN #4 — What if the user picks Divorced/Widowed but never taps
+             Yes or No?
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS
-    Story 7.1 depends_on: []
-    Story 7.2 depends_on: []
+What's happening:
 
-WHY IT MATTERS
-    This is technically correct — Page 19 (siblings) does not read
-    anything Page 18 (parents) wrote. But the wizard goes 18 → 19 in
-    order, and testing on the emulator is easier if 18 exists first.
-    Workspace rule already forces stories to run one at a time in the
-    plan's listed order, so this is not a plan defect. Just flagging
-    so the subagent doesn't misread an empty array as "safe to build
-    7.2 before 7.1."
+Page 23 auto-advances (no Continue button). The rule for Never Married is
+clear: one tap → save → advance. The rule for Divorced/Widowed is: tap
+reveals the children question, THEN a Yes/No tap → save both → advance.
 
-    No action needed. Reminder only.
+The PRD doesn't say what happens if the user picks Divorced (revealing the
+children row) and then just sits there without answering Yes or No. Do
+they stay stuck on page 23 forever until they answer? Can they hit back?
 
+Analogy:
 
---------------------------------------------------------------------------------
-ISSUE 9 — SEVERITY: INFORMATIONAL
-    "Story 7.2 will end up touching the schema — plan is silent on this"
---------------------------------------------------------------------------------
+Imagine a self-checkout at a grocery store. You scan an item — the screen
+shows "please answer: paper or plastic?" If you don't answer, the machine
+just waits. It doesn't advance to payment, but you can still hit "cancel
+scan" and go back. That's the sane default.
 
-WHAT THE PLAN SAYS
-    Nothing about draft schema changes.
+Options:
 
-WHY IT MATTERS
-    If we resolve Issue 1 by extending `SiblingDraft` inside story 7.2,
-    then story 7.2 also touches:
-      - `src/features/onboarding/draftSchema.ts`
-      - `src/features/onboarding/hooks/useOnboardingDraft.tsx` (the
-        `setSiblings` typing propagates through)
+(a) IMPLICIT DEFAULT (recommended): user stays on page 23 with the row
+    visible until they answer Yes or No. Back button still works normally
+    (returns to page 22 without saving anything). No AC change needed — just
+    state it explicitly in the subagent brief so the developer knows not to
+    invent a "please answer" nag toast.
 
-    Story 7.1 (parents) does NOT touch these files. No inter-story
-    dependency, but the story-7.2 subagent needs to understand that
-    schema surgery is in-scope.
-
-    No action needed if we go with Issue 1 option A. Reminder for the
-    subagent brief.
+(b) EXPLICIT SAVE-PARTIAL: save `marital_status='Divorced'` immediately on
+    the first tap, then wait for the Yes/No. Riskier — the user might back
+    out and we'd have a divorced-but-no-children-answer half-state persisted
+    in the draft. Not recommended.
 
 
-================================================================================
-DRIFT SINCE PLAN AUTHORED — things that changed while the PRD sat idle
-================================================================================
+ASWER: Option A
 
 --------------------------------------------------------------------------------
-ISSUE 10 — SEVERITY: INFORMATIONAL
-    "The draft store was refactored on 2026-07-25; PRD predates it"
+CONCERN #5 — Auto-advance might re-fire when the user hits the back button
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS
-    Nothing about the Context/Provider refactor.
+What's happening:
 
-WHY IT MATTERS
-    On 2026-07-25 (PR #92) `useOnboardingDraft` moved from a plain hook
-    to a Context/Provider pattern. As a consequence, all screen wiring
-    tests need to mock `OnboardingDraftProvider: ({ children }) => children`
-    as a passthrough. Phase 6 stories already dealt with this and there
-    are 3 recent screen tests using the new pattern the subagent can
-    copy from.
+Every page in phase 8 auto-advances the moment the user makes a selection.
+That's fine on first visit. But what about back-navigation? Say the user is
+on page 22 and hits back to go to page 21. The draft still has their
+previous religious level answer saved. If we're not careful, page 21 will
+notice "oh, there's a value in `religious_level`" and immediately
+auto-advance right back to page 22. The back button becomes a rubber band —
+you can't actually go back.
 
-    No action needed. The subagent will discover the pattern by looking
-    at `Page17FamilyResidenceScreen.test.tsx`.
+Analogy:
 
+A revolving door with a motion sensor: as soon as someone walks in, it
+spins them forward into the building. Great for entry. But if someone
+inside the building tries to walk out through the same door, the sensor
+sees them and spins them back INTO the building. They can never leave.
 
---------------------------------------------------------------------------------
-ISSUE 11 — SEVERITY: INFORMATIONAL
-    "On-device testing uses `expo run:android`, not Expo Go"
---------------------------------------------------------------------------------
+Options:
 
-WHAT THE PLAN SAYS
-    Nothing about it (PRD predates the workflow change).
+(a) TAP-TRIGGERED ONLY (recommended). Auto-advance fires only when the user
+    physically taps an option — not when the screen mounts with a pre-filled
+    value. This is what phase 7 already does; it's the standard pattern.
+    Just needs to be called out explicitly in the subagent brief so the
+    subagent doesn't put the auto-advance inside a `useEffect` that watches
+    the draft.
 
-WHY IT MATTERS
-    Since 2026-07-25 (PR #91), on-device verification is via
-    `npx expo run:android` on a real emulator, and secure-store gets
-    wiped between runs with `adb shell pm clear com.knotify.app`.
-    Expo Go / QR-code testing was retired.
+(b) TAP-TRIGGERED, BUT PRESELECT VISIBLE. Same as (a), plus on re-visit the
+    previously-chosen option is visually highlighted so the user can see
+    where they left off. This is worth doing regardless.
 
-    This is already documented in CLAUDE.md and context.md, so the
-    subagent will load it automatically. Reminder only.
+(No option is really wrong here — I just want to guarantee the subagent
+doesn't accidentally build the rubber-band version.)
 
-
---------------------------------------------------------------------------------
-ISSUE 12 — SEVERITY: INFORMATIONAL
-    "Where should the new SiblingForm component live?"
---------------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS
-    "Feature-local component" — no path specified.
-
-WHY IT MATTERS
-    Phase 6 introduced the convention of a feature-local components
-    folder at `src/features/onboarding/components/`. `SiblingForm.tsx`
-    should live there (or a subfolder if the form breaks into row-level
-    sub-components).
-
-    No action needed. Reminder for the subagent brief.
-
-
-================================================================================
-DOWNSTREAM NAVIGATION — the next page
-================================================================================
+ANSWER: Option B
 
 --------------------------------------------------------------------------------
-ISSUE 13 — SEVERITY: INFORMATIONAL
-    "Page 20 (nav target from story 7.2) doesn't exist yet"
+CONCERN #6 — Nobody said "add Urdu translations" in the PRD
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS
-    Story 7.2 advances to `Page20MarriageTimeScreen`.
+What's happening:
 
-WHY IT MATTERS
-    Page 20 is a phase-8 story — it hasn't been built yet. `OnboardingStack`
-    has a placeholder screen registered for Page 20 (per phase-2's
-    pattern), so `navigation.navigate('Page20MarriageTimeScreen')` will
-    resolve to that placeholder and not crash. Same situation existed at
-    the end of every prior phase (5→6, 6→7 both crossed this line
-    without issue).
+Every phase so far has added the on-screen text (button labels, headers,
+error messages) to two files: `labels.en.json` (English) and `labels.ur.json`
+(Urdu). It's baked into the app's convention. But none of the five stories in
+phase 8 mention this in their acceptance criteria. Easy to miss.
 
-    No action needed. Reminder only.
+Analogy:
 
+Every restaurant in a chain is required to have both English and Spanish
+menus. The corporate manual doesn't say "and also print a Spanish menu"
+for every new dish — it's assumed. But if you hire a brand-new chef who
+hasn't read the whole manual, they might print only the English menu and
+you find out at lunch service.
 
-================================================================================
-LABELS — the bilingual strings file
-================================================================================
+Options:
+
+(a) REMIND IN THE SUBAGENT BRIEF (recommended). I'll add a line to every
+    story's dispatch brief: "add EN + UR labels under `onboarding.<page>.*`
+    with parity." No PRD change needed — it's convention.
+
+(b) AMEND THE PRD to add the label requirement to each story's AC list.
+    More paperwork but leaves the audit trail cleaner.
+
+ANSWER: Do both a and b
 
 --------------------------------------------------------------------------------
-ISSUE 14 — SEVERITY: INFORMATIONAL
-    "New English + Urdu labels need adding for phase 7 pages"
+CONCERN #7 — Placeholder options for page 20 first pick-one
+             (this is really a sub-item of concern #2 but flagging separately)
 --------------------------------------------------------------------------------
 
-WHAT THE PLAN SAYS
-    Nothing explicit. (Standard for every phase.)
+The PRD says the first pick-one on page 20 is a placeholder with no defined
+option list. I need at least a stub set of options to render on screen.
+Options:
+    (i)   You give me the real list of options you want.
+    (ii)  Stub with ["Placeholder A", "Placeholder B", "Placeholder C"] and
+          leave a TODO comment for later.
+    (iii) Skip this pick-one entirely; only render the marriage_time
+          picker. The AC would need to change from "two pick-ones" to
+          "one pick-one".
 
-WHY IT MATTERS
-    Both pages need new label keys — probably `onboarding.parents.*`
-    for Page 18 (field labels, placeholders, error messages) and
-    `onboarding.siblings.*` + `siblingForm.*` for Page 19 (count prompt,
-    add/cancel buttons, per-field labels inside the sibling card).
-    Both `labels.en.json` and `labels.ur.json` need to grow in parity —
-    a Jest test enforces every English key has an Urdu twin.
+ANSWER: option i
 
-    No action needed. Standard practice for every phase.
-
-
-================================================================================
-END — WAITING FOR YOUR ANSWERS
-================================================================================
-
-Reply with the issue number + your letter choice for the ones that need a
-decision (1 through 7). Items 8-14 are informational and don't need a
-pick. Example:
-
-    1: A, 2: A, 3: A, 4: A, 5: A, 6: A, 7: A
-
-…if you agree with all my recommendations. Or override any of them —
-"3: C" tells me you want the loose validator for professions, etc.

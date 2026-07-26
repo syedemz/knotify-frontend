@@ -48,8 +48,8 @@ phases:
 - phase: 8
   title: Lifestyle + marital status (B7, pages 20-24)
   file: implementationplan/phase-8-lifestyle-b7.md
-  ready: false
-  done: false
+  ready: true
+  done: true
 
 - phase: 9
   title: Preferences + relation (B8, pages 25-27)
