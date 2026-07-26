@@ -41,7 +41,7 @@ stories:
   - id: 8.3
     title: Page 22 - Partner's religious level
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 100
     depends_on: []
     acceptance_criteria:

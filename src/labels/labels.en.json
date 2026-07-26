@@ -298,6 +298,9 @@
     },
     "ownReligiousLevel": {
       "title": "How religious are you?"
+    },
+    "partnersReligiousLevel": {
+      "title": "How Religious would you like your partner to be?"
     }
   },
   "siblingForm": {

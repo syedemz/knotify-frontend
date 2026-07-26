@@ -44,6 +44,7 @@ import { Page18ParentsScreen as Page18ParentsScreenImpl } from "@/features/onboa
 import { Page19SiblingsScreen as Page19SiblingsScreenImpl } from "@/features/onboarding/screens/Page19SiblingsScreen";
 import { Page20MarriageTimelineScreen as Page20MarriageTimelineScreenImpl } from "@/features/onboarding/screens/Page20MarriageTimelineScreen";
 import { Page21OwnReligiousLevelScreen as Page21OwnReligiousLevelScreenImpl } from "@/features/onboarding/screens/Page21OwnReligiousLevelScreen";
+import { Page22PartnersReligiousLevelScreen as Page22PartnersReligiousLevelScreenImpl } from "@/features/onboarding/screens/Page22PartnersReligiousLevelScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -104,7 +105,8 @@ const Page19SiblingsScreen = Page19SiblingsScreenImpl;
 const Page20MarriageTimelineScreen = Page20MarriageTimelineScreenImpl;
 // Page 21: real screen landed in phase 8 (B7, story 8.2).
 const Page21OwnReligiousLevelScreen = Page21OwnReligiousLevelScreenImpl;
-const Page22PartnersReligiousLevelScreen = makePlaceholderScreen("Page22PartnersReligiousLevelScreen");
+// Page 22: real screen landed in phase 8 (B7, story 8.3).
+const Page22PartnersReligiousLevelScreen = Page22PartnersReligiousLevelScreenImpl;
 const Page23MaritalStatusScreen = makePlaceholderScreen("Page23MaritalStatusScreen");
 const Page24MoveAbroadScreen = makePlaceholderScreen("Page24MoveAbroadScreen");
 const Page25Preferences1Screen = makePlaceholderScreen("Page25Preferences1Screen");

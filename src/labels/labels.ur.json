@@ -298,6 +298,9 @@
     },
     "ownReligiousLevel": {
       "title": "آپ کتنے مذہبی ہیں؟"
+    },
+    "partnersReligiousLevel": {
+      "title": "آپ اپنے ساتھی کو کتنا مذہبی دیکھنا چاہتے ہیں؟"
     }
   },
   "siblingForm": {
