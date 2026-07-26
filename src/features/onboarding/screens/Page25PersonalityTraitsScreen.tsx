@@ -38,7 +38,7 @@ import {
   WizardFooter,
   WizardHeader,
 } from '@/components';
-import { t } from '@/labels';
+import { t, type LabelKey } from '@/labels';
 import { options } from '@/config/options';
 import { useTheme } from '@/theme';
 import type { Theme } from '@/theme/theme';
@@ -212,17 +212,25 @@ export function Page25PersonalityTraitsScreen({ navigation }: Props): React.JSX.
 
         {/* Pill grid — natural flex-wrap, content-width pills */}
         <View style={styles.pillGrid}>
-          {options.preferences1.map((trait) => (
-            <PillButton
-              key={trait}
-              label={trait}
-              variant={selected.has(trait) ? 'selected' : 'default'}
-              borderVariant="subtle"
-              onPress={() => handlePillPress(trait)}
-              accessibilityLabel={trait}
-              icon={TRAIT_ICONS[trait]}
-            />
-          ))}
+          {options.preferences1.map((trait) => {
+            // Localised trait label. Every trait has an entry under
+            // `onboarding.personalityTraits.options.*` in both locale bundles
+            // (MBTI acronyms map to themselves in Urdu), so the cast is safe.
+            const displayLabel = t(
+              `onboarding.personalityTraits.options.${trait}` as LabelKey,
+            );
+            return (
+              <PillButton
+                key={trait}
+                label={displayLabel}
+                variant={selected.has(trait) ? 'selected' : 'default'}
+                borderVariant="subtle"
+                onPress={() => handlePillPress(trait)}
+                accessibilityLabel={displayLabel}
+                icon={TRAIT_ICONS[trait]}
+              />
+            );
+          })}
         </View>
       </ScrollView>
 

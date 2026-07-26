@@ -2,6 +2,10 @@ import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text as RNText, View } from "react-native";
 import { useTheme } from "@/theme";
 import { textStyles } from "@/theme/typography";
+import {
+  useLocaleLineHeightMultiplier,
+  useLocalizedFontFamily,
+} from "@/theme/useLocalizedFontFamily";
 import type { Theme } from "@/theme/theme";
 
 /**
@@ -115,9 +119,11 @@ export function PillButton({
   accessibilityLabel,
 }: PillButtonProps) {
   const theme = useTheme();
+  const fontFamilySet = useLocalizedFontFamily();
+  const lineHeightMultiplier = useLocaleLineHeightMultiplier();
   const styles = useMemo(
-    () => createStyles(theme, variant, borderVariant),
-    [theme, variant, borderVariant],
+    () => createStyles(theme, variant, borderVariant, fontFamilySet, lineHeightMultiplier),
+    [theme, variant, borderVariant, fontFamilySet, lineHeightMultiplier],
   );
 
   // `icon` string takes precedence over `iconLeft` node when both are supplied.
@@ -155,6 +161,8 @@ function createStyles(
   theme: Theme,
   variant: PillButtonVariant,
   borderVariant: PillButtonBorderVariant,
+  fontFamilySet: ReturnType<typeof useLocalizedFontFamily>,
+  lineHeightMultiplier: number,
 ) {
   const isSelected = variant === "selected";
   const borderWidth = isSelected
@@ -167,6 +175,13 @@ function createStyles(
     : borderVariant === "subtle"
       ? theme.colors.border.default
       : theme.colors.border.strong;
+
+  const labelPreset = textStyles.label.sm;
+  const presetLineHeight = labelPreset.lineHeight;
+  const localizedLineHeight =
+    typeof presetLineHeight === "number"
+      ? Math.round(presetLineHeight * lineHeightMultiplier)
+      : presetLineHeight;
 
   return StyleSheet.create({
     pill: {
@@ -193,7 +208,9 @@ function createStyles(
       alignItems: "center",
     },
     label: {
-      ...textStyles.label.sm,
+      ...labelPreset,
+      fontFamily: fontFamilySet.medium,
+      lineHeight: localizedLineHeight,
       color: isSelected
         ? theme.colors.text.inverse
         : theme.colors.text.secondary,

@@ -1,7 +1,10 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text as RNText } from "react-native";
 import { useTheme } from "@/theme";
-import { useLocalizedFontFamily } from "@/theme/useLocalizedFontFamily";
+import {
+  useLocaleLineHeightMultiplier,
+  useLocalizedFontFamily,
+} from "@/theme/useLocalizedFontFamily";
 import { textStyles as allTextStyles } from "@/theme/typography";
 import type { Theme } from "@/theme/theme";
 
@@ -84,9 +87,10 @@ export function Text({
 }: TextProps) {
   const theme = useTheme();
   const fontFamilySet = useLocalizedFontFamily();
+  const lineHeightMultiplier = useLocaleLineHeightMultiplier();
   const styles = useMemo(
-    () => createStyles(theme, fontFamilySet, variant, color, align),
-    [theme, fontFamilySet, variant, color, align],
+    () => createStyles(theme, fontFamilySet, lineHeightMultiplier, variant, color, align),
+    [theme, fontFamilySet, lineHeightMultiplier, variant, color, align],
   );
 
   return (
@@ -115,6 +119,7 @@ function resolvePreset(variant: TextVariant) {
 function createStyles(
   theme: Theme,
   fontFamilySet: ReturnType<typeof useLocalizedFontFamily>,
+  lineHeightMultiplier: number,
   variant: TextVariant,
   color: TextColor,
   align: "left" | "center" | "right",
@@ -124,11 +129,19 @@ function createStyles(
   // The preset fontFamily was set against fontFamily.primary; we remap it to
   // the localized family by matching the weight suffix.
   const localizedFontFamily = remapFontFamily(preset.fontFamily as string, fontFamilySet);
+  // Nastaliq needs more vertical headroom than Latin at the same fontSize —
+  // scale the preset lineHeight for the active locale.
+  const presetLineHeight = preset.lineHeight;
+  const localizedLineHeight =
+    typeof presetLineHeight === "number"
+      ? Math.round(presetLineHeight * lineHeightMultiplier)
+      : presetLineHeight;
 
   return StyleSheet.create({
     text: {
       ...preset,
       fontFamily: localizedFontFamily,
+      lineHeight: localizedLineHeight,
       color: theme.colors.text[color],
       textAlign: align,
     },

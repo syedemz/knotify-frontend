@@ -1,7 +1,10 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text as RNText } from "react-native";
 import { useTheme } from "@/theme";
-import { useLocalizedFontFamily } from "@/theme/useLocalizedFontFamily";
+import {
+  useLocaleLineHeightMultiplier,
+  useLocalizedFontFamily,
+} from "@/theme/useLocalizedFontFamily";
 import { textStyles as allTextStyles } from "@/theme/typography";
 import type { Theme } from "@/theme/theme";
 
@@ -84,9 +87,10 @@ export function Heading({
 }: HeadingProps) {
   const theme = useTheme();
   const fontFamilySet = useLocalizedFontFamily();
+  const lineHeightMultiplier = useLocaleLineHeightMultiplier();
   const styles = useMemo(
-    () => createStyles(theme, fontFamilySet, variant, color, align),
-    [theme, fontFamilySet, variant, color, align],
+    () => createStyles(theme, fontFamilySet, lineHeightMultiplier, variant, color, align),
+    [theme, fontFamilySet, lineHeightMultiplier, variant, color, align],
   );
 
   return (
@@ -133,17 +137,25 @@ function remapFontFamily(
 function createStyles(
   theme: Theme,
   fontFamilySet: ReturnType<typeof useLocalizedFontFamily>,
+  lineHeightMultiplier: number,
   variant: HeadingVariant,
   color: TextColor,
   align: "left" | "center" | "right",
 ) {
   const preset = resolvePreset(variant);
   const localizedFontFamily = remapFontFamily(preset.fontFamily as string, fontFamilySet);
+  // Nastaliq needs more vertical headroom than Latin at the same fontSize.
+  const presetLineHeight = preset.lineHeight;
+  const localizedLineHeight =
+    typeof presetLineHeight === "number"
+      ? Math.round(presetLineHeight * lineHeightMultiplier)
+      : presetLineHeight;
 
   return StyleSheet.create({
     heading: {
       ...preset,
       fontFamily: localizedFontFamily,
+      lineHeight: localizedLineHeight,
       color: theme.colors.text[color],
       textAlign: align,
     },

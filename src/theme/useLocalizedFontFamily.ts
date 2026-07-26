@@ -49,3 +49,22 @@ export function useLocalizedFontFamily(): typeof fontFamily.primary | typeof fon
   const locale = getActiveLocale() as SupportedLocale;
   return selectFontFamily(locale);
 }
+
+/**
+ * Line-height multiplier applied to Latin-calibrated `textStyles` presets when
+ * rendering Nastaliq (Urdu). Nastaliq glyphs extend further above and below the
+ * baseline than Latin, so lineHeight values that fit Plus Jakarta Sans clip
+ * ascenders/descenders in Noto Nastaliq Urdu. Empirically ~1.4× keeps the
+ * script legible without excessive vertical padding.
+ */
+export const URDU_LINE_HEIGHT_MULTIPLIER = 1.4;
+
+/**
+ * Returns the lineHeight multiplier for the active locale. `1` for Latin
+ * scripts, `URDU_LINE_HEIGHT_MULTIPLIER` for Urdu. Consumed by `Text`,
+ * `Heading`, and `PillButton` to scale preset lineHeight values at render time.
+ */
+export function useLocaleLineHeightMultiplier(): number {
+  const locale = getActiveLocale() as SupportedLocale;
+  return locale === "ur" ? URDU_LINE_HEIGHT_MULTIPLIER : 1;
+}
