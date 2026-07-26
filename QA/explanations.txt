@@ -1,309 +1,228 @@
-I have a few questions: What happens if in the education level section, i pick class 10th, what happens to other higher education fields,
-Are they kept empty or with some default values, like what would be the value of College Name, Higher Secondary School etc
-
-
-when i close the app, and resume
-it, the parents section is filled with what i have entered previously
-why does the siblings section get reset. Also if i set the sibling number to 0, what will be
-the value saved for siblings field
-
-where is the page which captures phone nunber of the user, was it missed, or is it yet to be implemented.
-
-
-================================================================================
-PHASE 8 BRAINSTORM — CONCERNS FOR YOU TO RULE ON (2026-07-26)
-================================================================================
-
-Phase 8 covers pages 20-24: marriage timeline, own religious level, partner's
-religious level, marital status (with a reactive children question), and
-willingness to move abroad. The PRD is written. Before I hand it off to the
-frontend developer subagent, I did a sanity check against the current code
-and found seven concerns. The first two block the build; the rest are just
-things that will surprise the subagent unless you decide up front.
-
-Each concern below has: (1) what's happening in plain English, (2) why it's a
-problem, (3) an analogy to make it concrete, and (4) the options you can pick
-from. Read all seven, then tell me which option you want for each and I'll
-either amend the PRD myself or hand your decisions straight to the subagent.
-
---------------------------------------------------------------------------------
-CONCERN #1 — "Do you have children?" and "Willing to move abroad?" want to
-             save the word "YES" or "NO", but the backend expects true/false
-             (BLOCKS THE BUILD)
---------------------------------------------------------------------------------
-
-What's happening:
-
-On page 23, if the user picks "Divorced" or "Widowed", we ask "Do you have
-children?" and offer two buttons: YES / NO. On page 24, we ask "Would you be
-willing to move abroad after marriage?", again with YES / NO.
-
-The PRD says: when the user taps YES, save the text "YES" into the field
-called `has_children` (page 23) or `move_abroad` (page 24). When they tap NO,
-save the text "NO".
-
-But if I go read the file that defines what shape those fields have, they are
-declared as true/false fields — not text fields. So writing the word "YES"
-into a true/false slot is like trying to slide a square peg into a round hole.
-TypeScript (the compiler) will refuse to build the app.
-
-Analogy:
-
-Imagine a form at the DMV that has a checkbox labeled "Are you an organ
-donor?" The checkbox can only be checked or unchecked — it's a yes/no
-switch. The PRD is telling the developer to write the actual English letters
-"Y-E-S" onto the checkbox instead of just checking it. The checkbox has no
-place for letters. The form rejects it.
-
-Meanwhile in phase 7 (parents page, "Is your father retired?"), a similar
-YES/NO question worked fine because the `father_retired` field was
-specifically declared as a text field — so writing "YES" and "NO" as text was
-fine there. Two fields, same question style, different underlying type.
-That's the inconsistency biting us here.
-
-Options:
-
-(a) COERCE AT SAVE TIME (recommended — smallest change). When the user taps
-    YES on the children question, save `true` into `has_children`. When they
-    tap NO, save `false`. Same for `move_abroad`. On page revisit, we read
-    the boolean back and light up the correct button. The user still sees
-    YES/NO on screen; only the internal storage changes.
-
-(b) WIDEN THE FIELD TYPES. Change `has_children` and `move_abroad` in
-    `UserProfile.ts` from boolean to text, matching the phase-7 precedent.
-    This is bigger — it touches other files, other tests, and might
-    contradict what the backend schema actually stores. Only pick this if
-    you know the backend stores text and the type file is currently wrong.
-
-(c) DO BOTH — pick option (a) at the code level AND amend the PRD wording so
-    it no longer says the misleading `has_children='NO'`. Same effort as (a)
-    but leaves cleaner documentation.
-
-ANSWER: go with Option C
---------------------------------------------------------------------------------
-CONCERN #2 — Page 20 has a "placeholder" question with nowhere to store the
-             answer
-             (BLOCKS THE BUILD)
---------------------------------------------------------------------------------
-
-What's happening:
-
-Page 20 shows two pick-one questions stacked on top of each other. The second
-one (marriage timing — "Within 3 months", "Within 6 months", etc.) has a
-proper home in the database: it saves to a field called `marriage_time`.
-
-The first one is a "placeholder" — the PRD explicitly says it has no
-database field yet, and asks us to store it under a made-up name
-`marriageTimelinePrimary`. But the piece of the app that holds all the
-draft data (the "draft") only has slots for real database fields. There's
-no drawer for made-up fields.
-
-Analogy:
-
-Imagine you're filling out an online tax form. Every field on the form has
-a matching slot in the tax office's records — name, income, dependents, etc.
-Now your accountant says "and add a field for the user's favorite color."
-There's no slot for that in the tax records. Either you build a new drawer
-just for it, or you write it on a scratch pad on the desk and throw the
-scratch pad away when you leave the office.
+================================================================
+PHASE 9 — Preferences + relation (pages 25, 26, 27)
+Concerns before we can start building
+================================================================
+
+There are 7 concerns below. Concerns #1, #2, and #3 are BLOCKERS — I cannot
+start building without your answer. Concerns #4 through #7 are just heads-up
+items I will handle myself, but you should skim them so you're not surprised.
+
+Please write your answer under each concern on the "ANSWER:" line.
+
+----------------------------------------------------------------
+CONCERN #1 — BLOCKER — The reference screenshots don't match the plan
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS pages 25, 26, 27 should be:
+  - Page 25: a long scrollable list where the user ticks multiple options
+            (preferences list #1). Like a checklist.
+  - Page 26: another long scrollable checklist (preferences list #2).
+  - Page 27: "Who are you creating this profile for?" with 6 choices —
+            Myself, Son, Daughter, Sibling, Friend, Ward.
+
+WHAT THE MUZZ SCREENSHOTS at muzzscreenshots/25.jpeg, 26.jpeg, 27.jpeg
+actually show:
+  - 25.jpeg: "Do you drink alcohol?" — YES / NO buttons
+  - 26.jpeg: "Do you have children?" — YES / NO buttons
+  - 27.jpeg: "Would you move abroad for marriage?" — YES / NO buttons
+
+ANALOGY: Imagine your architect handed you blueprints for a 3-bedroom house,
+but the photos of the reference home you were told to copy actually show a
+2-bedroom bungalow with a swimming pool. Something's clearly out of sync —
+either the blueprints are wrong, or the photos are of the wrong house, or
+you were told to ignore the photos entirely. I need you to tell me which.
+
+WHY THIS MATTERS: If I build what the PLAN says, but you were expecting what
+the SCREENSHOTS show, we'll waste a whole phase. Also — the yes/no questions
+in the screenshots (drink alcohol / have children / move abroad) already
+exist elsewhere in the app. "Have children" and "move abroad" were both
+built in phase 8. So the screenshots might just be misfiled from an earlier
+Muzz version.
+
+PICK ONE:
+  (a) The screenshots are misfiled or mislabeled — I'll ignore them and
+      build what the PLAN says. If you have the CORRECT screenshots for the
+      preferences lists + relation picker, share them. Otherwise I'll design
+      the visuals myself matching phase 8's style.
+  (b) The PLAN is out of date. You actually want the Yes/No pages shown in
+      the screenshots on 25/26/27 instead. This would mean re-scoping the
+      whole phase — tell me what you want on each page and I'll rewrite
+      the plan.
+  (c) Ignore the screenshots completely. The PLAN is correct. Just build
+      it — I don't need screenshot references for this phase.
+
+ANSWER: The screenshots are misleading, use the screenshots 32-1.jpeg, 32-2.jpeg, 32-3.jpeg, these screenshots capture
+a users personality traits , check all options
+in these screenshots and construct the preferences1,json, and create only onboardingDraft.preferencesDraft.list1
+
+The second list was meant to capture the users interests but i dont think we need that, so lets just skip that
+
+
+
+----------------------------------------------------------------
+CONCERN #2 — BLOCKER — Where do we store the checklist answers?
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: When the user ticks options on page 25 and page 26,
+save the ticked values to a spot called "preferencesDraft.list1" and
+"preferencesDraft.list2" inside the onboarding draft.
+
+THE PROBLEM: That spot doesn't exist yet. The onboarding draft is like a
+filing cabinet where every drawer corresponds to a real database field
+(name, birthday, marital_status, etc). There is currently no drawer named
+"preferencesDraft". I need to add one.
+
+ANALOGY: Imagine your accountant tells you to file receipts under a folder
+called "2027 Business Expenses" — but you look in the filing cabinet and
+there's no such folder yet. You have to CREATE the folder first. Same idea.
+
+WHY IT'S NOT AUTOMATIC: The filing cabinet has a "version number" stamped
+on it (schemaVersion 2 right now). When I add a new drawer, I bump the
+version to 3. Any user who was mid-onboarding on version 2 will have their
+draft WIPED and they'll start over. This is our standard policy called
+"DISCARD" — it's fine right now because we have zero real users yet, but
+it means anyone who was mid-signup on your device will restart from page 1.
+
+THE OTHER CONSIDERATION: The PLAN itself says (in the "notes" field) that
+these preferences don't get sent to the backend yet — the mapping to the
+`users.preferences` database column is deferred to a later phase. So we're
+only storing the answers locally on the device for now. That's fine, but
+worth you knowing: pages 25/26 will collect data that goes nowhere until
+we hook up the backend mapping later.
+
+PICK ONE:
+  (a) YES — add the new "preferencesDraft" drawer, bump schemaVersion 2 → 3,
+      DISCARD any in-progress drafts. Standard pattern, recommended.
+  (b) NO — don't persist these answers at all. Just keep them in local
+      screen memory. If the user backs out or closes the app, they lose
+      their picks and re-select. Simpler code, worse UX.
+  (c) Something else — you propose an alternative.
+
+ANSWER: Like i said just skip onboardingDraft.preferencesDraft.list2, there is a database field called
+preference, just use that for onboardingDraft.preferencesDraft.list1 which contains the users personality traits
+
+
+
+----------------------------------------------------------------
+CONCERN #3 — BLOCKER — What are the actual options on pages 25 and 26?
+----------------------------------------------------------------
+
+THE PROBLEM: The plan says "load the options from preferences1.json and
+preferences2.json." But those files don't exist. And the plan doesn't say:
+  - What is the page header on page 25? ("What are you looking for in a
+    partner?" — or something else?)
+  - What is the page header on page 26?
+  - What options should be in each list? (How many? What are they?)
+  - What are the Urdu translations of everything above?
 
-Options:
+ANALOGY: Imagine you asked a chef to prepare "the dessert" but never told
+them WHAT dessert. They can't just make one up — they need the recipe.
+I can't invent random preferences like "loves hiking / enjoys cooking" —
+those choices will show up directly on the user's screen and I don't know
+what YOU want them to see.
 
-(a) SCRATCH PAD (recommended). Store the first pick-one's answer only in
-    the screen's local memory. If the user closes the app or navigates
-    forward past page 20, the answer is forgotten. This is fine because
-    the PRD calls it a "placeholder" — it will get a real database field
-    later, and there's no user-facing consequence to losing it now (the
-    only gate it drives is auto-advance to page 21).
-
-(b) BUILD A NEW DRAWER. Add `marriageTimelinePrimary` to the draft's
-    shape as an optional client-only field. Answer survives across
-    back-navigation and app restart. Slightly more code, requires updating
-    the draft schema and probably some tests.
+WHAT I NEED FROM YOU:
+  - PAGE 25:
+      * Header (English): _______________
+      * Header (Urdu):    _______________
+      * Options list (English) — one per line:
+          - ___
+          - ___
+          - ___ (add as many as you want)
+      * Options list (Urdu) — one per line, same order as English:
+          - ___
+          - ___
+          - ___
 
-Related sub-question: WHAT ARE THE OPTIONS for this placeholder pick-one?
-The PRD doesn't list them. Options:
-    (i)   You tell me the actual list you want (best).
-    (ii)  Stub something like ["Option A", "Option B", "Option C"] and
-          flag it in a comment for later replacement.
-    (iii) Skip this pick-one entirely for now and re-add when you have
-          the real question wording. (Would require amending 8.1's AC.)
+  - PAGE 26:
+      * Header (English): _______________
+      * Header (Urdu):    _______________
+      * Options list (English) — one per line:
+          - ___
+          - ___
+          - ___
+      * Options list (Urdu) — one per line, same order as English:
+          - ___
+          - ___
+          - ___
 
-ANSWER: Go with Option A, and option i for the sub question
+IF YOU DON'T KNOW YET: You could tell me to use placeholder options for now
+(like Placeholder-A, Placeholder-B, Placeholder-C) and we'll fill them in
+before launch. But that means the UI will look weird during testing.
+Recommended: give me real options now, even if you tweak them later.
 
---------------------------------------------------------------------------------
-CONCERN #3 — "Back-navigating from Divorced+Yes to Never Married" is
-             confusing wording
---------------------------------------------------------------------------------
+ANSWER: Just use the 3 screenshots i listed above to create the preferences1.json
+forget about preferences2.json. so only create page 25, forget about page 26
+also create the urdu translation for each option., the options should be possible in both
+english and urdu
 
-What's happening:
 
-Page 23 has a marital status question. If the user picks "Divorced" or
-"Widowed", a second question appears below it: "Do you have children?"
-YES/NO. Once they answer, the page auto-advances.
+----------------------------------------------------------------
+CONCERN #4 — Heads-up — Continue button comes back on pages 25/26
+----------------------------------------------------------------
 
-The PRD says: "Back-navigating from a Divorced + Yes selection to Never
-Married force-resets `has_children` to NO before advancing."
+Phase 8 used auto-advance (tap → next page, no button). But pages 25 and
+26 are MULTI-select checklists — the user picks several options, then
+commits. Auto-advance doesn't work for that (I can't guess when they're
+done picking). So I'll bring back a Continue button on 25 and 26.
 
-The words "back-navigating" usually mean "hit the back arrow on the
-navigation bar, go from page 24 back to page 23." But that's not what this
-rule is describing. It's actually describing the user changing their mind
-ON page 23 — they had tapped Divorced, then tapped Yes, but now they tap
-Never Married on the same page instead. In that case we should wipe out
-the "yes I have children" answer, because Never Married logically means no
-children.
+ANALOGY: A single-choice question is like a light switch — flip it and
+you're done. A multi-choice checklist is like a grocery list — you need
+a "done shopping" button because there's no natural stopping point.
 
-Analogy:
+Page 27 is a single-choice question (pick one of Myself/Son/Daughter/etc)
+so it will use auto-advance like phase 8.
 
-Imagine a restaurant menu. You order the steak (Divorced) and the waiter
-asks "how would you like it cooked?" (Yes/No). You say medium-rare. Then
-you change your mind and order the pasta (Never Married). The waiter still
-has "medium-rare" scribbled next to your order — that no longer applies to
-pasta. The waiter needs to erase it. The PRD says "erase it before serving
-the food" but uses the phrase "when you back-navigate to the menu" which
-sounds like you left the restaurant, came back, and reordered.
+NO ACTION NEEDED FROM YOU — just letting you know why the Continue button
+appears again. Say something if you'd rather not have it.
 
-Also missing: the rule only mentions Divorced+Yes → Never Married. What
-about Widowed+Yes → Never Married? What about Divorced+No → Never Married?
-Any change TO Never Married should wipe the children answer.
+ANSWER (optional): Use the continue button, no auto advance
 
-Options:
 
-(a) REWRITE THE RULE (recommended): "Selecting Never Married after having
-    previously selected Divorced or Widowed on this page — regardless of
-    what has_children was set to — writes has_children to `false` in the
-    same atomic update as marital_status." Covers all four transitions
-    symmetrically.
+----------------------------------------------------------------
+CONCERN #5 — Heads-up — Page 27 back-navigation behavior
+----------------------------------------------------------------
 
-(b) LEAVE THE RULE AS-IS and just interpret it broadly. Slightly risky —
-    the subagent might implement literally what's written and miss the
-    other three transitions.
+Standard phase-8 pattern: when the user backs up to page 27 from page 28,
+their previously-picked "relation" answer stays highlighted, but the app
+does NOT immediately auto-advance them forward again. Otherwise you'd get
+a "rubber band" effect where going back keeps flinging you forward.
 
+The plan doesn't explicitly say this — I'll apply the phase-8 pattern
+automatically. Same guard we used on pages 21/22/23/24.
 
-ANSWER: Option A
+NO ACTION NEEDED — just documenting the decision.
 
+ANSWER (optional):
 
---------------------------------------------------------------------------------
-CONCERN #4 — What if the user picks Divorced/Widowed but never taps
-             Yes or No?
---------------------------------------------------------------------------------
 
-What's happening:
+----------------------------------------------------------------
+CONCERN #6 — Heads-up — Label parity (English + Urdu)
+----------------------------------------------------------------
 
-Page 23 auto-advances (no Continue button). The rule for Never Married is
-clear: one tap → save → advance. The rule for Divorced/Widowed is: tap
-reveals the children question, THEN a Yes/No tap → save both → advance.
+Every user-visible piece of text needs to be added to BOTH
+`labels.en.json` (English) and `labels.ur.json` (Urdu). Standard convention.
+I'll handle this — but it depends on you giving me the Urdu translations
+in Concern #3.
 
-The PRD doesn't say what happens if the user picks Divorced (revealing the
-children row) and then just sits there without answering Yes or No. Do
-they stay stuck on page 23 forever until they answer? Can they hit back?
+If you only give me English, I'll copy the English text into the Urdu file
+as a placeholder and note it for later translation.
 
-Analogy:
+NO ACTION NEEDED beyond Concern #3.
 
-Imagine a self-checkout at a grocery store. You scan an item — the screen
-shows "please answer: paper or plastic?" If you don't answer, the machine
-just waits. It doesn't advance to payment, but you can still hit "cancel
-scan" and go back. That's the sane default.
+ANSWER (optional):
 
-Options:
 
-(a) IMPLICIT DEFAULT (recommended): user stays on page 23 with the row
-    visible until they answer Yes or No. Back button still works normally
-    (returns to page 22 without saving anything). No AC change needed — just
-    state it explicitly in the subagent brief so the developer knows not to
-    invent a "please answer" nag toast.
+----------------------------------------------------------------
+CONCERN #7 — Heads-up — Reusing existing list-row component
+----------------------------------------------------------------
 
-(b) EXPLICIT SAVE-PARTIAL: save `marital_status='Divorced'` immediately on
-    the first tap, then wait for the Yes/No. Riskier — the user might back
-    out and we'd have a divorced-but-no-children-answer half-state persisted
-    in the draft. Not recommended.
+The plan mentions using a component called "ListRowSelectable" for the
+checklists. I'll check if it already exists in the codebase — if yes,
+reuse it; if not, I'll build one as a general catalog piece so future
+pages can reuse it too.
 
+NO ACTION NEEDED — just noting I'll investigate before duplicating work.
 
-ASWER: Option A
-
---------------------------------------------------------------------------------
-CONCERN #5 — Auto-advance might re-fire when the user hits the back button
---------------------------------------------------------------------------------
-
-What's happening:
-
-Every page in phase 8 auto-advances the moment the user makes a selection.
-That's fine on first visit. But what about back-navigation? Say the user is
-on page 22 and hits back to go to page 21. The draft still has their
-previous religious level answer saved. If we're not careful, page 21 will
-notice "oh, there's a value in `religious_level`" and immediately
-auto-advance right back to page 22. The back button becomes a rubber band —
-you can't actually go back.
-
-Analogy:
-
-A revolving door with a motion sensor: as soon as someone walks in, it
-spins them forward into the building. Great for entry. But if someone
-inside the building tries to walk out through the same door, the sensor
-sees them and spins them back INTO the building. They can never leave.
-
-Options:
-
-(a) TAP-TRIGGERED ONLY (recommended). Auto-advance fires only when the user
-    physically taps an option — not when the screen mounts with a pre-filled
-    value. This is what phase 7 already does; it's the standard pattern.
-    Just needs to be called out explicitly in the subagent brief so the
-    subagent doesn't put the auto-advance inside a `useEffect` that watches
-    the draft.
-
-(b) TAP-TRIGGERED, BUT PRESELECT VISIBLE. Same as (a), plus on re-visit the
-    previously-chosen option is visually highlighted so the user can see
-    where they left off. This is worth doing regardless.
-
-(No option is really wrong here — I just want to guarantee the subagent
-doesn't accidentally build the rubber-band version.)
-
-ANSWER: Option B
-
---------------------------------------------------------------------------------
-CONCERN #6 — Nobody said "add Urdu translations" in the PRD
---------------------------------------------------------------------------------
-
-What's happening:
-
-Every phase so far has added the on-screen text (button labels, headers,
-error messages) to two files: `labels.en.json` (English) and `labels.ur.json`
-(Urdu). It's baked into the app's convention. But none of the five stories in
-phase 8 mention this in their acceptance criteria. Easy to miss.
-
-Analogy:
-
-Every restaurant in a chain is required to have both English and Spanish
-menus. The corporate manual doesn't say "and also print a Spanish menu"
-for every new dish — it's assumed. But if you hire a brand-new chef who
-hasn't read the whole manual, they might print only the English menu and
-you find out at lunch service.
-
-Options:
-
-(a) REMIND IN THE SUBAGENT BRIEF (recommended). I'll add a line to every
-    story's dispatch brief: "add EN + UR labels under `onboarding.<page>.*`
-    with parity." No PRD change needed — it's convention.
-
-(b) AMEND THE PRD to add the label requirement to each story's AC list.
-    More paperwork but leaves the audit trail cleaner.
-
-ANSWER: Do both a and b
-
---------------------------------------------------------------------------------
-CONCERN #7 — Placeholder options for page 20 first pick-one
-             (this is really a sub-item of concern #2 but flagging separately)
---------------------------------------------------------------------------------
-
-The PRD says the first pick-one on page 20 is a placeholder with no defined
-option list. I need at least a stub set of options to render on screen.
-Options:
-    (i)   You give me the real list of options you want.
-    (ii)  Stub with ["Placeholder A", "Placeholder B", "Placeholder C"] and
-          leave a TODO comment for later.
-    (iii) Skip this pick-one entirely; only render the marriage_time
-          picker. The AC would need to change from "two pick-ones" to
-          "one pick-one".
-
-ANSWER: option i
+ANSWER (optional):
 

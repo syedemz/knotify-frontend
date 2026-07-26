@@ -24,6 +24,7 @@ import gender from './gender.json';
 import religiousLevel from './religiousLevel.json';
 import marriageTime from './marriageTime.json';
 import relation from './relation.json';
+import preferences1 from './preferences1.json';
 
 /**
  * Typed wrapper around a plain string-array options list.
@@ -88,6 +89,12 @@ export const options = {
 
   /** Profile-for-whom options for page 27 (`relation` field). */
   relation: relation as OptionList,
+
+  /**
+   * Personality traits for page 25 (`preferences.personalityTraits`).
+   * 57 traits in alphabetical order including 16 MBTI acronyms.
+   */
+  preferences1: preferences1 as OptionList,
 } as const;
 
 export type OptionsRegistry = typeof options;

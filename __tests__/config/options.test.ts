@@ -25,6 +25,7 @@ const ALL_KEYS: ReadonlyArray<OptionsKey> = [
   'religiousLevel',
   'marriageTime',
   'relation',
+  'preferences1',
 ];
 
 // --------------------------------------------------------------------------
@@ -96,6 +97,16 @@ describe('options registry', () => {
 
     it('relation includes "Myself" as first entry', () => {
       expect(options.relation[0]).toBe('Myself');
+    });
+
+    it('preferences1 has exactly 57 entries', () => {
+      expect(options.preferences1).toHaveLength(57);
+    });
+
+    it('preferences1 contains "Adventurous" and all 16 MBTI acronyms', () => {
+      expect(options.preferences1).toContain('Adventurous');
+      expect(options.preferences1).toContain('ENFJ');
+      expect(options.preferences1).toContain('ISTP');
     });
 
     it('employmentType contains the three backend-canonical values', () => {

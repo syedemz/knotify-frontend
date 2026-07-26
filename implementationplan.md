@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-07-26
+last_updated: 2026-07-26 (phase 9 done)
 
 phases:
 
@@ -54,8 +54,8 @@ phases:
 - phase: 9
   title: Preferences + relation (B8, pages 25-27)
   file: implementationplan/phase-9-preferences-b8.md
-  ready: false
-  done: false
+  ready: true
+  done: true
 
 - phase: 10
   title: Photos + phone (B9, pages 28-29)
