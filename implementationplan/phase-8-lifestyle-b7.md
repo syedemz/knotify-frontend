@@ -73,7 +73,7 @@ stories:
   - id: 8.5
     title: Page 24 - Move abroad after marriage
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 102
     depends_on: []
     acceptance_criteria:

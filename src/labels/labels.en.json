@@ -307,6 +307,9 @@
       "hasChildren": {
         "label": "Do you have children?"
       }
+    },
+    "moveAbroad": {
+      "title": "Would you be willing to move abroad after marriage?"
     }
   },
   "siblingForm": {
