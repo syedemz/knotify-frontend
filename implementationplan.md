@@ -54,7 +54,7 @@ phases:
 - phase: 9
   title: Preferences + relation (B8, pages 25-27)
   file: implementationplan/phase-9-preferences-b8.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 10
