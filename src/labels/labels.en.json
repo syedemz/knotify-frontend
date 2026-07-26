@@ -238,6 +238,47 @@
         "tooShort": "Please enter your family home address.",
         "tooLong": "Address must be 70 characters or fewer."
       }
+    },
+    "parents": {
+      "title": "Tell us about your parents",
+      "fathersName": {
+        "label": "Father's name",
+        "placeholder": "e.g. Muhammad Ali",
+        "errors": {
+          "tooLong": "Father's name must be 40 characters or fewer.",
+          "invalidCharacters": "Only letters, spaces, hyphens, and apostrophes are allowed."
+        }
+      },
+      "fathersJob": {
+        "label": "Father's occupation",
+        "placeholder": "e.g. Retired Engineer",
+        "errors": {
+          "tooLong": "Father's occupation must be 40 characters or fewer.",
+          "invalidCharacters": "Only letters, digits, spaces, hyphens, apostrophes, ampersands, and periods are allowed."
+        }
+      },
+      "fatherRetired": {
+        "prompt": "Is your father retired?"
+      },
+      "mothersName": {
+        "label": "Mother's name",
+        "placeholder": "e.g. Fatima Begum",
+        "errors": {
+          "tooLong": "Mother's name must be 40 characters or fewer.",
+          "invalidCharacters": "Only letters, spaces, hyphens, and apostrophes are allowed."
+        }
+      },
+      "mothersJob": {
+        "label": "Mother's occupation",
+        "placeholder": "e.g. Homemaker",
+        "errors": {
+          "tooLong": "Mother's occupation must be 40 characters or fewer.",
+          "invalidCharacters": "Only letters, digits, spaces, hyphens, apostrophes, ampersands, and periods are allowed."
+        }
+      },
+      "motherRetired": {
+        "prompt": "Is your mother retired?"
+      }
     }
   }
 }
