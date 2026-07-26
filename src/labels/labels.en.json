@@ -376,6 +376,17 @@
         "Spontaneous": "Spontaneous",
         "Thoughtful": "Thoughtful"
       }
+    },
+    "relation": {
+      "title": "Who are you creating this profile for?",
+      "options": {
+        "Myself": "Myself",
+        "Son": "Son",
+        "Daughter": "Daughter",
+        "Sibling": "Sibling",
+        "Friend": "Friend",
+        "Ward": "Ward"
+      }
     }
   },
   "siblingForm": {

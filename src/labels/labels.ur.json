@@ -376,6 +376,17 @@
         "Spontaneous": "بے ساختہ",
         "Thoughtful": "با شعور"
       }
+    },
+    "relation": {
+      "title": "آپ یہ پروفائل کس کے لیے بنا رہے ہیں؟",
+      "options": {
+        "Myself": "میں خود",
+        "Son": "بیٹا",
+        "Daughter": "بیٹی",
+        "Sibling": "بہن بھائی",
+        "Friend": "دوست",
+        "Ward": "زیر کفالت"
+      }
     }
   },
   "siblingForm": {
