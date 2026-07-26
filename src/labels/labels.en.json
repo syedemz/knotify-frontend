@@ -286,6 +286,15 @@
       "motherRetired": {
         "prompt": "Is your mother retired?"
       }
+    },
+    "marriageTimeline": {
+      "title": "What are your intentions for marriage?",
+      "primary": {
+        "label": "I’d like to know someone on knotify for"
+      },
+      "secondary": {
+        "label": "I’d like to be married within"
+      }
     }
   },
   "siblingForm": {
