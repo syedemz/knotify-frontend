@@ -1,6 +1,6 @@
 phase: 9
 title: Preferences + relation (B8, pages 25-27)
-last_updated: 2026-07-26
+last_updated: 2026-07-26 (story 9.1 done)
 
 context_summary: |
   Phase 9 delivers the personality-traits multi-select (page 25) and the profile-for-whom relation picker (page 26 in wizard flow — but see note below). The second preferences list originally planned for page 26 has been dropped from scope per user decision on 2026-07-26 — the "interests" catalog is not needed. The relation picker (originally story 9.3) is renumbered 9.2 and remains the last story in this phase.
@@ -17,7 +17,7 @@ stories:
   - id: 9.1
     title: Page 25 - Personality traits multi-select (writes preferences.personalityTraits)
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 104
     depends_on: []
     acceptance_criteria:
