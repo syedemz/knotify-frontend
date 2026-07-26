@@ -1,6 +1,6 @@
 phase: 7
 title: Family - parents + siblings (B6, pages 18-19)
-last_updated: 2026-07-26
+last_updated: 2026-07-26 (7.1 done)
 
 context_summary: |
   Phase 7 captures parents (page 18) and the dynamic sibling list (page 19). Introduces the `SiblingForm` sub-form pattern with count-then-fill-then-cancel-discards UX per §11.2.3.
@@ -19,7 +19,7 @@ stories:
   - id: 7.1
     title: Page 18 - Parents (6 fields)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 31
     acceptance_criteria:
