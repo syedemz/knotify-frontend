@@ -27,13 +27,17 @@ Registration completion and the phase-12 profile pipeline are intentionally mock
 2. **Verify Cognito refresh returns a fresh ID token with the updated claim.** `AuthProvider.refresh()` calls `cognitoClient.refreshSession()`. If Amplify caches the ID token instead of re-fetching from Cognito after the backend flips `profile_complete_verified`, the claim will stay stale — in which case we need a manual `/oauth2/token` call or a sign-out/sign-in round-trip after the final PATCH. Verify with a real Cognito user pool before removing the mock-only bypass.
 3. **Delete `src/state/onboardingCompletion/`** (the `OnboardingCompletionProvider` and its context) and remove its mount from `App.tsx`.
 4. **Delete the additive `dummyOnboardingComplete` check in `src/navigation/RootNavigator.tsx`** — restore to a pure `profileComplete`-driven gate.
-5. **Delete the mock PATCH `/profile/me` handler and the mock GET `/profile/me` handler** in `services/api/mocks/handlers.ts` (added by phase 11 story 11.2 and phase 12 story 12.1). Real HTTP client calls the real backend.
+5. **Delete the mock dispatch branch in `src/services/api/httpClient.ts`** (the `if (env.isMock) { … mockRequest … }` at the top of `request()`) and **delete `src/services/api/mocks/mockRequest.ts`**. Once removed, real HTTP client calls the real backend for every path. Note: this replaces the earlier MSW-based mock (see 2026-08-04 change) — MSW was retired on Hermes because `msw/native` depends on browser globals that would require fragile polyfills.
 6. **Delete the secure-store snapshot logic in `Page31FaceCaptureScreen`** — the `dummy.profile` write and the `dummy.onboarding.complete` flag write on mock-submit success.
 7. **Delete the secure-store read logic in the mock GET `/profile/me` handler** and the merge logic in the mock PATCH `/profile/me` handler.
 8. **One-shot migration on next launch:** wipe secure-store keys `dummy.profile` and `dummy.onboarding.complete` so no stale local data lingers.
 9. **Verify YES/NO backend casing.** Fields `father_retired`, `mother_retired` (TEXT columns per phase 7) and `has_children`, `move_abroad` (BOOL columns per phase 8, already coerced) are written as literal `"YES"` / `"NO"` (uppercase) in the draft. Confirm the real backend accepts this exact casing for the two TEXT columns, or update `src/config/options/yesNo.json` (single source of truth) and re-run affected screens.
 
 After all of the above: `grep -r 'TODO(mock-only)' src/` should return zero hits.
+
+## Follow-up tickets
+
+- **Real face-in-oval bounds check on Page 31.** The frame processor in `Page31FaceCaptureScreen.tsx` currently passes `faces.length > 0` as `faceInsideOval` — i.e. "any face detected anywhere in the frame", not "face bounds intersect the oval". Auto-capture threshold is bumped to 150 frames (~5s @ 30fps) as a stop-gap so the manual shutter button remains the practical capture path. Proper fix: read face bounds from `detectFaces()`, translate camera-sensor coordinates → screen coordinates (accounting for preview scaling, letterboxing, and front-camera mirroring), and gate `onFrame(true)` on real intersection with the `FaceOvalOverlay`'s bounds. Verify on ≥2 device sizes before shipping. Revert `CONSECUTIVE_FRAMES_REQUIRED` back to 15 once implemented.
 
 ## Critical design decisions
 None yet.
