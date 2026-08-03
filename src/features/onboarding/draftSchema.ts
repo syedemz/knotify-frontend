@@ -1,8 +1,8 @@
 /**
- * Onboarding wizard draft schema (schemaVersion 3).
+ * Onboarding wizard draft schema (schemaVersion 4).
  *
  * Migration policy: DISCARD on version mismatch (pre-launch).
- * When the loaded draft's `schemaVersion !== 3`, discard it and start fresh.
+ * When the loaded draft's `schemaVersion !== 4`, discard it and start fresh.
  * This is safe pre-launch because there are no real users with persisted data.
  * On post-launch bumps, migrate or prompt before discarding.
  *
@@ -10,6 +10,7 @@
  * - v1: initial schema
  * - v2: added `photoPreviewUris`, `notificationPermissionStatus`, `locationPermissionStatus`
  * - v3: added `phone_number` (story 10.2)
+ * - v4: added `faceSelfieUri` (story 11.2)
  *
  * @module features/onboarding/draftSchema
  */
@@ -81,10 +82,10 @@ export interface SiblingDraft {
  */
 export interface OnboardingDraft {
   /**
-   * Schema version. Always `3` for the current draft shape.
+   * Schema version. Always `4` for the current draft shape.
    * Increment this number when the shape changes in a breaking way.
    */
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 4;
 
   /**
    * The furthest checkpoint the user has reached.
@@ -154,6 +155,15 @@ export interface OnboardingDraft {
    */
   phone_number: string | null;
 
+  /**
+   * Local device URI of the face selfie captured on page 31, or `null` if the
+   * user has not yet completed face capture.
+   *
+   * Client-only — not sent to the backend as-is (photo upload deferred per §17.14).
+   * Written by `Page31FaceCaptureScreen` via `setFaceSelfieUri()`.
+   */
+  faceSelfieUri: string | null;
+
   /** Timestamps for when the draft was first created and last modified. */
   timestamps: {
     /** ISO-8601 string — when the draft was first created. */
@@ -166,12 +176,12 @@ export interface OnboardingDraft {
 /**
  * Returns a fresh, empty draft for a new onboarding session.
  *
- * @returns A default {@link OnboardingDraft} with schemaVersion 3.
+ * @returns A default {@link OnboardingDraft} with schemaVersion 4.
  */
 export function createEmptyDraft(): OnboardingDraft {
   const now = new Date().toISOString();
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     lastCheckpoint: null,
     currentPage: 1,
     fields: {},
@@ -180,6 +190,7 @@ export function createEmptyDraft(): OnboardingDraft {
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
     phone_number: null,
+    faceSelfieUri: null,
     timestamps: {
       createdAt: now,
       updatedAt: now,

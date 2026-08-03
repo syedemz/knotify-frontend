@@ -140,7 +140,7 @@ function mockRoute() {
  */
 function makeDraft(fields: Record<string, unknown> = {}) {
   return {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     lastCheckpoint: 'secondCheckpoint' as const,
     currentPage: 20,
     fields,
@@ -149,6 +149,7 @@ function makeDraft(fields: Record<string, unknown> = {}) {
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
     phone_number: null,
+      faceSelfieUri: null,
     timestamps: { createdAt: '', updatedAt: '' },
   };
 }

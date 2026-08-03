@@ -112,6 +112,8 @@ jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
     setNotificationPermissionStatus: jest.fn(),
     setLocationPermissionStatus: jest.fn(),
     setPhotoPreviewUris: jest.fn(),
+    setFaceSelfieUri: jest.fn(),
+    clear: jest.fn(),
     isLoading: false,
   }),
 }));
@@ -151,7 +153,7 @@ function makeDraft(
   phoneNumber: string | null = null,
 ) {
   return {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     lastCheckpoint: 'secondCheckpoint' as const,
     currentPage: 29,
     fields: residentCountryCode !== undefined
@@ -162,6 +164,7 @@ function makeDraft(
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
     phone_number: phoneNumber,
+    faceSelfieUri: null,
     timestamps: { createdAt: '', updatedAt: '' },
   };
 }

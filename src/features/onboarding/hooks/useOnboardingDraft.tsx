@@ -129,6 +129,25 @@ export interface UseOnboardingDraftReturn {
   setPhotoPreviewUris: (uris: string[]) => void;
 
   /**
+   * Records the local device URI of the face selfie captured on page 31.
+   *
+   * Writes directly to `OnboardingDraft.faceSelfieUri` and schedules a
+   * debounced write to secure-store.
+   *
+   * @param uri - The local device URI of the captured selfie image.
+   */
+  setFaceSelfieUri: (uri: string) => void;
+
+  /**
+   * Clears the draft from both memory and secure-store and resets to a fresh
+   * empty draft. Equivalent to `reset()` but named explicitly for the
+   * post-submit cleanup path in `Page31FaceCaptureScreen`.
+   *
+   * @alias reset
+   */
+  clear: () => void;
+
+  /**
    * `true` while the initial draft is being loaded from secure-store on mount.
    */
   isLoading: boolean;
@@ -191,10 +210,10 @@ function useOnboardingDraftState(): UseOnboardingDraftReturn {
       if (raw !== null) {
         try {
           const parsed = JSON.parse(raw) as OnboardingDraft;
-          // schemaVersion-3 DISCARD policy (pre-launch): if the stored draft is
-          // not version 3, discard it and start fresh. There are no real users
+          // schemaVersion-4 DISCARD policy (pre-launch): if the stored draft is
+          // not version 4, discard it and start fresh. There are no real users
           // with persisted data before launch, so migration is unnecessary.
-          const next = parsed.schemaVersion === 3 ? parsed : createEmptyDraft();
+          const next = parsed.schemaVersion === 4 ? parsed : createEmptyDraft();
           if (!cancelled) {
             draftRef.current = next;
             setDraft(next);
@@ -398,16 +417,39 @@ function useOnboardingDraftState(): UseOnboardingDraftReturn {
     [scheduleWrite],
   );
 
+  const setFaceSelfieUri = useCallback(
+    (uri: string): void => {
+      setDraft((prev) => {
+        const next: OnboardingDraft = {
+          ...prev,
+          faceSelfieUri: uri,
+          timestamps: {
+            ...prev.timestamps,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        draftRef.current = next;
+        scheduleWrite();
+        return next;
+      });
+    },
+    [scheduleWrite],
+  );
+
   return {
     update,
     advance,
     advanceWithCheckpoint,
     reset,
+    // `clear` is an alias for `reset` — used by the post-submit cleanup path
+    // in Page31FaceCaptureScreen so the intent is explicit at the call site.
+    clear: reset,
     getDraft,
     setSiblings,
     setNotificationPermissionStatus,
     setLocationPermissionStatus,
     setPhotoPreviewUris,
+    setFaceSelfieUri,
     isLoading,
   };
 }

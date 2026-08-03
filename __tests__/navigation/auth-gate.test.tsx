@@ -167,6 +167,27 @@ jest.mock("@/state/auth/AuthProvider", () => ({
   }),
 }));
 
+// Control mock-only onboarding completion state — mutated per test.
+// TODO(mock-only): remove when real backend + JWT claim decode ship
+const mockOnboardingCompletionState = {
+  loading: false,
+  complete: false,
+};
+
+jest.mock(
+  "@/state/onboardingCompletion/OnboardingCompletionProvider",
+  () => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    OnboardingCompletionProvider: ({ children }: any) => children,
+    useOnboardingCompletion: () => ({
+      loading: mockOnboardingCompletionState.loading,
+      complete: mockOnboardingCompletionState.complete,
+      markComplete: jest.fn(),
+      reset: jest.fn(),
+    }),
+  }),
+);
+
 // ── Imports under test (after mocks) ─────────────────────────────────────────
 
 import { RootNavigator } from "@/navigation/RootNavigator";
@@ -199,6 +220,9 @@ beforeEach(() => {
   mockAuthState.status = "unauthenticated";
   mockAuthState.profileComplete = false;
   mockAuthState.session = null;
+  // TODO(mock-only): reset when real backend + JWT claim decode ship
+  mockOnboardingCompletionState.loading = false;
+  mockOnboardingCompletionState.complete = false;
 });
 
 // ── (a) unauthenticated → OnboardingStack (updated story 2.3) ────────────────
@@ -302,6 +326,68 @@ describe("given status === 'loading'", () => {
     expect(queryByText(t("common.loading"))).not.toBeNull();
   });
 });
+
+// ── (b2) authenticated + !profileComplete + mockOnboardingComplete → AppTabs ──
+// TODO(mock-only): remove when real backend + JWT claim decode ship
+
+describe(
+  "given status === 'authenticated', profileComplete === false, and mockOnboardingComplete === true",
+  () => {
+    beforeEach(() => {
+      mockAuthState.status = "authenticated";
+      mockAuthState.profileComplete = false;
+      mockOnboardingCompletionState.complete = true;
+      mockOnboardingCompletionState.loading = false;
+    });
+
+    it(
+      "when RootNavigator renders, then AppTabs is mounted (mock-only completion flag bypasses onboarding gate)",
+      () => {
+        const { queryByText } = renderRoot();
+
+        expect(queryByText(t("nav.tabs.discover"))).not.toBeNull();
+      },
+    );
+
+    it("when RootNavigator renders, then OnboardingStack is absent", () => {
+      const { queryByText } = renderRoot();
+
+      expect(queryByText("ONBOARDING_STACK")).toBeNull();
+    });
+  },
+);
+
+// ── (b3) authenticated + !profileComplete + onboardingCompletion.loading → splash
+// TODO(mock-only): remove when real backend + JWT claim decode ship
+
+describe(
+  "given status === 'authenticated', profileComplete === false, and onboardingCompletion.loading === true",
+  () => {
+    beforeEach(() => {
+      mockAuthState.status = "authenticated";
+      mockAuthState.profileComplete = false;
+      mockOnboardingCompletionState.complete = false;
+      mockOnboardingCompletionState.loading = true;
+    });
+
+    it(
+      "when RootNavigator renders, then loading splash is shown (onboardingCompletion still initialising)",
+      () => {
+        const { queryByText } = renderRoot();
+
+        expect(queryByText(t("common.loading"))).not.toBeNull();
+      },
+    );
+
+    it("when RootNavigator renders, then no sub-navigator is mounted", () => {
+      const { queryByText } = renderRoot();
+
+      expect(queryByText("AUTH_STACK")).toBeNull();
+      expect(queryByText("ONBOARDING_STACK")).toBeNull();
+      expect(queryByText(t("nav.tabs.discover"))).toBeNull();
+    });
+  },
+);
 
 // ── (e) AuthStack direct render — placeholder test ───────────────────────────
 //

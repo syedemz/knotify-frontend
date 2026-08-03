@@ -49,3 +49,14 @@ export const Camera = Object.assign(
  * Returns `undefined` by default (no physical camera in test environment).
  */
 export const useCameraDevice = jest.fn<any, any[]>(() => undefined);
+
+/**
+ * Minimal mock of `useFrameProcessor`.
+ *
+ * Returns a no-op `ReadonlyFrameProcessor`-shaped object. Frame processing
+ * does not execute in the test environment (no camera, no native runtime).
+ */
+export const useFrameProcessor = jest.fn<any, any[]>((fn: any) => ({
+  frameProcessor: fn,
+  type: 'readonly',
+}));

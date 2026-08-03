@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-03 (phase 10 done)
+last_updated: 2026-08-03 (phase 11 done)
 
 phases:
 
@@ -67,7 +67,7 @@ phases:
   title: Face verification + final PATCH (B10, pages 30-31)
   file: implementationplan/phase-11-face-verify-b10.md
   ready: true
-  done: false
+  done: true
 
 - phase: 12
   title: Profile - my profile + edit
