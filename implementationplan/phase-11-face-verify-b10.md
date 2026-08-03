@@ -1,6 +1,6 @@
 phase: 11
 title: Face verification + final PATCH (B10, pages 30-31)
-last_updated: 2026-08-03
+last_updated: 2026-08-03  # story 11.1 complete
 
 context_summary: |
   Phase 11 finishes the onboarding wizard with the face verification intro (page 30, camera permission gate) and the auto-capture face screen (page 31, face-oval overlay + face detection + final "PATCH" /profile/me). After this phase, onboarding is functionally complete and the user lands on the main app (AppTabs).
@@ -33,7 +33,7 @@ stories:
   - id: 11.1
     title: Page 30 - Face verification intro + camera permission gate
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 43
     acceptance_criteria:
