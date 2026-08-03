@@ -34,6 +34,14 @@
         {
           "photosPermission": "Knotify needs access to your photos so you can add profile pictures."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
       ]
     ]
   }

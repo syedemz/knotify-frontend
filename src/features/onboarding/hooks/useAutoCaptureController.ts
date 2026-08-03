@@ -19,8 +19,13 @@ import { useCallback, useRef, useState } from 'react';
 /**
  * Number of consecutive frames with `faceInsideOval === true` required before
  * the state machine signals capture. Configurable via this constant.
+ *
+ * Temporarily bumped to 150 (~5s @ 30fps) as a stop-gap while the frame
+ * processor still reports `faceInsideOval` as "any face detected in frame"
+ * rather than "face bounds intersect the oval". See context.md follow-up:
+ * "Real face-in-oval bounds check on Page 31".
  */
-export const CONSECUTIVE_FRAMES_REQUIRED = 15;
+export const CONSECUTIVE_FRAMES_REQUIRED = 150;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

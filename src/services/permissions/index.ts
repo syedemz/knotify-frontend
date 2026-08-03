@@ -144,17 +144,23 @@ function mapVisionCameraStatus(raw: VisionCameraPermissionStatus): PermissionSta
 }
 
 /**
- * Requests OS-level camera permission if it has not already been determined.
+ * Requests OS-level camera permission via `react-native-vision-camera`.
  *
- * Uses `react-native-vision-camera`'s `Camera.getCameraPermissionStatus()` /
- * `Camera.requestCameraPermission()` APIs so that the camera preview and the
- * permission gate share the same native module.
+ * We always call `Camera.requestCameraPermission()` rather than pre-checking
+ * with `getCameraPermissionStatus()`. On Android, the raw status returns
+ * `'denied'` on a fresh install (never asked) because Android's
+ * `checkSelfPermission()` cannot distinguish "never asked" from "user denied"
+ * — only iOS reports `'not-determined'` for a fresh install. Pre-checking
+ * therefore skips the system dialog on Android's first-launch case.
  *
- * - If permission is already `'granted'`, returns `'granted'` immediately
- *   without re-prompting.
- * - If the OS status is `'restricted'` or if a prior denial left status
- *   `'denied'`, returns `'denied'` immediately without re-prompting.
- * - Otherwise, shows the system dialog and returns the user's answer.
+ * `Camera.requestCameraPermission()` itself handles every case correctly:
+ * - Already granted → returns `'granted'` (no dialog).
+ * - Never asked (or soft-deny with `canAskAgain`) → shows system dialog.
+ * - Permanently denied ("don't ask again", or OS-restricted) → returns
+ *   `'denied'` immediately without a dialog.
+ *
+ * Callers that need the two-stage "retry vs open settings" UX escalate on
+ * their own by counting consecutive `'denied'` results (see Page 30).
  *
  * Raw vision-camera statuses are mapped via `mapVisionCameraStatus`:
  * `'granted' → 'granted'`, `'denied' → 'denied'`,
@@ -165,20 +171,6 @@ function mapVisionCameraStatus(raw: VisionCameraPermissionStatus): PermissionSta
  *   restricts the app, `'undetermined'` only in an unexpected edge case.
  */
 export async function requestCameraPermission(): Promise<PermissionStatus> {
-  const existingRaw = Camera.getCameraPermissionStatus();
-  const existing = mapVisionCameraStatus(existingRaw);
-
-  if (existing === 'granted') {
-    return 'granted';
-  }
-
-  if (existing === 'denied') {
-    // Covers both 'denied' (user previously denied) and 'restricted' (OS block).
-    // Neither can be re-requested from within the app.
-    return 'denied';
-  }
-
-  // Status is 'undetermined' — show the system dialog.
   const requestedRaw = await Camera.requestCameraPermission();
   return mapVisionCameraStatus(requestedRaw);
 }

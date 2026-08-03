@@ -43,6 +43,13 @@ export interface ScreenProps {
    * Accessibility label for the screen container.
    */
   accessibilityLabel?: string;
+  /**
+   * When `true`, renders with a transparent background so an underlying layer
+   * (e.g. a full-screen camera preview on Page 31) shows through.
+   *
+   * @default false
+   */
+  transparent?: boolean;
 }
 
 /**
@@ -65,9 +72,14 @@ export function Screen({
   paddingY,
   safe = true,
   accessibilityLabel,
+  transparent = false,
 }: ScreenProps) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const rootStyle = transparent
+    ? [styles.root, styles.rootTransparent]
+    : styles.root;
 
   const inner = (
     <View
@@ -85,10 +97,10 @@ export function Screen({
   );
 
   if (safe) {
-    return <SafeAreaView style={styles.root}>{inner}</SafeAreaView>;
+    return <SafeAreaView style={rootStyle}>{inner}</SafeAreaView>;
   }
 
-  return <View style={styles.root}>{inner}</View>;
+  return <View style={rootStyle}>{inner}</View>;
 }
 
 const createStyles = (theme: Theme) =>
@@ -96,6 +108,9 @@ const createStyles = (theme: Theme) =>
     root: {
       flex: 1,
       backgroundColor: theme.colors.bg.primary,
+    },
+    rootTransparent: {
+      backgroundColor: 'transparent',
     },
     inner: {
       flex: 1,

@@ -187,6 +187,17 @@ async function executeOnce(opts: RequestOptions, accessToken: string | null): Pr
  * @throws {@link ApiError} with code `'REQUEST_TIMEOUT'` when the timeout fires.
  */
 export async function request<T>(opts: RequestOptions): Promise<T> {
+  // TODO(mock-only): remove this branch when the real backend ships.
+  // In mock mode, dispatch to the in-process mock instead of hitting the
+  // network. See src/services/api/mocks/mockRequest.ts and context.md →
+  // "Before shipping" for the teardown checklist.
+  if (env.isMock) {
+    // Dynamic require so the mock module is not part of the live-mode bundle.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- deferred to keep mock code out of live bundles
+    const { mockRequest } = require('./mocks/mockRequest') as typeof import('./mocks/mockRequest');
+    return mockRequest<T>(opts);
+  }
+
   const requiresAuth = opts.requiresAuth !== false;
 
   // Step 1: Fetch the access token (may be null for unauthenticated calls).

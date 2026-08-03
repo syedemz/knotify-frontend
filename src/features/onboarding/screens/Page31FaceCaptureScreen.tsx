@@ -2,8 +2,9 @@
  * Page 31 — Face capture, mock-only submit, local completion flag.
  *
  * Renders a full-screen camera preview with a `FaceOvalOverlay` drawn on top.
- * Face detection is driven by `vision-camera-face-detector`'s `scanFaces()`
- * and fed into `useAutoCaptureController` which signals capture after
+ * Face detection is driven by `react-native-vision-camera-face-detector`'s
+ * `useFaceDetector()` hook (returns `{ detectFaces }`) and fed into
+ * `useAutoCaptureController` which signals capture after
  * `CONSECUTIVE_FRAMES_REQUIRED` consecutive frames with a face inside the oval.
  *
  * A manual Shutter button is always rendered alongside auto-capture (per user
@@ -31,7 +32,8 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Camera, useCameraDevice, useFrameProcessor } from 'react-native-vision-camera';
-import { scanFaces } from 'vision-camera-face-detector';
+import { useFaceDetector } from 'react-native-vision-camera-face-detector';
+import { Worklets } from 'react-native-worklets-core';
 import * as SecureStore from 'expo-secure-store';
 
 import { Button, Heading, Screen, Snackbar, Text } from '@/components';
@@ -83,6 +85,9 @@ export function Page31FaceCaptureScreen(_props: Props): React.JSX.Element {
 
   // Front camera device (face capture uses the front camera).
   const device = useCameraDevice('front');
+
+  // Face detector plugin instance (memoized inside the hook).
+  const { detectFaces } = useFaceDetector({ performanceMode: 'fast' });
 
   // ── Local state ─────────────────────────────────────────────────────────────
 
@@ -142,20 +147,27 @@ export function Page31FaceCaptureScreen(_props: Props): React.JSX.Element {
   // ── Frame processor (face detection) ────────────────────────────────────────
 
   /**
-   * Vision Camera frame processor: runs `scanFaces` on each frame and feeds
+   * Vision Camera frame processor: runs `detectFaces` on each frame and feeds
    * the result into the auto-capture state machine.
    *
    * In tests, the camera is mocked so this is never called — the auto-capture
    * controller is tested directly with synthetic events.
    */
+  // Frame processor runs on a worklet thread; JS closures cannot be shared
+  // directly. `createRunOnJS` marshals `autoCapture.onFrame` back to the JS
+  // thread so we can mutate React state from the worklet.
+  const onFrameJS = useMemo(
+    () => Worklets.createRunOnJS(autoCapture.onFrame),
+    [autoCapture.onFrame],
+  );
+
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
-    const faces = scanFaces(frame);
+    const faces = detectFaces(frame);
     // Simplified oval check: assume any detected face is "inside" the oval.
     // A real implementation would compare face bounds to the oval dimensions.
-    const faceInsideOval = faces.length > 0;
-    autoCapture.onFrame(faceInsideOval);
-  }, [autoCapture]);
+    onFrameJS(faces.length > 0);
+  }, [onFrameJS, detectFaces]);
 
   // ── Retake handler ───────────────────────────────────────────────────────────
 
@@ -275,8 +287,8 @@ export function Page31FaceCaptureScreen(_props: Props): React.JSX.Element {
       {/* Face oval overlay — shown during capture phase */}
       {!hasCaptured && <FaceOvalOverlay />}
 
-      {/* Screen content layer */}
-      <Screen paddingX="lg">
+      {/* Screen content layer — transparent so the Camera preview underneath shows through */}
+      <Screen paddingX="lg" transparent>
         {/* Header */}
         <View style={styles.header}>
           <Heading variant="display.md" color="inverse">
