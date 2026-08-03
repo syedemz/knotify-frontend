@@ -7,6 +7,8 @@
  * @module Helper/validationHelper
  */
 
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+
 // ── Email ──────────────────────────────────────────────────────────────────────
 
 /**
@@ -550,6 +552,67 @@ export function isValidProfession(input: string): boolean {
   if (input !== trimmed) return false;
   // Letters, digits, spaces, hyphens, apostrophes, ampersands, and periods
   return /^[A-Za-z0-9 \-'&.]+$/.test(trimmed);
+}
+
+// ── Phone ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns `true` when the combination of `dialCode` and `nationalNumber`
+ * forms a valid international phone number.
+ *
+ * Uses `parsePhoneNumberFromString` from `libphonenumber-js` to parse the
+ * concatenated string (e.g. `+9198123456789`) and returns the library's
+ * `.isValid()` result. Both arguments must be non-empty for a `true` result.
+ *
+ * @param dialCode      - The E.164 country calling code prefix, e.g. `'+91'`.
+ * @param nationalNumber - The national subscriber number without the country
+ *                         code, e.g. `'9812345678'`.
+ * @returns `true` if the concatenated number is valid per libphonenumber-js.
+ *
+ * @example
+ * ```ts
+ * isValidPhone('+91', '9812345678')  // true  — valid Indian mobile
+ * isValidPhone('+44', '7911123456')  // true  — valid UK mobile
+ * isValidPhone('+92', '3001234567')  // true  — valid Pakistani mobile
+ * isValidPhone('+91', '12345')       // false — too short
+ * isValidPhone('', '9812345678')     // false — empty dial code
+ * isValidPhone('+91', '')            // false — empty number
+ * ```
+ */
+export function isValidPhone(dialCode: string, nationalNumber: string): boolean {
+  if (dialCode.trim() === '' || nationalNumber.trim() === '') {
+    return false;
+  }
+  const parsed = parsePhoneNumberFromString(dialCode + nationalNumber);
+  return parsed !== undefined && parsed.isValid();
+}
+
+/**
+ * Returns the E.164 representation of the phone number formed by concatenating
+ * `dialCode` and `nationalNumber`, or `null` when the number is invalid.
+ *
+ * @param dialCode       - The E.164 country calling code prefix, e.g. `'+91'`.
+ * @param nationalNumber - The national subscriber number without the country
+ *                         code, e.g. `'9812345678'`.
+ * @returns The E.164 string (e.g. `'+919812345678'`) when valid, `null` otherwise.
+ *
+ * @example
+ * ```ts
+ * canonicalizePhone('+91', '9812345678')  // '+919812345678'
+ * canonicalizePhone('+44', '7911123456')  // '+447911123456'
+ * canonicalizePhone('+91', '12345')       // null — invalid number
+ * canonicalizePhone('', '9812345678')     // null — empty dial code
+ * ```
+ */
+export function canonicalizePhone(dialCode: string, nationalNumber: string): string | null {
+  if (dialCode.trim() === '' || nationalNumber.trim() === '') {
+    return null;
+  }
+  const parsed = parsePhoneNumberFromString(dialCode + nationalNumber);
+  if (parsed === undefined || !parsed.isValid()) {
+    return null;
+  }
+  return parsed.format('E.164');
 }
 
 // ── Education credentials — year fields ───────────────────────────────────────

@@ -7,9 +7,9 @@
 import { createEmptyDraft } from '@/features/onboarding/draftSchema';
 
 describe('createEmptyDraft', () => {
-  it('returns a draft with schemaVersion 2', () => {
+  it('returns a draft with schemaVersion 3', () => {
     const draft = createEmptyDraft();
-    expect(draft.schemaVersion).toBe(2);
+    expect(draft.schemaVersion).toBe(3);
   });
 
   it('returns a draft with lastCheckpoint null', () => {
@@ -41,6 +41,11 @@ describe('createEmptyDraft', () => {
     const draft = createEmptyDraft();
     expect(draft.notificationPermissionStatus).toBeNull();
     expect(draft.locationPermissionStatus).toBeNull();
+  });
+
+  it('returns a draft with phone_number null', () => {
+    const draft = createEmptyDraft();
+    expect(draft.phone_number).toBeNull();
   });
 
   it('returns a draft with createdAt and updatedAt ISO strings', () => {

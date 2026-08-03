@@ -14,6 +14,8 @@ import {
   EDUCATION_TEXT_MAX_LENGTH,
   isValidEducationText,
   isValidEducationYear,
+  isValidPhone,
+  canonicalizePhone,
 } from '@/Helper/validationHelper';
 
 // ── Pinned current year for all tests ─────────────────────────────────────────
@@ -263,5 +265,99 @@ describe('isValidEducationYear — per-field boundary (graduation_year)', () => 
   });
   it('given currentYear+1 for graduation_year, then returns false', () => {
     expect(isValidEducationYear(CURRENT_YEAR + 1, CURRENT_YEAR)).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// isValidPhone
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('isValidPhone — valid numbers by country', () => {
+  it('given a valid Indian mobile (+91 9812345678), when validated, then returns true', () => {
+    expect(isValidPhone('+91', '9812345678')).toBe(true);
+  });
+
+  it('given a valid Pakistani mobile (+92 3001234567), when validated, then returns true', () => {
+    expect(isValidPhone('+92', '3001234567')).toBe(true);
+  });
+
+  it('given a valid UK mobile (+44 7911123456), when validated, then returns true', () => {
+    expect(isValidPhone('+44', '7911123456')).toBe(true);
+  });
+});
+
+describe('isValidPhone — invalid numbers by country', () => {
+  it('given an Indian number that is too short (+91 98123), when validated, then returns false', () => {
+    expect(isValidPhone('+91', '98123')).toBe(false);
+  });
+
+  it('given a Pakistani number that is too short (+92 300123), when validated, then returns false', () => {
+    expect(isValidPhone('+92', '300123')).toBe(false);
+  });
+
+  it('given a UK number that is too short (+44 791112), when validated, then returns false', () => {
+    expect(isValidPhone('+44', '791112')).toBe(false);
+  });
+});
+
+describe('isValidPhone — empty / malformed input', () => {
+  it('given an empty dialCode, when validated, then returns false', () => {
+    expect(isValidPhone('', '9812345678')).toBe(false);
+  });
+
+  it('given an empty nationalNumber, when validated, then returns false', () => {
+    expect(isValidPhone('+91', '')).toBe(false);
+  });
+
+  it('given both empty strings, when validated, then returns false', () => {
+    expect(isValidPhone('', '')).toBe(false);
+  });
+
+  it('given a whitespace-only dialCode, when validated, then returns false', () => {
+    expect(isValidPhone('   ', '9812345678')).toBe(false);
+  });
+
+  it('given a whitespace-only nationalNumber, when validated, then returns false', () => {
+    expect(isValidPhone('+91', '   ')).toBe(false);
+  });
+
+  it('given an invalid country code (+999 9812345678), when validated, then returns false', () => {
+    expect(isValidPhone('+999', '9812345678')).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// canonicalizePhone
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('canonicalizePhone — valid numbers return E.164', () => {
+  it('given a valid Indian mobile, when canonicalized, then returns E.164 string', () => {
+    expect(canonicalizePhone('+91', '9812345678')).toBe('+919812345678');
+  });
+
+  it('given a valid Pakistani mobile, when canonicalized, then returns E.164 string', () => {
+    expect(canonicalizePhone('+92', '3001234567')).toBe('+923001234567');
+  });
+
+  it('given a valid UK mobile, when canonicalized, then returns E.164 string', () => {
+    expect(canonicalizePhone('+44', '7911123456')).toBe('+447911123456');
+  });
+});
+
+describe('canonicalizePhone — invalid / empty input returns null', () => {
+  it('given an Indian number that is too short, when canonicalized, then returns null', () => {
+    expect(canonicalizePhone('+91', '98123')).toBeNull();
+  });
+
+  it('given an empty dialCode, when canonicalized, then returns null', () => {
+    expect(canonicalizePhone('', '9812345678')).toBeNull();
+  });
+
+  it('given an empty nationalNumber, when canonicalized, then returns null', () => {
+    expect(canonicalizePhone('+91', '')).toBeNull();
+  });
+
+  it('given both empty strings, when canonicalized, then returns null', () => {
+    expect(canonicalizePhone('', '')).toBeNull();
   });
 });

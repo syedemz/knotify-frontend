@@ -118,6 +118,17 @@ export interface UseOnboardingDraftReturn {
   ) => void;
 
   /**
+   * Replaces the photo preview URIs list on the top-level draft (not inside
+   * `fields`) and schedules a debounced write to secure-store.
+   *
+   * Modelled on `setSiblings` — writes directly to
+   * `OnboardingDraft.photoPreviewUris`.
+   *
+   * @param uris - The new complete photo URIs array.
+   */
+  setPhotoPreviewUris: (uris: string[]) => void;
+
+  /**
    * `true` while the initial draft is being loaded from secure-store on mount.
    */
   isLoading: boolean;
@@ -180,10 +191,10 @@ function useOnboardingDraftState(): UseOnboardingDraftReturn {
       if (raw !== null) {
         try {
           const parsed = JSON.parse(raw) as OnboardingDraft;
-          // schemaVersion-2 DISCARD policy (pre-launch): if the stored draft is
-          // not version 2, discard it and start fresh. There are no real users
+          // schemaVersion-3 DISCARD policy (pre-launch): if the stored draft is
+          // not version 3, discard it and start fresh. There are no real users
           // with persisted data before launch, so migration is unnecessary.
-          const next = parsed.schemaVersion === 2 ? parsed : createEmptyDraft();
+          const next = parsed.schemaVersion === 3 ? parsed : createEmptyDraft();
           if (!cancelled) {
             draftRef.current = next;
             setDraft(next);
@@ -368,6 +379,25 @@ function useOnboardingDraftState(): UseOnboardingDraftReturn {
     [scheduleWrite],
   );
 
+  const setPhotoPreviewUris = useCallback(
+    (uris: string[]): void => {
+      setDraft((prev) => {
+        const next: OnboardingDraft = {
+          ...prev,
+          photoPreviewUris: uris,
+          timestamps: {
+            ...prev.timestamps,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        draftRef.current = next;
+        scheduleWrite();
+        return next;
+      });
+    },
+    [scheduleWrite],
+  );
+
   return {
     update,
     advance,
@@ -377,6 +407,7 @@ function useOnboardingDraftState(): UseOnboardingDraftReturn {
     setSiblings,
     setNotificationPermissionStatus,
     setLocationPermissionStatus,
+    setPhotoPreviewUris,
     isLoading,
   };
 }

@@ -387,6 +387,25 @@
         "Friend": "دوست",
         "Ward": "زیر کفالت"
       }
+    },
+    "photos": {
+      "title": "اپنی تصاویر شامل کریں",
+      "subtitle": "جاری رکھنے کے لیے کم از کم ایک تصویر شامل کریں",
+      "continueLabel": "جاری رکھیں",
+      "addPhotosLabel": "تصاویر شامل کریں",
+      "grantAccessHint": "تصاویر شامل کرنے کے لیے گیلری تک رسائی دیں",
+      "removePhotoAccessibility": "تصویر ہٹائیں",
+      "tileAccessibilityEmpty": "تصویر شامل کریں",
+      "tileAccessibilityFilled": "تصویر {{index}}"
+    },
+    "phone": {
+      "title": "آپ کا فون نمبر کیا ہے؟",
+      "subtitle": "ہم آپ سے رابطہ کرنے کے لیے یہ استعمال کریں گے",
+      "placeholder": "فون نمبر",
+      "continueLabel": "جاری رکھیں",
+      "changeCountry": "ملک تبدیل کریں",
+      "dialCodeAccessibility": "ملکی کالنگ کوڈ",
+      "inputAccessibility": "فون نمبر درج کریں"
     }
   },
   "siblingForm": {

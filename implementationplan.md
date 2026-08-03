@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-07-26 (phase 9 done)
+last_updated: 2026-08-03 (phase 10 done)
 
 phases:
 
@@ -60,8 +60,8 @@ phases:
 - phase: 10
   title: Photos + phone (B9, pages 28-29)
   file: implementationplan/phase-10-photos-phone-b9.md
-  ready: false
-  done: false
+  ready: true
+  done: true
 
 - phase: 11
   title: Face verification + final PATCH (B10, pages 30-31)

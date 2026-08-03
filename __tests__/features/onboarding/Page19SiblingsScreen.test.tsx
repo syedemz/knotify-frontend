@@ -154,7 +154,7 @@ function mockRoute() {
  */
 function makeDraft(currentPage: number = 19, siblings: SiblingDraft[] = []) {
   return {
-    schemaVersion: 2 as const,
+    schemaVersion: 3 as const,
     lastCheckpoint: 'secondCheckpoint' as const,
     currentPage,
     fields: {},
@@ -162,6 +162,7 @@ function makeDraft(currentPage: number = 19, siblings: SiblingDraft[] = []) {
     photoPreviewUris: [],
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
+    phone_number: null,
     timestamps: { createdAt: '', updatedAt: '' },
   };
 }
@@ -826,14 +827,14 @@ describe('Page19SiblingsScreen — (viii): back-nav re-hydration', () => {
   });
 });
 
-// ── (ix) schemaVersion-2 discard path ────────────────────────────────────────
+// ── (ix) schemaVersion discard path ──────────────────────────────────────────
 
-describe('Page19SiblingsScreen — (ix): schemaVersion-2 discard path via v1 fixture', () => {
-  it('given the draft was constructed as v1 (discarded) and returns currentPage 1, then screen opens in Initial', () => {
-    // Simulate the result of discarding a v1 draft: getDraft() returns a fresh empty draft
-    // with currentPage = 1 (schemaVersion 2 now)
+describe('Page19SiblingsScreen — (ix): schemaVersion discard path via old-version fixture', () => {
+  it('given the draft was constructed from an old-version discard and returns currentPage 1, then screen opens in Initial', () => {
+    // Simulate the result of discarding an old-version draft: getDraft() returns a fresh empty draft
+    // with currentPage = 1 (schemaVersion 3 now)
     const freshDraft = {
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       lastCheckpoint: null as null,
       currentPage: 1,
       fields: {},
@@ -841,6 +842,7 @@ describe('Page19SiblingsScreen — (ix): schemaVersion-2 discard path via v1 fix
       photoPreviewUris: [],
       notificationPermissionStatus: null,
       locationPermissionStatus: null,
+      phone_number: null,
       timestamps: { createdAt: '', updatedAt: '' },
     };
     mockGetDraft.mockReturnValue(freshDraft);

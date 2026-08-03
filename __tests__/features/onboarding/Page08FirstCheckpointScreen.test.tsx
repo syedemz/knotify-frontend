@@ -162,7 +162,7 @@ jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
     advanceWithCheckpoint: mockAdvanceWithCheckpoint,
     reset: jest.fn(),
     getDraft: jest.fn(() => ({
-      schemaVersion: 2,
+      schemaVersion: 3,
       lastCheckpoint: null,
       currentPage: 8,
       fields: {},
@@ -170,6 +170,7 @@ jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
       photoPreviewUris: [],
       notificationPermissionStatus: null,
       locationPermissionStatus: null,
+      phone_number: null,
       timestamps: { createdAt: '', updatedAt: '' },
     })),
     setSiblings: jest.fn(),
