@@ -54,3 +54,15 @@ Cross-checked the phase 10 PRD (`implementationplan/phase-10-photos-phone-b9.md`
 - Add a criterion to story 10.2: adds `phone_number: string | null` to `OnboardingDraft` and `emptyDraft()`; updates the ~20 test fixtures that pin the empty-draft shape.
 - Add a note to story 10.1: "local URI on Android may not survive cold restarts until backend upload lands — QA aware, not a bug for v1."
 - Add a note across both stories: "requires `npx expo prebuild` + full APK reinstall because both `expo-image-picker` (native) and its Android manifest additions are new — no Metro hot-reload for the first install."
+
+## 2026-08-03 10:56 brainstorm (re-run)
+
+`/implement-phase 10` re-invoked after the user resolved the four blockers in `QA/explanations.txt` and the PRD was amended + committed (0dc4b20). Pre-flight rechecked — phase 10 `ready: true`, all prior phases `done: true`, PRD file present and non-empty, stories `10.1` / `10.2` both validate (agent = `frontenddeveloper`, non-empty acceptance criteria, `depends_on: []`).
+
+No new drift surfaced against the codebase since the 10:30 pass:
+- `src/Helper/validationHelper.ts` still present (10.2 add-on target confirmed).
+- `src/services/permissions/index.ts` still exports only `requestNotificationPermission` + `requestLocationPermission` (10.1 add-on slot).
+- `src/features/onboarding/draftSchema.ts` still at SCHEMA_VERSION 3 with no `phone_number` key (10.2 bump lane clear).
+- Tracking issues #41 and #42 verified OPEN via `gh issue view` — reused, no duplicates created.
+
+Proceeding to dispatch story 10.1.
