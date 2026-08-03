@@ -397,6 +397,15 @@
       "removePhotoAccessibility": "تصویر ہٹائیں",
       "tileAccessibilityEmpty": "تصویر شامل کریں",
       "tileAccessibilityFilled": "تصویر {{index}}"
+    },
+    "phone": {
+      "title": "آپ کا فون نمبر کیا ہے؟",
+      "subtitle": "ہم آپ سے رابطہ کرنے کے لیے یہ استعمال کریں گے",
+      "placeholder": "فون نمبر",
+      "continueLabel": "جاری رکھیں",
+      "changeCountry": "ملک تبدیل کریں",
+      "dialCodeAccessibility": "ملکی کالنگ کوڈ",
+      "inputAccessibility": "فون نمبر درج کریں"
     }
   },
   "siblingForm": {

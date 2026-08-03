@@ -142,7 +142,7 @@ function mockRoute() {
  */
 function makeDraft(districtValue?: string | null) {
   return {
-    schemaVersion: 2 as const,
+    schemaVersion: 3 as const,
     lastCheckpoint: 'secondCheckpoint' as const,
     currentPage: 17,
     fields: districtValue !== undefined ? { district: districtValue } : {},
@@ -150,6 +150,7 @@ function makeDraft(districtValue?: string | null) {
     photoPreviewUris: [],
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
+    phone_number: null,
     timestamps: { createdAt: '', updatedAt: '' },
   };
 }

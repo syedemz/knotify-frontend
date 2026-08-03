@@ -191,10 +191,10 @@ function useOnboardingDraftState(): UseOnboardingDraftReturn {
       if (raw !== null) {
         try {
           const parsed = JSON.parse(raw) as OnboardingDraft;
-          // schemaVersion-2 DISCARD policy (pre-launch): if the stored draft is
-          // not version 2, discard it and start fresh. There are no real users
+          // schemaVersion-3 DISCARD policy (pre-launch): if the stored draft is
+          // not version 3, discard it and start fresh. There are no real users
           // with persisted data before launch, so migration is unnecessary.
-          const next = parsed.schemaVersion === 2 ? parsed : createEmptyDraft();
+          const next = parsed.schemaVersion === 3 ? parsed : createEmptyDraft();
           if (!cancelled) {
             draftRef.current = next;
             setDraft(next);

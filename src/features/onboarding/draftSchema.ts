@@ -1,10 +1,15 @@
 /**
- * Onboarding wizard draft schema (schemaVersion 2).
+ * Onboarding wizard draft schema (schemaVersion 3).
  *
  * Migration policy: DISCARD on version mismatch (pre-launch).
- * When the loaded draft's `schemaVersion !== 2`, discard it and start fresh.
- * This is safe pre-launch because there are no real users with persisted v1 data.
+ * When the loaded draft's `schemaVersion !== 3`, discard it and start fresh.
+ * This is safe pre-launch because there are no real users with persisted data.
  * On post-launch bumps, migrate or prompt before discarding.
+ *
+ * Version history:
+ * - v1: initial schema
+ * - v2: added `photoPreviewUris`, `notificationPermissionStatus`, `locationPermissionStatus`
+ * - v3: added `phone_number` (story 10.2)
  *
  * @module features/onboarding/draftSchema
  */
@@ -76,10 +81,10 @@ export interface SiblingDraft {
  */
 export interface OnboardingDraft {
   /**
-   * Schema version. Always `2` for the current draft shape.
+   * Schema version. Always `3` for the current draft shape.
    * Increment this number when the shape changes in a breaking way.
    */
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 3;
 
   /**
    * The furthest checkpoint the user has reached.
@@ -140,6 +145,15 @@ export interface OnboardingDraft {
     | 'undetermined'
     | null;
 
+  /**
+   * Validated phone number in E.164 format (e.g. `+919812345678`), or `null`
+   * if the user has not yet entered a valid phone number on page 29.
+   *
+   * Written by `Page29PhoneScreen` via `update({ phone_number: … })`.
+   * SMS OTP verification is deferred per §17.23.
+   */
+  phone_number: string | null;
+
   /** Timestamps for when the draft was first created and last modified. */
   timestamps: {
     /** ISO-8601 string — when the draft was first created. */
@@ -152,12 +166,12 @@ export interface OnboardingDraft {
 /**
  * Returns a fresh, empty draft for a new onboarding session.
  *
- * @returns A default {@link OnboardingDraft} with schemaVersion 2.
+ * @returns A default {@link OnboardingDraft} with schemaVersion 3.
  */
 export function createEmptyDraft(): OnboardingDraft {
   const now = new Date().toISOString();
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     lastCheckpoint: null,
     currentPage: 1,
     fields: {},
@@ -165,6 +179,7 @@ export function createEmptyDraft(): OnboardingDraft {
     photoPreviewUris: [],
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
+    phone_number: null,
     timestamps: {
       createdAt: now,
       updatedAt: now,

@@ -171,7 +171,7 @@ jest.mock('@/state/auth/AuthProvider', () => ({
 // ── Seeded draft ──────────────────────────────────────────────────────────────
 
 const SEED_DRAFT = {
-  schemaVersion: 2 as const,
+  schemaVersion: 3 as const,
   lastCheckpoint: 'firstCheckpoint' as const,
   currentPage: 9,
   fields: {
@@ -185,6 +185,7 @@ const SEED_DRAFT = {
   photoPreviewUris: [],
   notificationPermissionStatus: null,
   locationPermissionStatus: null,
+  phone_number: null,
   timestamps: { createdAt: '2026-07-23T00:00:00.000Z', updatedAt: '2026-07-23T00:00:00.000Z' },
 };
 

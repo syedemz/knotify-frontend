@@ -397,6 +397,15 @@
       "removePhotoAccessibility": "Remove photo",
       "tileAccessibilityEmpty": "Add photo",
       "tileAccessibilityFilled": "Photo {{index}}"
+    },
+    "phone": {
+      "title": "What is your phone number?",
+      "subtitle": "We'll use this to contact you",
+      "placeholder": "Phone number",
+      "continueLabel": "Continue",
+      "changeCountry": "Change country",
+      "dialCodeAccessibility": "Country calling code",
+      "inputAccessibility": "Phone number input"
     }
   },
   "siblingForm": {

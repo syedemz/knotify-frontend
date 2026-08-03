@@ -81,7 +81,7 @@ describe('useOnboardingDraft — initial load', () => {
 
   it('loads a previously persisted draft from secure-store', async () => {
     const stored = JSON.stringify({
-      schemaVersion: 2,
+      schemaVersion: 3,
       lastCheckpoint: 'firstCheckpoint',
       currentPage: 9,
       fields: { email: 'test@example.com' },
@@ -89,6 +89,7 @@ describe('useOnboardingDraft — initial load', () => {
       photoPreviewUris: [],
       notificationPermissionStatus: null,
       locationPermissionStatus: null,
+      phone_number: null,
       timestamps: { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
     });
     mockSecureStorage.getOnboardingDraft.mockResolvedValue(stored);
@@ -107,7 +108,7 @@ describe('useOnboardingDraft — initial load', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(2);
+    expect(draft.schemaVersion).toBe(3);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
   });
@@ -132,18 +133,18 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
 
     const draft = result.current.getDraft();
     // Must be a fresh empty draft — the v1 data is discarded
-    expect(draft.schemaVersion).toBe(2);
+    expect(draft.schemaVersion).toBe(3);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
     expect(draft.fields).toEqual({});
   });
 
-  it('given a v2 draft on disk, then it is loaded as-is', async () => {
+  it('given a v2 draft on disk, then it is discarded and a fresh empty draft is returned', async () => {
     const v2Draft = JSON.stringify({
       schemaVersion: 2,
       lastCheckpoint: 'secondCheckpoint',
       currentPage: 18,
-      fields: { first_name: 'CurrentUser' },
+      fields: { first_name: 'OldUser' },
       siblings: [],
       photoPreviewUris: [],
       notificationPermissionStatus: null,
@@ -155,7 +156,32 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(2);
+    // Must be a fresh empty draft — v2 is discarded in favour of v3
+    expect(draft.schemaVersion).toBe(3);
+    expect(draft.currentPage).toBe(1);
+    expect(draft.lastCheckpoint).toBeNull();
+    expect(draft.fields).toEqual({});
+  });
+
+  it('given a v3 draft on disk, then it is loaded as-is', async () => {
+    const v3Draft = JSON.stringify({
+      schemaVersion: 3,
+      lastCheckpoint: 'secondCheckpoint',
+      currentPage: 18,
+      fields: { first_name: 'CurrentUser' },
+      siblings: [],
+      photoPreviewUris: [],
+      notificationPermissionStatus: null,
+      locationPermissionStatus: null,
+      phone_number: null,
+      timestamps: { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
+    });
+    mockSecureStorage.getOnboardingDraft.mockResolvedValue(v3Draft);
+
+    const { result } = await renderDraftHook();
+
+    const draft = result.current.getDraft();
+    expect(draft.schemaVersion).toBe(3);
     expect(draft.currentPage).toBe(18);
     expect(draft.lastCheckpoint).toBe('secondCheckpoint');
     expect(draft.fields.first_name).toBe('CurrentUser');
@@ -167,7 +193,7 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(2);
+    expect(draft.schemaVersion).toBe(3);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
     expect(draft.fields).toEqual({});
@@ -179,7 +205,7 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(2);
+    expect(draft.schemaVersion).toBe(3);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
   });
