@@ -273,6 +273,7 @@ function createStyles(theme: Theme) {
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      justifyContent: 'center',
       gap: theme.spacing.sm,
       marginTop: theme.spacing.xxl,
       marginBottom: theme.spacing.lg,
