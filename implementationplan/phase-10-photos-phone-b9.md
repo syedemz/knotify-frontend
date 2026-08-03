@@ -1,6 +1,6 @@
 phase: 10
 title: Photos + phone (B9, pages 28-29)
-last_updated: 2026-08-03 (story 10.1 complete)
+last_updated: 2026-08-03 (story 10.2 complete)
 
 context_summary: |
   Phase 10 delivers the photo grid (page 28, media library permission + image picker) and the phone input (page 29, libphonenumber validation). Photos are stored as local URIs only; upload to backend is deferred until the backend photo pipeline is deployed (§17.14). Phone verification method is [Open] per §17.23 - the field is accepted as validated by libphonenumber-js without OTP in v1.
@@ -40,7 +40,7 @@ stories:
   - id: 10.2
     title: Page 29 - Phone number with libphonenumber-js validation
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     tracking_issue: 42
     acceptance_criteria:
