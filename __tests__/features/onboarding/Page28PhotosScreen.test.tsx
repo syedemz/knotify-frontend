@@ -188,7 +188,7 @@ function mockRoute() {
 
 function makeDraft(photoPreviewUris: string[] = []) {
   return {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     lastCheckpoint: null,
     currentPage: 28,
     fields: {},
@@ -197,6 +197,7 @@ function makeDraft(photoPreviewUris: string[] = []) {
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
     phone_number: null,
+      faceSelfieUri: null,
     timestamps: { createdAt: '', updatedAt: '' },
   };
 }

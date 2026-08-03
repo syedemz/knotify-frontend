@@ -41,6 +41,20 @@ export enum SecureStorageKey {
    * when `lastCheckpoint === null` and `currentPage <= 3`.
    */
   OnboardingBootstrapPassword = 'onboarding.bootstrapPassword',
+  // TODO(mock-only): remove when real backend + JWT claim decode ship
+  /**
+   * Mock-only flag. Set to `"true"` by `OnboardingCompletionProvider.markComplete()`
+   * after the final mock PATCH succeeds. Read on mount to determine whether the
+   * onboarding flow is complete without a real JWT claim.
+   */
+  dummyOnboardingComplete = 'dummy.onboarding.complete',
+  // TODO(mock-only): remove when real backend + JWT claim decode ship
+  /**
+   * Mock-only snapshot. JSON-stringified PATCH body written immediately before
+   * `dummyOnboardingComplete` is set so phase-12 "My Profile" can render
+   * real user-entered data rather than a hardcoded fixture.
+   */
+  dummyProfile = 'dummy.profile',
 }
 
 /**

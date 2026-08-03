@@ -81,7 +81,7 @@ describe('useOnboardingDraft — initial load', () => {
 
   it('loads a previously persisted draft from secure-store', async () => {
     const stored = JSON.stringify({
-      schemaVersion: 3,
+      schemaVersion: 4,
       lastCheckpoint: 'firstCheckpoint',
       currentPage: 9,
       fields: { email: 'test@example.com' },
@@ -90,6 +90,7 @@ describe('useOnboardingDraft — initial load', () => {
       notificationPermissionStatus: null,
       locationPermissionStatus: null,
       phone_number: null,
+      faceSelfieUri: null,
       timestamps: { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
     });
     mockSecureStorage.getOnboardingDraft.mockResolvedValue(stored);
@@ -108,7 +109,7 @@ describe('useOnboardingDraft — initial load', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(3);
+    expect(draft.schemaVersion).toBe(4);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
   });
@@ -133,7 +134,7 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
 
     const draft = result.current.getDraft();
     // Must be a fresh empty draft — the v1 data is discarded
-    expect(draft.schemaVersion).toBe(3);
+    expect(draft.schemaVersion).toBe(4);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
     expect(draft.fields).toEqual({});
@@ -156,16 +157,16 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    // Must be a fresh empty draft — v2 is discarded in favour of v3
-    expect(draft.schemaVersion).toBe(3);
+    // Must be a fresh empty draft — v2 is discarded in favour of v4
+    expect(draft.schemaVersion).toBe(4);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
     expect(draft.fields).toEqual({});
   });
 
-  it('given a v3 draft on disk, then it is loaded as-is', async () => {
+  it('given a v4 draft on disk, then it is loaded as-is', async () => {
     const v3Draft = JSON.stringify({
-      schemaVersion: 3,
+      schemaVersion: 4,
       lastCheckpoint: 'secondCheckpoint',
       currentPage: 18,
       fields: { first_name: 'CurrentUser' },
@@ -174,6 +175,7 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
       notificationPermissionStatus: null,
       locationPermissionStatus: null,
       phone_number: null,
+      faceSelfieUri: null,
       timestamps: { createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z' },
     });
     mockSecureStorage.getOnboardingDraft.mockResolvedValue(v3Draft);
@@ -181,7 +183,7 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(3);
+    expect(draft.schemaVersion).toBe(4);
     expect(draft.currentPage).toBe(18);
     expect(draft.lastCheckpoint).toBe('secondCheckpoint');
     expect(draft.fields.first_name).toBe('CurrentUser');
@@ -193,7 +195,7 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(3);
+    expect(draft.schemaVersion).toBe(4);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
     expect(draft.fields).toEqual({});
@@ -205,7 +207,7 @@ describe('useOnboardingDraft — schemaVersion discard policy', () => {
     const { result } = await renderDraftHook();
 
     const draft = result.current.getDraft();
-    expect(draft.schemaVersion).toBe(3);
+    expect(draft.schemaVersion).toBe(4);
     expect(draft.currentPage).toBe(1);
     expect(draft.lastCheckpoint).toBeNull();
   });
@@ -573,5 +575,53 @@ describe('useOnboardingDraft — setLocationPermissionStatus()', () => {
 
     expect(result.current.getDraft().siblings).toHaveLength(1);
     expect(result.current.getDraft().locationPermissionStatus).toBe('granted');
+  });
+});
+
+describe('useOnboardingDraft — setFaceSelfieUri()', () => {
+  it('given a URI, then faceSelfieUri on draft is set to that URI', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.setFaceSelfieUri('mock://face-selfie-123.jpg');
+    });
+
+    expect(result.current.getDraft().faceSelfieUri).toBe('mock://face-selfie-123.jpg');
+  });
+
+  it('given a URI is set, then other draft fields are unaffected', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.update({ first_name: 'Zara' });
+    });
+
+    act(() => {
+      result.current.setFaceSelfieUri('mock://face-selfie-456.jpg');
+    });
+
+    expect(result.current.getDraft().fields.first_name).toBe('Zara');
+    expect(result.current.getDraft().faceSelfieUri).toBe('mock://face-selfie-456.jpg');
+  });
+});
+
+describe('useOnboardingDraft — clear()', () => {
+  it('is an alias for reset() — clears the in-memory draft to defaults', async () => {
+    const { result } = await renderDraftHook();
+
+    act(() => {
+      result.current.update({ email: 'user@example.com' });
+      result.current.setFaceSelfieUri('mock://selfie.jpg');
+    });
+
+    act(() => {
+      result.current.clear();
+    });
+
+    const draft = result.current.getDraft();
+    expect(draft.currentPage).toBe(1);
+    expect(draft.lastCheckpoint).toBeNull();
+    expect(draft.fields).toEqual({});
+    expect(draft.faceSelfieUri).toBeNull();
   });
 });

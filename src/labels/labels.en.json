@@ -407,6 +407,25 @@
       "changeCountry": "Change country",
       "dialCodeAccessibility": "Country calling code",
       "inputAccessibility": "Phone number input"
+    },
+    "faceIntro": {
+      "title": "Verify your face",
+      "subtitle": "We take one quick selfie to confirm you're a real person. Your photo is reviewed by our team and never shared publicly.",
+      "verifyButton": "Verify photo",
+      "deniedMessage": "Camera access is required to continue. Please tap Retry to try again.",
+      "retryButton": "Retry",
+      "openSettings": "Open Settings",
+      "permissionRequiredMessage": "Camera permission is required to complete registration. Please enable it in your device's OS settings."
+    },
+    "faceCapture": {
+      "title": "Take your selfie",
+      "subtitle": "Position your face within the oval and hold still. We'll capture automatically.",
+      "shutterButton": "Take photo",
+      "autoCaptureHint": "Hold your face inside the oval",
+      "captureRetry": "Retake",
+      "submitError": "Something went wrong. Please try again.",
+      "submitRetry": "Try again",
+      "usernameRegenerating": "Checking availability…"
     }
   },
   "siblingForm": {

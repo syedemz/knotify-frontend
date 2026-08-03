@@ -85,6 +85,11 @@ export interface ButtonProps {
    * @default `label` prop value
    */
   accessibilityLabel?: string;
+  /**
+   * Test identifier forwarded to the underlying `Pressable`.
+   * Used by `@testing-library/react-native` for element lookup.
+   */
+  testID?: string;
 }
 
 /**
@@ -112,6 +117,7 @@ export function Button({
   iconLeft,
   iconRight,
   accessibilityLabel,
+  testID,
 }: ButtonProps) {
   const theme = useTheme();
   const styles = useMemo(
@@ -133,6 +139,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: isDisabled }}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator

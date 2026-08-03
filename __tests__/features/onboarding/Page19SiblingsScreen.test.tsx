@@ -154,7 +154,7 @@ function mockRoute() {
  */
 function makeDraft(currentPage: number = 19, siblings: SiblingDraft[] = []) {
   return {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     lastCheckpoint: 'secondCheckpoint' as const,
     currentPage,
     fields: {},
@@ -163,6 +163,7 @@ function makeDraft(currentPage: number = 19, siblings: SiblingDraft[] = []) {
     notificationPermissionStatus: null,
     locationPermissionStatus: null,
     phone_number: null,
+      faceSelfieUri: null,
     timestamps: { createdAt: '', updatedAt: '' },
   };
 }
@@ -834,7 +835,7 @@ describe('Page19SiblingsScreen — (ix): schemaVersion discard path via old-vers
     // Simulate the result of discarding an old-version draft: getDraft() returns a fresh empty draft
     // with currentPage = 1 (schemaVersion 3 now)
     const freshDraft = {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       lastCheckpoint: null as null,
       currentPage: 1,
       fields: {},
@@ -843,6 +844,7 @@ describe('Page19SiblingsScreen — (ix): schemaVersion discard path via old-vers
       notificationPermissionStatus: null,
       locationPermissionStatus: null,
       phone_number: null,
+      faceSelfieUri: null,
       timestamps: { createdAt: '', updatedAt: '' },
     };
     mockGetDraft.mockReturnValue(freshDraft);

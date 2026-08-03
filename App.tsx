@@ -10,6 +10,8 @@ import { ThemeProvider } from "@/theme";
 import { LanguageProvider } from "@/state/i18n/LanguageProvider";
 import { QueryProvider } from "@/state/query/QueryProvider";
 import { AuthProvider } from "@/state/auth/AuthProvider";
+// TODO(mock-only): remove when real backend + JWT claim decode ship
+import { OnboardingCompletionProvider } from "@/state/onboardingCompletion/OnboardingCompletionProvider";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { linking } from "@/navigation/linking";
 import { env } from "@/config/env";
@@ -117,9 +119,12 @@ export default function App() {
           <LanguageProvider>
             <QueryProvider>
               <AuthProvider>
-                <NavigationContainer linking={linking}>
-                  <RootNavigator />
-                </NavigationContainer>
+                {/* TODO(mock-only): remove OnboardingCompletionProvider when real backend + JWT claim decode ship */}
+                <OnboardingCompletionProvider>
+                  <NavigationContainer linking={linking}>
+                    <RootNavigator />
+                  </NavigationContainer>
+                </OnboardingCompletionProvider>
               </AuthProvider>
             </QueryProvider>
           </LanguageProvider>
