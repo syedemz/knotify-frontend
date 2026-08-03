@@ -60,7 +60,7 @@ phases:
 - phase: 10
   title: Photos + phone (B9, pages 28-29)
   file: implementationplan/phase-10-photos-phone-b9.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 11

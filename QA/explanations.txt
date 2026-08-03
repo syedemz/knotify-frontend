@@ -1,228 +1,291 @@
 ================================================================
-PHASE 9 — Preferences + relation (pages 25, 26, 27)
+PHASE 10 — Photos + phone (pages 28, 29)
 Concerns before we can start building
 ================================================================
 
-There are 7 concerns below. Concerns #1, #2, and #3 are BLOCKERS — I cannot
-start building without your answer. Concerns #4 through #7 are just heads-up
-items I will handle myself, but you should skim them so you're not surprised.
+There are 9 concerns below. Concerns #1 through #4 are BLOCKERS — I need
+your answer before I can build. Concerns #5 through #9 are heads-up items
+I will handle myself, but you should skim them so nothing surprises you.
 
 Please write your answer under each concern on the "ANSWER:" line.
 
 ----------------------------------------------------------------
-CONCERN #1 — BLOCKER — The reference screenshots don't match the plan
+CONCERN #1 — BLOCKER — What happens when the user picks a photo they don't like?
 ----------------------------------------------------------------
 
-WHAT THE PLAN SAYS pages 25, 26, 27 should be:
-  - Page 25: a long scrollable list where the user ticks multiple options
-            (preferences list #1). Like a checklist.
-  - Page 26: another long scrollable checklist (preferences list #2).
-  - Page 27: "Who are you creating this profile for?" with 6 choices —
-            Myself, Son, Daughter, Sibling, Friend, Ward.
+WHAT THE PLAN SAYS: Page 28 shows a 6-tile grid. Tap an empty tile, the
+phone's photo library opens, pick a photo, that tile is now filled with
+your photo. Continue button is enabled once you have at least 1 photo.
 
-WHAT THE MUZZ SCREENSHOTS at muzzscreenshots/25.jpeg, 26.jpeg, 27.jpeg
-actually show:
-  - 25.jpeg: "Do you drink alcohol?" — YES / NO buttons
-  - 26.jpeg: "Do you have children?" — YES / NO buttons
-  - 27.jpeg: "Would you move abroad for marriage?" — YES / NO buttons
+THE PROBLEM: The plan never says what happens AFTER a tile is filled.
+Can the user tap that tile again to remove the photo? To replace it?
+Right now, if you followed the plan literally, once you picked a photo
+you'd be stuck with it forever — no way to swap it out short of restarting
+onboarding. That's obviously wrong, but the plan doesn't tell me how you
+want the "delete/replace" gesture to work.
 
-ANALOGY: Imagine your architect handed you blueprints for a 3-bedroom house,
-but the photos of the reference home you were told to copy actually show a
-2-bedroom bungalow with a swimming pool. Something's clearly out of sync —
-either the blueprints are wrong, or the photos are of the wrong house, or
-you were told to ignore the photos entirely. I need you to tell me which.
+ANALOGY: Imagine you're picking clothes to wear from your wardrobe and
+laying them out on your bed in 6 slots. The plan tells me how you PUT
+clothes in the slots but says nothing about how you TAKE THEM OUT if you
+change your mind. Do you tap the slot again? Long-press? Is there a
+little "x" in the corner? Someone has to decide.
 
-WHY THIS MATTERS: If I build what the PLAN says, but you were expecting what
-the SCREENSHOTS show, we'll waste a whole phase. Also — the yes/no questions
-in the screenshots (drink alcohol / have children / move abroad) already
-exist elsewhere in the app. "Have children" and "move abroad" were both
-built in phase 8. So the screenshots might just be misfiled from an earlier
-Muzz version.
+WHAT MUZZ DOES (from the reference screenshots): Filled tiles have a
+small "x" button in the top-right corner. Tapping the "x" removes the
+photo. Tapping the photo itself opens the picker again to swap it.
 
 PICK ONE:
-  (a) The screenshots are misfiled or mislabeled — I'll ignore them and
-      build what the PLAN says. If you have the CORRECT screenshots for the
-      preferences lists + relation picker, share them. Otherwise I'll design
-      the visuals myself matching phase 8's style.
-  (b) The PLAN is out of date. You actually want the Yes/No pages shown in
-      the screenshots on 25/26/27 instead. This would mean re-scoping the
-      whole phase — tell me what you want on each page and I'll rewrite
-      the plan.
-  (c) Ignore the screenshots completely. The PLAN is correct. Just build
-      it — I don't need screenshot references for this phase.
+  (a) Match Muzz — small "x" in the top-right of each filled tile to
+      remove; tapping the photo itself opens the picker to replace. Two
+      distinct gestures, most familiar to users, recommended.
+  (b) Tap-to-replace only — tapping a filled tile just re-opens the
+      picker. No dedicated remove gesture (user has to replace it with
+      something else, or the tile stays filled). Simpler code, worse UX.
+  (c) Long-press to remove; tap to replace. Slightly hidden gesture but
+      keeps the tile visually clean (no "x" chip).
+  (d) Something else — describe it.
 
-ANSWER: The screenshots are misleading, use the screenshots 32-1.jpeg, 32-2.jpeg, 32-3.jpeg, these screenshots capture
-a users personality traits , check all options
-in these screenshots and construct the preferences1,json, and create only onboardingDraft.preferencesDraft.list1
-
-The second list was meant to capture the users interests but i dont think we need that, so lets just skip that
-
+ANSWER: go with option a
 
 
 ----------------------------------------------------------------
-CONCERN #2 — BLOCKER — Where do we store the checklist answers?
+CONCERN #2 — BLOCKER — What shape and quality should the photos be?
 ----------------------------------------------------------------
 
-WHAT THE PLAN SAYS: When the user ticks options on page 25 and page 26,
-save the ticked values to a spot called "preferencesDraft.list1" and
-"preferencesDraft.list2" inside the onboarding draft.
+WHAT THE PLAN SAYS: Nothing about photo dimensions, aspect ratio, or
+file size.
 
-THE PROBLEM: That spot doesn't exist yet. The onboarding draft is like a
-filing cabinet where every drawer corresponds to a real database field
-(name, birthday, marital_status, etc). There is currently no drawer named
-"preferencesDraft". I need to add one.
+THE PROBLEM: When we open the phone's photo picker, we can either let
+the user pick any photo as-is (portrait selfie, landscape sunset, square
+Instagram post, whatever) OR we can force them to crop it to a fixed
+shape before we accept it. And we can either take the photo at full
+device resolution (huge files) or compress it (smaller, faster).
 
-ANALOGY: Imagine your accountant tells you to file receipts under a folder
-called "2027 Business Expenses" — but you look in the filing cabinet and
-there's no such folder yet. You have to CREATE the folder first. Same idea.
+Since the 6-tile grid displays every photo at the same tile size, if
+users pick a mix of portrait and landscape and square photos, the grid
+will look ragged — some tiles cropped, some letterboxed, some stretched.
 
-WHY IT'S NOT AUTOMATIC: The filing cabinet has a "version number" stamped
-on it (schemaVersion 2 right now). When I add a new drawer, I bump the
-version to 3. Any user who was mid-onboarding on version 2 will have their
-draft WIPED and they'll start over. This is our standard policy called
-"DISCARD" — it's fine right now because we have zero real users yet, but
-it means anyone who was mid-signup on your device will restart from page 1.
+ANALOGY: Imagine a family photo album where every page has 6 rectangular
+slots the same shape. If your family sends you a mix of tall photos,
+wide photos, and square photos, the album will look messy. Either you
+tell everyone "give me square photos only" (force crop) or you accept
+whatever and live with the mismatched look.
 
-THE OTHER CONSIDERATION: The PLAN itself says (in the "notes" field) that
-these preferences don't get sent to the backend yet — the mapping to the
-`users.preferences` database column is deferred to a later phase. So we're
-only storing the answers locally on the device for now. That's fine, but
-worth you knowing: pages 25/26 will collect data that goes nowhere until
-we hook up the backend mapping later.
+WHY IT MATTERS NOW: The pictures don't get uploaded to a server yet
+(that's a later phase), but they DO get displayed in the 6-tile grid
+immediately. So the choice affects what you see on page 28 today.
 
 PICK ONE:
-  (a) YES — add the new "preferencesDraft" drawer, bump schemaVersion 2 → 3,
-      DISCARD any in-progress drafts. Standard pattern, recommended.
-  (b) NO — don't persist these answers at all. Just keep them in local
-      screen memory. If the user backs out or closes the app, they lose
-      their picks and re-select. Simpler code, worse UX.
-  (c) Something else — you propose an alternative.
+  (a) Force square crop, medium quality (0.8) — the picker opens with a
+      1:1 crop overlay, user drags to frame, we save the cropped square
+      at ~80% JPEG quality. Grid always looks tidy. Muzz-style.
+      Recommended.
+  (b) Force portrait crop (4:5), medium quality — like Instagram feed
+      photos. Slightly more space for faces.
+  (c) Accept any shape, no crop, full quality — user picks whatever they
+      have. Grid looks messy but nobody has to crop anything.
+  (d) Something else.
 
-ANSWER: Like i said just skip onboardingDraft.preferencesDraft.list2, there is a database field called
-preference, just use that for onboardingDraft.preferencesDraft.list1 which contains the users personality traits
-
-
-
-----------------------------------------------------------------
-CONCERN #3 — BLOCKER — What are the actual options on pages 25 and 26?
-----------------------------------------------------------------
-
-THE PROBLEM: The plan says "load the options from preferences1.json and
-preferences2.json." But those files don't exist. And the plan doesn't say:
-  - What is the page header on page 25? ("What are you looking for in a
-    partner?" — or something else?)
-  - What is the page header on page 26?
-  - What options should be in each list? (How many? What are they?)
-  - What are the Urdu translations of everything above?
-
-ANALOGY: Imagine you asked a chef to prepare "the dessert" but never told
-them WHAT dessert. They can't just make one up — they need the recipe.
-I can't invent random preferences like "loves hiking / enjoys cooking" —
-those choices will show up directly on the user's screen and I don't know
-what YOU want them to see.
-
-WHAT I NEED FROM YOU:
-  - PAGE 25:
-      * Header (English): _______________
-      * Header (Urdu):    _______________
-      * Options list (English) — one per line:
-          - ___
-          - ___
-          - ___ (add as many as you want)
-      * Options list (Urdu) — one per line, same order as English:
-          - ___
-          - ___
-          - ___
-
-  - PAGE 26:
-      * Header (English): _______________
-      * Header (Urdu):    _______________
-      * Options list (English) — one per line:
-          - ___
-          - ___
-          - ___
-      * Options list (Urdu) — one per line, same order as English:
-          - ___
-          - ___
-          - ___
-
-IF YOU DON'T KNOW YET: You could tell me to use placeholder options for now
-(like Placeholder-A, Placeholder-B, Placeholder-C) and we'll fill them in
-before launch. But that means the UI will look weird during testing.
-Recommended: give me real options now, even if you tweak them later.
-
-ANSWER: Just use the 3 screenshots i listed above to create the preferences1.json
-forget about preferences2.json. so only create page 25, forget about page 26
-also create the urdu translation for each option., the options should be possible in both
-english and urdu
+ANSWER: go with option a
 
 
 ----------------------------------------------------------------
-CONCERN #4 — Heads-up — Continue button comes back on pages 25/26
+CONCERN #3 — BLOCKER — What does the Continue button say on page 28?
 ----------------------------------------------------------------
 
-Phase 8 used auto-advance (tap → next page, no button). But pages 25 and
-26 are MULTI-select checklists — the user picks several options, then
-commits. Auto-advance doesn't work for that (I can't guess when they're
-done picking). So I'll bring back a Continue button on 25 and 26.
+WHAT THE PLAN SAYS: The button label is "Add photos" and it's disabled
+until at least 1 tile is filled.
 
-ANALOGY: A single-choice question is like a light switch — flip it and
-you're done. A multi-choice checklist is like a grocery list — you need
-a "done shopping" button because there's no natural stopping point.
+THE PROBLEM: "Add photos" is a strange label to click AFTER you've
+already added photos. It reads like an instruction, not a next-step
+action. Most apps flip the label once you've done the action — e.g.
+"Add photos" (0 photos) → "Continue" (1+ photos).
 
-Page 27 is a single-choice question (pick one of Myself/Son/Daughter/etc)
-so it will use auto-advance like phase 8.
+ANALOGY: Imagine an elevator button that says "Press here to go up".
+Fine. But once you've pressed it and the elevator's on its way, the
+button doesn't keep saying "Press here to go up" — it lights up and
+you move on. The label should reflect where you ARE in the flow.
 
-NO ACTION NEEDED FROM YOU — just letting you know why the Continue button
-appears again. Say something if you'd rather not have it.
+PICK ONE:
+  (a) Label flips: "Add photos" when 0 filled → "Continue" when 1+
+      filled. Muzz-style, matches how phase 9 personality button flips.
+      Recommended.
+  (b) Label stays "Add photos" the whole time — user just taps it once
+      it's enabled. Simpler, less polished.
+  (c) Something else — e.g. "Continue" the whole time, disabled when 0.
 
-ANSWER (optional): Use the continue button, no auto advance
+ANSWER: go with option a
 
 
 ----------------------------------------------------------------
-CONCERN #5 — Heads-up — Page 27 back-navigation behavior
+CONCERN #4 — BLOCKER — What country does the phone screen default to?
 ----------------------------------------------------------------
 
-Standard phase-8 pattern: when the user backs up to page 27 from page 28,
-their previously-picked "relation" answer stays highlighted, but the app
-does NOT immediately auto-advance them forward again. Otherwise you'd get
-a "rubber band" effect where going back keeps flinging you forward.
+WHAT THE PLAN SAYS: Page 29 has a country dial-code prefix (+92, +44,
++1, etc.) next to the phone number input. The plan says it "defaults to
+the value written on page 15".
 
-The plan doesn't explicitly say this — I'll apply the phase-8 pattern
-automatically. Same guard we used on pages 21/22/23/24.
+THE PROBLEM (small): Page 15 stores the user's COUNTRY (like "Pakistan"
+or the code "PK"), not the DIAL CODE. So the phone screen has to look
+up "PK → +92" in our country list. That's a two-step lookup, not a
+direct read. No big deal — I'll wire it up. But you should know it's not
+literally reading the same field.
 
-NO ACTION NEEDED — just documenting the decision.
+THE PROBLEM (bigger): What if the user reaches page 29 without ever
+picking a country on page 15? This can happen if they resumed onboarding
+from a checkpoint that was saved BEFORE page 15, or if the draft was
+partially wiped. What dial code should the picker show by default in
+that case?
+
+ANALOGY: Imagine a hotel check-in form that pre-fills your address based
+on your reservation. But what if the reservation has no address? The
+form has to fall back to something — maybe blank, maybe the hotel's own
+country, maybe your device's country. The system needs a fallback rule.
+
+PICK ONE:
+  (a) Default to +92 (Pakistan) — since Knotify is primarily targeting
+      Pakistani users, this is the safest fallback. Recommended.
+  (b) Leave the picker blank and force the user to pick a country
+      manually before they can type a number. Safer for non-Pakistani
+      users, slightly more friction.
+  (c) Read the phone's own SIM country code — most accurate but requires
+      an extra permission and adds complexity.
+  (d) Something else.
+
+ANSWER: Default to +91 India, we are primarily targetting indian audience
+
+
+----------------------------------------------------------------
+CONCERN #5 — Heads-up — The plan has a wrong screen name
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: After the user finishes page 29 (phone number),
+advance them to "Page30FaceIntroScreen".
+
+THE PROBLEM: That screen doesn't exist. The actual screen registered in
+the navigation code is called "Page30FaceVerifyIntroScreen" (slightly
+different name). If I built page 29 with the plan's spelling, the app
+would crash the moment the user taps Continue.
+
+ANALOGY: Imagine your GPS is told to navigate to "Main Street" but the
+actual street is "Main Avenue". Same idea, wrong label, dead end.
+
+NO ACTION NEEDED — I'll just use the correct name that's already in the
+navigation code. Documenting because your plan file has the wrong name
+in it, and I want you to know I'm silently correcting it.
+
+ANSWER (optional): yes please use the correct name
+
+
+----------------------------------------------------------------
+CONCERN #6 — Heads-up — This phase needs a full app rebuild, not a JS reload
+----------------------------------------------------------------
+
+WHAT THE PLAN NEEDS: Two new native pieces —
+  - expo-image-picker (opens the phone's photo library)
+  - libphonenumber-js (validates phone numbers)
+
+The first one, expo-image-picker, is a "native module". It touches
+Android's operating system directly to open the photo picker and
+request the READ_MEDIA_IMAGES permission. That means it's not something
+we can just push through Metro (the tool that hot-reloads JavaScript
+changes on your phone in seconds). It requires rebuilding the entire
+Android APK and reinstalling it on your device — a 4-6 minute process.
+
+ANALOGY: Renovating a house usually means moving furniture around
+(quick — that's JavaScript changes). But if you're adding a NEW ROOM,
+you need to break down walls and pour concrete (slow — that's a native
+module). Photo pickers require pouring concrete.
+
+WHAT THIS MEANS FOR YOU: When you test phase 10 for the first time on
+your phone, we'll need to run the full `npx expo run:android` rebuild
+sequence (per your memory: JAVA_HOME + platform-tools PATH + reverse
+port forward + full APK install). Not a Metro reload. This is a
+one-time cost for this phase — once installed, subsequent JS-only
+tweaks reload normally.
+
+NO ACTION NEEDED — just letting you know the rebuild is coming so
+you're not surprised when I ask for a longer build window.
 
 ANSWER (optional):
 
 
 ----------------------------------------------------------------
-CONCERN #6 — Heads-up — Label parity (English + Urdu)
+CONCERN #7 — Heads-up — Photos might disappear if you close the app
 ----------------------------------------------------------------
 
-Every user-visible piece of text needs to be added to BOTH
-`labels.en.json` (English) and `labels.ur.json` (Urdu). Standard convention.
-I'll handle this — but it depends on you giving me the Urdu translations
-in Concern #3.
+WHY: Photos on page 28 are stored as "local URIs" — basically, the
+address on your phone where the photo lives. We don't upload them to
+a server yet (that's a later phase). On Android specifically, these
+addresses (they look like "content://media/external/…") are only
+guaranteed to work while the app is running. If you close the app
+completely and reopen it, the addresses may no longer resolve — and
+the tiles would show broken/blank images.
 
-If you only give me English, I'll copy the English text into the Urdu file
-as a placeholder and note it for later translation.
+ANALOGY: Imagine giving your friend a slip of paper with a temporary
+locker number at the airport ("locker 42"). It works while they're at
+the airport, but once they leave, that locker number means nothing.
+Same idea — the photo address is a temporary locker number.
 
-NO ACTION NEEDED beyond Concern #3.
+WHY IT'S NOT A BUG (yet): This will be fixed for real when we add the
+"upload photos to backend" phase. Once photos are uploaded, we store
+the permanent server URL instead of the temporary local address.
+
+WHAT I'LL DO: Document this in the code so future-us (or a tester)
+doesn't file it as a bug. The workaround for testing is: don't close
+the app between picking photos and finishing onboarding.
+
+NO ACTION NEEDED.
 
 ANSWER (optional):
 
 
 ----------------------------------------------------------------
-CONCERN #7 — Heads-up — Reusing existing list-row component
+CONCERN #8 — Heads-up — Adding a new field to the "filing cabinet"
 ----------------------------------------------------------------
 
-The plan mentions using a component called "ListRowSelectable" for the
-checklists. I'll check if it already exists in the codebase — if yes,
-reuse it; if not, I'll build one as a general catalog piece so future
-pages can reuse it too.
+WHAT: Page 29 collects a phone number. There's no "phone_number" drawer
+in the onboarding filing cabinet (the draft) yet. Same situation as
+phase 9 concern #2 — I have to add the drawer, and adding a drawer
+bumps the version of the cabinet.
 
-NO ACTION NEEDED — just noting I'll investigate before duplicating work.
+RIGHT NOW the cabinet is on version 3 (bumped in phase 9 when we added
+personalityTraits). Adding phone_number will bump it to version 4. Any
+user mid-onboarding on version 3 will have their draft WIPED and start
+over from page 1 — standard "DISCARD" policy.
+
+Same as before: fine because we have zero real users yet, but if you
+had a partially-completed draft on your phone from testing phase 9, it
+will get erased on the next launch after this phase ships.
+
+ANALOGY: You already lived through this in phase 9. Same routine, one
+more time.
+
+NO ACTION NEEDED unless you want to preserve your current test-draft
+state — in which case screenshot your progress before I ship phase 10.
 
 ANSWER (optional):
 
+
+----------------------------------------------------------------
+CONCERN #9 — Heads-up — Two tracking tickets already exist for this phase
+----------------------------------------------------------------
+
+WHAT: GitHub issues #41 and #42 were created way back when phase 10 was
+first planned. They're both still open. My instructions say I should
+reuse them (not create duplicates), so I'll just verify they're still
+open and pin their numbers into the plan so the project board keeps
+tracking properly.
+
+ANALOGY: Someone already set up the seating chart for a dinner party
+last month. Rather than throwing it out and making a new one, I'll just
+use it and update the name tags.
+
+NO ACTION NEEDED — noting so you don't wonder why I'm not creating new
+tickets.
+
+Also (orthogonal): phase 9 was marked complete in the plan but the
+git tag "phase-9-complete" was never created. Worth tagging when you
+get a moment — not a blocker for phase 10.
+
+ANSWER (optional):
