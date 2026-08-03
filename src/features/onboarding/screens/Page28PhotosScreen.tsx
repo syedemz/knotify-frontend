@@ -24,11 +24,11 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { Heading, Screen, Text, WizardFooter, WizardHeader } from '@/components';
+import { Button, Heading, Screen, Text, WizardFooter, WizardHeader } from '@/components';
 import { t } from '@/labels';
 import { requestMediaLibraryPermission } from '@/services/permissions';
 import { useTheme } from '@/theme';
@@ -207,6 +207,20 @@ export function Page28PhotosScreen({ navigation }: Props): React.JSX.Element {
     navigation.navigate('Page29PhoneScreen');
   }, [advance, navigation]);
 
+  /**
+   * Opens the OS settings screen for this app so the user can grant photo
+   * access after they previously denied it (especially "don't ask again",
+   * which prevents re-prompting from within the app).
+   *
+   * Clears the local `permissionDenied` flag so tiles become tappable again
+   * on return; the next tile tap will re-check the OS permission and either
+   * proceed (if granted) or set the flag again (if still denied).
+   */
+  const handleOpenSettings = useCallback((): void => {
+    setPermissionDenied(false);
+    void Linking.openSettings();
+  }, []);
+
   // ── Derived values ───────────────────────────────────────────────────────────
 
   const hasPhoto = uris.length > 0;
@@ -239,6 +253,16 @@ export function Page28PhotosScreen({ navigation }: Props): React.JSX.Element {
           {t('onboarding.photos.subtitle')}
         </Text>
 
+        {permissionDenied && (
+          <View style={styles.settingsButton}>
+            <Button
+              label={t('onboarding.photos.openSettings')}
+              variant="secondary"
+              onPress={handleOpenSettings}
+            />
+          </View>
+        )}
+
         <View style={styles.grid}>
           {tileUris.map((uri, index) => (
             <PhotoTile
@@ -269,6 +293,9 @@ function createStyles(theme: Theme) {
   return StyleSheet.create({
     subtitleSpacer: {
       height: theme.spacing.sm,
+    },
+    settingsButton: {
+      marginTop: theme.spacing.md,
     },
     grid: {
       flexDirection: 'row',

@@ -394,6 +394,7 @@
       "continueLabel": "جاری رکھیں",
       "addPhotosLabel": "تصاویر شامل کریں",
       "grantAccessHint": "تصاویر شامل کرنے کے لیے گیلری تک رسائی دیں",
+      "openSettings": "ترتیبات کھولیں",
       "removePhotoAccessibility": "تصویر ہٹائیں",
       "tileAccessibilityEmpty": "تصویر شامل کریں",
       "tileAccessibilityFilled": "تصویر {{index}}"

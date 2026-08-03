@@ -394,6 +394,7 @@
       "continueLabel": "Continue",
       "addPhotosLabel": "Add photos",
       "grantAccessHint": "Grant photos access to add pictures",
+      "openSettings": "Open Settings",
       "removePhotoAccessibility": "Remove photo",
       "tileAccessibilityEmpty": "Add photo",
       "tileAccessibilityFilled": "Photo {{index}}"
