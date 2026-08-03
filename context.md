@@ -19,6 +19,22 @@ Local auth mock mode is active while the AWS backend is unspun (to save cost dur
 
 After all three are done, `grep -r isMockAuth src/` should return zero hits and `grep -r dummydummy src/config/` should return zero hits. Add a CI grep gate at that time if you want a hard stop.
 
+### Mock-only registration + profile pipeline (added phase 11, 2026-08-03)
+
+Registration completion and the phase-12 profile pipeline are intentionally mock-only until the backend (Cognito + AWS API + DB) is stood up. Every temporary surface added by phases 11–12 is grep-able via `TODO(mock-only)`. Before the first real production build, remove them in this order:
+
+1. **Wire up `custom:profile_complete` JWT claim decode in `src/state/auth/AuthProvider.tsx`.** Resolve the `TODO(phase-2)` in the `profileComplete` `useMemo` (lines ~122-129) — decode the ID token, read the `custom:profile_complete` claim, return the boolean. This is what actually unlocks AppTabs post-onboarding once real Cognito is in play.
+2. **Verify Cognito refresh returns a fresh ID token with the updated claim.** `AuthProvider.refresh()` calls `cognitoClient.refreshSession()`. If Amplify caches the ID token instead of re-fetching from Cognito after the backend flips `profile_complete_verified`, the claim will stay stale — in which case we need a manual `/oauth2/token` call or a sign-out/sign-in round-trip after the final PATCH. Verify with a real Cognito user pool before removing the mock-only bypass.
+3. **Delete `src/state/onboardingCompletion/`** (the `OnboardingCompletionProvider` and its context) and remove its mount from `App.tsx`.
+4. **Delete the additive `dummyOnboardingComplete` check in `src/navigation/RootNavigator.tsx`** — restore to a pure `profileComplete`-driven gate.
+5. **Delete the mock PATCH `/profile/me` handler and the mock GET `/profile/me` handler** in `services/api/mocks/handlers.ts` (added by phase 11 story 11.2 and phase 12 story 12.1). Real HTTP client calls the real backend.
+6. **Delete the secure-store snapshot logic in `Page31FaceCaptureScreen`** — the `dummy.profile` write and the `dummy.onboarding.complete` flag write on mock-submit success.
+7. **Delete the secure-store read logic in the mock GET `/profile/me` handler** and the merge logic in the mock PATCH `/profile/me` handler.
+8. **One-shot migration on next launch:** wipe secure-store keys `dummy.profile` and `dummy.onboarding.complete` so no stale local data lingers.
+9. **Verify YES/NO backend casing.** Fields `father_retired`, `mother_retired` (TEXT columns per phase 7) and `has_children`, `move_abroad` (BOOL columns per phase 8, already coerced) are written as literal `"YES"` / `"NO"` (uppercase) in the draft. Confirm the real backend accepts this exact casing for the two TEXT columns, or update `src/config/options/yesNo.json` (single source of truth) and re-run affected screens.
+
+After all of the above: `grep -r 'TODO(mock-only)' src/` should return zero hits.
+
 ## Critical design decisions
 None yet.
 

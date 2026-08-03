@@ -66,7 +66,7 @@ phases:
 - phase: 11
   title: Face verification + final PATCH (B10, pages 30-31)
   file: implementationplan/phase-11-face-verify-b10.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 12

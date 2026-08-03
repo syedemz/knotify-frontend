@@ -1,291 +1,538 @@
 ================================================================
-PHASE 10 — Photos + phone (pages 28, 29)
+PHASE 11 — Face verification + final submit (pages 30, 31)
 Concerns before we can start building
 ================================================================
 
-There are 9 concerns below. Concerns #1 through #4 are BLOCKERS — I need
-your answer before I can build. Concerns #5 through #9 are heads-up items
-I will handle myself, but you should skim them so nothing surprises you.
+There are 15 concerns below. Concerns #1 through #5 are BLOCKERS — I need
+your answer before I can build. Concerns #6 through #11 are MEDIUM
+questions that shape how the code is written — I'd like your input but
+can make a reasonable call if you defer. Concerns #12 through #15 are
+LOW — heads-up items I will handle myself, listed so nothing surprises
+you.
 
 Please write your answer under each concern on the "ANSWER:" line.
 
-----------------------------------------------------------------
-CONCERN #1 — BLOCKER — What happens when the user picks a photo they don't like?
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: Page 28 shows a 6-tile grid. Tap an empty tile, the
-phone's photo library opens, pick a photo, that tile is now filled with
-your photo. Continue button is enabled once you have at least 1 photo.
-
-THE PROBLEM: The plan never says what happens AFTER a tile is filled.
-Can the user tap that tile again to remove the photo? To replace it?
-Right now, if you followed the plan literally, once you picked a photo
-you'd be stuck with it forever — no way to swap it out short of restarting
-onboarding. That's obviously wrong, but the plan doesn't tell me how you
-want the "delete/replace" gesture to work.
-
-ANALOGY: Imagine you're picking clothes to wear from your wardrobe and
-laying them out on your bed in 6 slots. The plan tells me how you PUT
-clothes in the slots but says nothing about how you TAKE THEM OUT if you
-change your mind. Do you tap the slot again? Long-press? Is there a
-little "x" in the corner? Someone has to decide.
-
-WHAT MUZZ DOES (from the reference screenshots): Filled tiles have a
-small "x" button in the top-right corner. Tapping the "x" removes the
-photo. Tapping the photo itself opens the picker again to swap it.
-
-PICK ONE:
-  (a) Match Muzz — small "x" in the top-right of each filled tile to
-      remove; tapping the photo itself opens the picker to replace. Two
-      distinct gestures, most familiar to users, recommended.
-  (b) Tap-to-replace only — tapping a filled tile just re-opens the
-      picker. No dedicated remove gesture (user has to replace it with
-      something else, or the tile stays filled). Simpler code, worse UX.
-  (c) Long-press to remove; tap to replace. Slightly hidden gesture but
-      keeps the tile visually clean (no "x" chip).
-  (d) Something else — describe it.
-
-ANSWER: go with option a
-
+================================================================
+BLOCKERS (need your answer before I can start)
+================================================================
 
 ----------------------------------------------------------------
-CONCERN #2 — BLOCKER — What shape and quality should the photos be?
+CONCERN #1 — BLOCKER — The camera library isn't installed yet
 ----------------------------------------------------------------
 
-WHAT THE PLAN SAYS: Nothing about photo dimensions, aspect ratio, or
-file size.
+WHAT THE PLAN SAYS: Page 30 and page 31 both use `expo-camera` to ask for
+camera permission and to show a live camera preview.
 
-THE PROBLEM: When we open the phone's photo picker, we can either let
-the user pick any photo as-is (portrait selfie, landscape sunset, square
-Instagram post, whatever) OR we can force them to crop it to a fixed
-shape before we accept it. And we can either take the photo at full
-device resolution (huge files) or compress it (smaller, faster).
+THE PROBLEM: `expo-camera` is not listed in package.json. It has never
+been installed in this project. It's a "native module" — meaning it isn't
+just JavaScript, it includes bits of Java/Kotlin code that live inside
+the Android app itself. That has an important side effect:
 
-Since the 6-tile grid displays every photo at the same tile size, if
-users pick a mix of portrait and landscape and square photos, the grid
-will look ragged — some tiles cropped, some letterboxed, some stretched.
+  Merging this phase will require the SAME full APK reinstall dance you
+  already went through for phase 10 (photos). You cannot just do a
+  Metro reload — the app on your test phone (device 000323572000090)
+  has to be completely uninstalled and reinstalled from scratch with
+  `npx expo run:android`. The first time the new APK runs, Android will
+  see there's a new "CAMERA" permission declared in the manifest and
+  will treat that permission as fresh.
 
-ANALOGY: Imagine a family photo album where every page has 6 rectangular
-slots the same shape. If your family sends you a mix of tall photos,
-wide photos, and square photos, the album will look messy. Either you
-tell everyone "give me square photos only" (force crop) or you accept
-whatever and live with the mismatched look.
+ANALOGY: Adding `expo-camera` is like adding a new power tool to your
+workshop. It doesn't just plug into the wall — it needs its own outlet
+installed. You have to shut down the whole shop, rewire it, and turn it
+back on. You can't hot-swap it while the shop is running.
 
-WHY IT MATTERS NOW: The pictures don't get uploaded to a server yet
-(that's a later phase), but they DO get displayed in the 6-tile grid
-immediately. So the choice affects what you see on page 28 today.
+QUESTION: This is really just a heads-up, not something you decide. I'm
+flagging it so you know phase 11 = another reinstall on the test phone,
+just like phase 10 was. Are you OK with that?
 
-PICK ONE:
-  (a) Force square crop, medium quality (0.8) — the picker opens with a
-      1:1 crop overlay, user drags to frame, we save the cropped square
-      at ~80% JPEG quality. Grid always looks tidy. Muzz-style.
-      Recommended.
-  (b) Force portrait crop (4:5), medium quality — like Instagram feed
-      photos. Slightly more space for faces.
-  (c) Accept any shape, no crop, full quality — user picks whatever they
-      have. Grid looks messy but nobody has to crop anything.
-  (d) Something else.
-
-ANSWER: go with option a
-
+ANSWER: yes please do it
 
 ----------------------------------------------------------------
-CONCERN #3 — BLOCKER — What does the Continue button say on page 28?
+CONCERN #2 — BLOCKER — Which face-detection library should we use?
 ----------------------------------------------------------------
 
-WHAT THE PLAN SAYS: The button label is "Add photos" and it's disabled
-until at least 1 tile is filled.
+WHAT THE PLAN SAYS: When the user's face fits inside the oval on page 31
+for ~15 frames in a row, the camera should auto-snap the photo. This
+requires "face detection" — software that looks at each video frame and
+answers "is there a face in this picture? where?"
 
-THE PROBLEM: "Add photos" is a strange label to click AFTER you've
-already added photos. It reads like an instruction, not a next-step
-action. Most apps flip the label once you've done the action — e.g.
-"Add photos" (0 photos) → "Continue" (1+ photos).
+The plan says to use "expo-camera's face-detection add-on" and links to
+architecture note §17.24.
 
-ANALOGY: Imagine an elevator button that says "Press here to go up".
-Fine. But once you've pressed it and the elevator's on its way, the
-button doesn't keep saying "Press here to go up" — it lights up and
-you move on. The label should reflect where you ARE in the flow.
+THE PROBLEM: This add-on DOES NOT EXIST anymore. Expo used to ship a
+face detector called `expo-face-detector`, but they deprecated and
+removed it years ago. In the current Expo SDK 56 (what this project
+runs), there is no first-party face detector. §17.24 in your
+architecture doc even flags this as [Open] — meaning "we haven't picked
+a real solution yet". The PRD talks about it as if it were decided; it
+isn't. You have three real options today:
 
-PICK ONE:
-  (a) Label flips: "Add photos" when 0 filled → "Continue" when 1+
-      filled. Muzz-style, matches how phase 9 personality button flips.
-      Recommended.
-  (b) Label stays "Add photos" the whole time — user just taps it once
-      it's enabled. Simpler, less polished.
-  (c) Something else — e.g. "Continue" the whole time, disabled when 0.
+  OPTION A — `react-native-vision-camera` + `vision-camera-face-detector`
+     - Most accurate. Most popular in the RN community today.
+     - Heavier native module.
+     - Since you're already off "Expo Go" and using dev builds (you
+       switched during phase 5), the "requires prebuild" downside doesn't
+       really cost you anything — you were already doing that.
+     - MY RECOMMENDATION.
 
-ANSWER: go with option a
+  OPTION B — `@react-native-ml-kit/face-detection` (Google ML Kit)
+     - Also accurate, backed by Google.
+     - Requires Google Play Services on the device (fine for Android,
+       breaks on some devices without Play Store like Huawei's newer
+       phones).
 
+  OPTION C — Skip auto-capture entirely
+     - Use plain `expo-camera` with a manual "shutter" button. User
+       lines up their face inside the oval and taps a button to snap.
+     - Simpler, but loses the "hands-free / auto" feel that competitors
+       (Tinder, Muzz, Hinge) use.
 
-----------------------------------------------------------------
-CONCERN #4 — BLOCKER — What country does the phone screen default to?
-----------------------------------------------------------------
+ANALOGY: Your original plan said "use the built-in facial recognition
+on your iPhone". When we opened the iPhone, that feature had been
+removed in a system update. Now we need to pick between installing a
+third-party app that does the same thing (option A), using Google's
+version (option B), or just having the user press a shutter button
+themselves (option C).
 
-WHAT THE PLAN SAYS: Page 29 has a country dial-code prefix (+92, +44,
-+1, etc.) next to the phone number input. The plan says it "defaults to
-the value written on page 15".
+QUESTION: Which one? If unsure, go with A.
 
-THE PROBLEM (small): Page 15 stores the user's COUNTRY (like "Pakistan"
-or the code "PK"), not the DIAL CODE. So the phone screen has to look
-up "PK → +92" in our country list. That's a two-step lookup, not a
-direct read. No big deal — I'll wire it up. But you should know it's not
-literally reading the same field.
-
-THE PROBLEM (bigger): What if the user reaches page 29 without ever
-picking a country on page 15? This can happen if they resumed onboarding
-from a checkpoint that was saved BEFORE page 15, or if the draft was
-partially wiped. What dial code should the picker show by default in
-that case?
-
-ANALOGY: Imagine a hotel check-in form that pre-fills your address based
-on your reservation. But what if the reservation has no address? The
-form has to fall back to something — maybe blank, maybe the hotel's own
-country, maybe your device's country. The system needs a fallback rule.
-
-PICK ONE:
-  (a) Default to +92 (Pakistan) — since Knotify is primarily targeting
-      Pakistani users, this is the safest fallback. Recommended.
-  (b) Leave the picker blank and force the user to pick a country
-      manually before they can type a number. Safer for non-Pakistani
-      users, slightly more friction.
-  (c) Read the phone's own SIM country code — most accurate but requires
-      an extra permission and adds complexity.
-  (d) Something else.
-
-ANSWER: Default to +91 India, we are primarily targetting indian audience
-
+ANSWER: Go with option A, build a solid solution which ensure a face is captured
 
 ----------------------------------------------------------------
-CONCERN #5 — Heads-up — The plan has a wrong screen name
+CONCERN #3 — BLOCKER — After finishing onboarding, the app won't actually
+                       switch to the main screen (broken plumbing)
 ----------------------------------------------------------------
 
-WHAT THE PLAN SAYS: After the user finishes page 29 (phone number),
-advance them to "Page30FaceIntroScreen".
+WHAT THE PLAN SAYS: When the user finishes page 31, the app submits
+their whole profile to the backend, refreshes their login token, and
+the "root navigator" swaps out the onboarding wizard for the main
+tabbed app (Discover / Chat / Bookmarks / Profile).
 
-THE PROBLEM: That screen doesn't exist. The actual screen registered in
-the navigation code is called "Page30FaceVerifyIntroScreen" (slightly
-different name). If I built page 29 with the plan's spelling, the app
-would crash the moment the user taps Continue.
+THE PROBLEM: The wire that makes this happen is not connected.
 
-ANALOGY: Imagine your GPS is told to navigate to "Main Street" but the
-actual street is "Main Avenue". Same idea, wrong label, dead end.
+In detail: the way the app decides "show onboarding" vs "show main app"
+is a boolean flag called `profileComplete`. That flag is computed
+inside `src/state/auth/AuthProvider.tsx`. I read the code — it always
+returns `false`, no matter what. There's a `TODO(phase-2)` comment
+saying "someone needs to wire this up to actually read the login token
+and check the `custom:profile_complete` claim." That TODO was punted
+from phase 2 and has been sitting there for 10 phases.
 
-NO ACTION NEEDED — I'll just use the correct name that's already in the
-navigation code. Documenting because your plan file has the wrong name
-in it, and I want you to know I'm silently correcting it.
+If we don't fix it, here's what will happen on page 31:
+  1. User finishes verification.
+  2. PATCH succeeds, JWT refreshes.
+  3. `profileComplete` still returns `false` (because it's stubbed).
+  4. `RootNavigator` keeps showing the onboarding wizard.
+  5. User is stuck on page 31 forever, staring at their captured photo,
+     with no way to get to the app they just spent 30 minutes signing
+     up for.
 
-ANSWER (optional): yes please use the correct name
+ANALOGY: Imagine you built a beautiful revolving door between the
+lobby and the main hall of a building. Someone walks up, pushes the
+door, and… it doesn't spin. You go check — turns out the motor was
+never plugged in, because the electrician (phase 2) left a sticky note
+saying "someone please plug in the door motor later." Nobody did. Now
+everyone's queued up in the lobby.
 
+THE FIX: Two ways to handle it.
 
-----------------------------------------------------------------
-CONCERN #6 — Heads-up — This phase needs a full app rebuild, not a JS reload
-----------------------------------------------------------------
+  OPTION A — Fix it as part of story 11.2
+     - Small addition (~20 lines of code) to `AuthProvider.tsx` to
+       decode the JWT and read the claim. Since story 11.2 is where
+       the door actually gets used, the developer working on it will
+       naturally notice if the wiring is broken. Cleanest option.
 
-WHAT THE PLAN NEEDS: Two new native pieces —
-  - expo-image-picker (opens the phone's photo library)
-  - libphonenumber-js (validates phone numbers)
+  OPTION B — Add a new story 11.3 "wire profileComplete claim decode"
+     - Same fix, but done as its own story so the git history is
+       clearer about what changed and why.
 
-The first one, expo-image-picker, is a "native module". It touches
-Android's operating system directly to open the photo picker and
-request the READ_MEDIA_IMAGES permission. That means it's not something
-we can just push through Metro (the tool that hot-reloads JavaScript
-changes on your phone in seconds). It requires rebuilding the entire
-Android APK and reinstalling it on your device — a 4-6 minute process.
+  OPTION C — Ignore for now, ship phase 11 broken, do it in phase 12
+     - I do not recommend this. It leaves onboarding functionally
+       broken — the whole point of onboarding is to end up in the app.
 
-ANALOGY: Renovating a house usually means moving furniture around
-(quick — that's JavaScript changes). But if you're adding a NEW ROOM,
-you need to break down walls and pour concrete (slow — that's a native
-module). Photo pickers require pouring concrete.
+RELATED CONCERN: I also need to verify that when the app calls
+`refresh()` on the auth provider, Amazon Cognito actually re-fetches
+a FRESH login token with the updated claim. If Cognito just gives us
+back a cached copy of the token (which some auth libraries do), the
+claim will still say "not complete" even after the backend flipped
+the flag. If that turns out to be the case, we need an extra step —
+either sign out and sign back in, or make a direct call to Cognito's
+token endpoint. I'll test this during story 11.2 and adjust if
+needed. Flagging it so a surprise doesn't derail the story.
 
-WHAT THIS MEANS FOR YOU: When you test phase 10 for the first time on
-your phone, we'll need to run the full `npx expo run:android` rebuild
-sequence (per your memory: JAVA_HOME + platform-tools PATH + reverse
-port forward + full APK install). Not a Metro reload. This is a
-one-time cost for this phase — once installed, subsequent JS-only
-tweaks reload normally.
+QUESTION: A, B, or C?
 
-NO ACTION NEEDED — just letting you know the rebuild is coming so
-you're not surprised when I ask for a longer build window.
-
-ANSWER (optional):
-
-
-----------------------------------------------------------------
-CONCERN #7 — Heads-up — Photos might disappear if you close the app
-----------------------------------------------------------------
-
-WHY: Photos on page 28 are stored as "local URIs" — basically, the
-address on your phone where the photo lives. We don't upload them to
-a server yet (that's a later phase). On Android specifically, these
-addresses (they look like "content://media/external/…") are only
-guaranteed to work while the app is running. If you close the app
-completely and reopen it, the addresses may no longer resolve — and
-the tiles would show broken/blank images.
-
-ANALOGY: Imagine giving your friend a slip of paper with a temporary
-locker number at the airport ("locker 42"). It works while they're at
-the airport, but once they leave, that locker number means nothing.
-Same idea — the photo address is a temporary locker number.
-
-WHY IT'S NOT A BUG (yet): This will be fixed for real when we add the
-"upload photos to backend" phase. Once photos are uploaded, we store
-the permanent server URL instead of the temporary local address.
-
-WHAT I'LL DO: Document this in the code so future-us (or a tester)
-doesn't file it as a bug. The workaround for testing is: don't close
-the app between picking photos and finishing onboarding.
-
-NO ACTION NEEDED.
-
-ANSWER (optional):
-
+ANSWER: DO not submit anything for now, we will finish the registration once i have the backend up and running
+for now just create a dummy route or some fake method so that we can complete the registration without submitting anything
+and we will also build the main profile page with dummy data in Phase 12, if possible skip authorization and cognito for now, 
+dont change any existing code, just find a way how we can complete registration and login to profile page without having to submit anything to the backend
+I want to be able to build out the landing page and the profile page before firing up the backend, after that we receive data directly from the backend
+write this in phase 11 PRD and phase 12 PRD
+also write it in the context.md and your own memory so that once we have the backend ready and real authorization and cognito working
+these temporary / dummy routes or any dummy data created and stored in async storage ought to be removed
 
 ----------------------------------------------------------------
-CONCERN #8 — Heads-up — Adding a new field to the "filing cabinet"
+CONCERN #4 — BLOCKER — The list of "un-editable fields" is wrong in the plan
 ----------------------------------------------------------------
 
-WHAT: Page 29 collects a phone number. There's no "phone_number" drawer
-in the onboarding filing cabinet (the draft) yet. Same situation as
-phase 9 concern #2 — I have to add the drawer, and adding a drawer
-bumps the version of the cabinet.
+WHAT THE PLAN SAYS: On the final submit, some profile fields are
+"immutable" — meaning once you save them the first time, the backend
+never lets you change them again. The plan says "currently `sex`" and
+tells the developer to make sure the submit-body-builder skips those
+fields on retry submissions.
 
-RIGHT NOW the cabinet is on version 3 (bumped in phase 9 when we added
-personalityTraits). Adding phone_number will bump it to version 4. Any
-user mid-onboarding on version 3 will have their draft WIPED and start
-over from page 1 — standard "DISCARD" policy.
+THE PROBLEM: The plan says one field (`sex`). The actual code says six
+fields. I read `src/Helper/immutableFieldHelper.ts` — it marks:
 
-Same as before: fine because we have zero real users yet, but if you
-had a partially-completed draft on your phone from testing phase 9, it
-will get erased on the next launch after this phase ships.
+    sex, first_name, last_name, birthday, religion, subsect
 
-ANALOGY: You already lived through this in phase 9. Same routine, one
-more time.
+The runtime behavior is correct (the code is the source of truth, not
+the PRD). But the PRD wording is stale and misleading in two ways:
 
-NO ACTION NEEDED unless you want to preserve your current test-draft
-state — in which case screenshot your progress before I ship phase 10.
+  (a) When the developer writes the unit test for "retry strips
+      immutable fields", they might only test `sex` because that's
+      what the PRD says. That test won't catch a bug where somebody
+      accidentally removes `birthday` from the immutable list —
+      the test would still pass.
 
-ANSWER (optional):
+  (b) The developer reading the PRD might think the helper only marks
+      one field, and get confused when the code disagrees.
 
+ANALOGY: The plan is a shopping list that says "buy milk". The
+kitchen inventory system actually needs milk, bread, eggs, butter,
+cheese, and yogurt. The shopper (developer) will make the trip and
+grab whatever's on the list. They come home with milk. Kitchen still
+needs the other 5 things. The list was the problem.
+
+THE FIX: Two ways to handle it.
+
+  OPTION A — Update the PRD wording to "the fields listed in
+     immutableFieldHelper.ts" (no hardcoded count) and require the
+     unit test to check that ALL fields returned by `isImmutable()`
+     are stripped from the retry PATCH body. Any future addition to
+     the helper automatically gets tested. RECOMMENDED.
+
+  OPTION B — Fix just this instance (list all 6 names explicitly in
+     the PRD). Works today, but the PRD will go stale again the next
+     time someone adds a field.
+
+QUESTION: A or B?
+
+ANSWER: Option A
 
 ----------------------------------------------------------------
-CONCERN #9 — Heads-up — Two tracking tickets already exist for this phase
+CONCERN #5 — BLOCKER — Where does the captured selfie live on the phone?
+                       (Needs a small storage upgrade)
 ----------------------------------------------------------------
 
-WHAT: GitHub issues #41 and #42 were created way back when phase 10 was
-first planned. They're both still open. My instructions say I should
-reuse them (not create duplicates), so I'll just verify they're still
-open and pin their numbers into the plan so the project board keeps
-tracking properly.
+WHAT THE PLAN SAYS: When the face-capture fires on page 31, the photo
+should be saved to `onboardingDraft.faceSelfieUri`. This is the same
+"draft" that already holds the user's name, birthday, siblings, phone
+number, and photos.
 
-ANALOGY: Someone already set up the seating chart for a dinner party
-last month. Rather than throwing it out and making a new one, I'll just
-use it and update the name tags.
+THE PROBLEM: There is no `faceSelfieUri` field in the draft today. I
+opened `src/features/onboarding/draftSchema.ts` and it lists every
+field the draft can hold — this one isn't there.
 
-NO ACTION NEEDED — noting so you don't wonder why I'm not creating new
-tickets.
+Adding it means bumping the "schemaVersion" from 3 to 4. This is a
+routine housekeeping thing (phase 10 did the same bump when adding
+`phone_number`, going from v2 to v3). It also means:
 
-Also (orthogonal): phase 9 was marked complete in the plan but the
-git tag "phase-9-complete" was never created. Worth tagging when you
-get a moment — not a blocker for phase 10.
+  - Any user who has an in-progress draft saved on their phone from an
+    older app version will have their draft DISCARDED on next app open.
+  - This is our documented pre-launch policy — safe because there are
+    no real users yet.
+  - Roughly 20-30 test fixtures across the codebase that construct a
+    fake draft will need `faceSelfieUri: null` added to them.
 
-ANSWER (optional):
+ANALOGY: You're expanding the built-in filing cabinet in your app.
+Adding a new drawer means printing a new "cabinet layout v4" label,
+throwing away any half-filled cabinets that are still on the old v3
+label, and updating every test that builds a mock cabinet to include
+the new drawer.
+
+QUESTION: This is a mechanical fix and I'll just do it. I'm flagging
+it as a blocker only because it needs to be listed in the story's
+acceptance criteria (right now it isn't, which means a rigorous
+reviewer might reject the PR). Are you OK with me adding this to the
+acceptance criteria for story 11.2?
+
+ANSWER: Yes go ahead
+
+================================================================
+MEDIUM (input helpful, I can pick if you defer)
+================================================================
+
+----------------------------------------------------------------
+CONCERN #6 — MEDIUM — How exactly do we send the siblings to the backend?
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: The final submit sends the profile fields "plus
+siblings embedded" — meaning the array of sibling records goes inside
+the same PATCH request, not as a separate call.
+
+THE PROBLEM: Architecture §17.21 still flags this as [Open]. The mock
+backend accepts anything, so it doesn't matter for now — but we need
+to lock in:
+
+  (a) What KEY do we use? I'd propose `siblings`.
+  (b) What SHAPE does each sibling take? The draft currently uses
+      camelCase (`maritalStatus`, `sibling_age` — wait, actually
+      `age`) while the DB column is snake_case (`marital_status`,
+      `sibling_age`). Do we transform camelCase → snake_case at
+      submit time, or send camelCase and expect the backend to
+      accept it?
+
+I don't have a real backend to check against, so this is a judgement
+call.
+
+RECOMMENDATION: Key `siblings`. Transform to snake_case at submit time
+so the backend just sees column names it recognizes. This keeps the
+frontend draft ergonomic (camelCase is idiomatic JS/TS) while giving
+the backend a shape that matches its schema.
+
+ANSWER: accept recommendation
+
+----------------------------------------------------------------
+CONCERN #7 — MEDIUM — The plan doesn't say which draft fields go in
+                       the final submit and which are private
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: "Derive full PATCH body from `onboardingDraft.fields`
+plus siblings."
+
+THE PROBLEM: The draft holds fields that MUST NOT be sent to the
+backend. If we naively serialize the whole draft, we'll leak or crash.
+The list of things to EXCLUDE:
+
+  - `photoPreviewUris` — actual photo upload is deferred, backend
+    doesn't have a column for these device-local URIs.
+  - `faceSelfieUri` — same story, client-only for v1.
+  - `notificationPermissionStatus`, `locationPermissionStatus` —
+    client telemetry, not profile data.
+  - `phone_number` — needs verification: is this a real profile
+    column, or does it go through a separate SMS-OTP flow?
+  - `lastCheckpoint`, `currentPage`, `timestamps`, `schemaVersion` —
+    draft bookkeeping.
+
+ANALOGY: You're mailing your job application. Your draft folder
+contains the résumé, the cover letter, AND your grocery list, your
+tax return, and a note-to-self about lunch. If you just stuff the
+whole folder in the envelope, HR gets your grocery list. You need a
+checklist that says "put résumé + cover letter in envelope, leave
+everything else in the folder."
+
+RECOMMENDATION: Build a pure function called `buildPatchBody(draft,
+{ isRetry })` that has an explicit allowlist of the fields to
+include. Unit-test that (a) allowed fields are included, (b) client-
+only fields are excluded, (c) immutable fields are stripped on
+retry, (d) siblings array is embedded. Clean and testable.
+
+QUESTION: Accept recommendation? Also — is `phone_number` a profile
+column (goes in PATCH) or a separate flow (excluded)?
+
+ANSWER : go with the recommendation and yes phone_number is also going to be a column in the backend database
+you can see it in C:\Users\syede\Claude-Master\knotify-backend\db-schema.json
+
+----------------------------------------------------------------
+CONCERN #8 — MEDIUM — The "regenerate username on collision" logic
+                       described in the plan doesn't match reality
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: On page 31 submit, if the backend returns 409
+(meaning "someone else took that username"), regenerate "the trailing
+4-digit alphanumeric segment" and retry once.
+
+THE PROBLEM: The word "alphanumeric" is wrong. The existing username
+generator (`src/Helper/usernameHelper.ts`) creates usernames like
+"mariesmith4287" — the trailing bit is 4 DIGITS (0000..9999), not
+letters+numbers. Also, the current helper regenerates the WHOLE
+username (letters + suffix) — there is no "suffix-only" regen.
+
+Since the letters are deterministic (always derived from the first +
+last name the same way), calling `generateUsername(first, last)` a
+second time will produce the exact same letters with a new random
+4-digit suffix. Which is what we want.
+
+ANALOGY: The plan says "swap out the trailing 4-character alphanumeric
+license plate suffix." But actually, our license plates only have
+digits (not letters + digits) in that spot, and our license-plate
+machine only prints whole plates from scratch — there's no swap-just-
+the-suffix machine. Luckily, when we ask the machine to print a new
+plate with the same driver's name, we get the same letter part and
+just a new number, so the outcome is what we wanted anyway.
+
+RECOMMENDATION: Fix the wording in the PRD ("4-digit numeric suffix")
+and use `generateUsername(first, last)` for the retry. Trivial.
+
+ANSWER (accept / different approach): accept
+
+----------------------------------------------------------------
+CONCERN #9 — MEDIUM — Auto-capture logic can't be automatically tested
+                       as currently described
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: When the face has been inside the oval for 15
+frames in a row, auto-snap the photo.
+
+THE PROBLEM: There is no real camera inside the Jest test environment
+(the automated test runner). If the "count consecutive frames" logic
+lives inside the camera React component, we can't test it — the tests
+would need a mock stream of fake camera frames, which is fiddly and
+brittle.
+
+RECOMMENDATION: Split the "count consecutive detections" logic out
+into a pure function or a tiny state machine (like a mini reducer):
+inputs = a stream of true/false "face inside oval" events, output =
+"time to capture: yes/no". That we can test with plain JavaScript,
+no camera needed. The camera component just feeds events into this
+state machine.
+
+ANALOGY: Imagine you're building a coffee vending machine. If you
+put ALL the logic (how many coins, brew temperature, cup detection)
+inside one huge unit, testing means you need real coins, real water,
+and real cups every time. If you separate out the "count coins →
+decide if enough" bit into its own module, you can test THAT part
+with fake coin inputs — no plumbing required.
+
+QUESTION: Accept recommendation?
+
+ANSWER: accept
+
+----------------------------------------------------------------
+CONCERN #10 — MEDIUM — What happens if the user's face never enters the oval?
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: Nothing. The plan describes success. It does not
+describe the failure mode where the auto-detector never fires —
+because of bad lighting, camera angle, user wearing sunglasses,
+detector confused by beard/turban, whatever.
+
+THE PROBLEM: Without an escape hatch, the user is stuck on page 31
+staring at a black screen with an oval overlay, forever. This is a
+"critical path" screen — if they can't get past it, they can't finish
+signing up.
+
+OPTIONS:
+
+  OPTION A — Timeout with manual shutter fallback
+     - After N seconds (say 20-30) with no detection, show a manual
+       "shutter" button. User taps it, we save whatever's in the
+       viewfinder as their selfie.
+
+  OPTION B — Always show a manual shutter alongside auto-capture
+     - User can tap the shutter any time. Auto-capture still fires
+       if the detector likes what it sees, whichever happens first.
+     - More forgiving. Muzz and Bumble both do this.
+
+  OPTION C — Retry button only
+     - After a timeout, show "we couldn't detect your face — try
+       again" with a retry button that resets the frame counter. No
+       manual shutter.
+     - More strict, might frustrate people who just want to finish.
+
+  OPTION D — No timeout at all (current PRD behavior)
+     - User has to stand there until the detector fires. Or force-
+       kill the app. Not recommended.
+
+RECOMMENDATION: Option B. Auto-capture for the smooth path, always-
+available shutter as a safety net. Adds one small button but
+massively reduces "user stuck forever" risk.
+
+ANSWER (A / B / C / D): Option B
+
+----------------------------------------------------------------
+CONCERN #11 — MEDIUM — Camera permanently denied → user is permanently
+                        stuck on page 30
+----------------------------------------------------------------
+
+WHAT THE PLAN SAYS: On page 30, if the user hits "deny" on the
+camera permission dialog, they see "camera required to continue" and
+a retry button. If they hit deny with "don't ask again" (permanent
+deny), the plan says "keep Continue disabled" — i.e., the user is
+stuck.
+
+THE PROBLEM: In phase 10 (photo permission), we solved this exact
+problem differently — the user got a button that opens the phone's
+OS settings so they could turn the permission back on themselves
+(commit 48a13c3). Camera is the same class of problem, but worse:
+without camera permission, the user CAN'T finish signing up, ever.
+If they mis-tap once and hit "don't ask again", their only recovery
+today is to uninstall and reinstall the app.
+
+RECOMMENDATION: Same as phase 10. When permission is permanently
+denied, show "Open Settings" button that deep-links to the phone's
+settings page for our app. Uses `Linking.openSettings()` — trivial
+to add.
+
+ANSWER (mirror phase 10 / keep current strict behavior / other): okay mirror phase 10 but also show the user a message via 
+a modal or a toast message which tells them they need to allow camera permission
+
+================================================================
+LOW — heads-up, I'll handle these unless you object
+================================================================
+
+----------------------------------------------------------------
+CONCERN #12 — LOW — Jest needs to know how to fake the camera and
+                    face-detector packages
+----------------------------------------------------------------
+
+When we install the new native packages (`expo-camera` and whichever
+face-detector you pick), Jest tests will try to load them and crash —
+Jest runs in Node.js, not Android, so native modules don't work
+there. Standard fix: add `__mocks__/expo-camera.ts` and equivalent
+for the face-detector. Same pattern already used for other native
+modules in the project. I'll just do this.
+
+ACKNOWLEDGE (no answer needed, unless you want to comment):
+
+----------------------------------------------------------------
+CONCERN #13 — LOW — Where does the new `requestCameraPermission()`
+                    function live?
+----------------------------------------------------------------
+
+The convention in this project is one file (`src/services/permissions/
+index.ts`) exports one helper per permission — there's already
+`requestNotificationPermission()`, `requestLocationPermission()`, and
+`requestMediaLibraryPermission()`. I'll add `requestCameraPermission()`
+in the same file following the exact same pattern (returns 'granted' |
+'denied' | 'undetermined'). No decision needed.
+
+ACKNOWLEDGE (no answer needed, unless you want to comment):
+
+----------------------------------------------------------------
+CONCERN #14 — LOW — YES/NO backend casing still unvalidated (as before)
+----------------------------------------------------------------
+
+This one's been flagged since phase 7. Some draft fields are stored
+as the strings "YES" / "NO" (uppercase). We don't know if the real
+backend will accept that casing exactly, want "Yes"/"No", or reject
+unless it's "true"/"false". Since the backend is mock-only right now,
+the mock will accept anything, so it doesn't block phase 11. But when
+the real backend comes online, we'll need to verify. I'll add a
+follow-up TODO to the shipping checklist so it doesn't get lost.
+
+ACKNOWLEDGE (no answer needed, unless you want to comment):
+
+----------------------------------------------------------------
+CONCERN #15 — LOW — Add a "before shipping" bullet about tearing down
+                     the mock PATCH handler
+----------------------------------------------------------------
+
+`context.md` already has a "Before shipping" section that lists mock-
+mode teardown steps (removing `env.isMockAuth`, replacing dummy
+Cognito sentinel values, etc). When story 11.2 lands, it adds a mock
+PATCH `/profile/me` handler to `services/api/mocks/handlers.ts`. That
+needs to come out before we ship to real users. I'll add a bullet to
+the teardown list at story 11.2 completion so it's not forgotten.
+
+ACKNOWLEDGE (no answer needed, unless you want to comment):
+
+================================================================
+END OF QUESTIONS
+================================================================
+
+Once you've filled in the ANSWER lines for the blockers (and any
+medium ones you want to weigh in on), I'll update the PRD to reflect
+your decisions, then re-run /implement-phase 11 to proceed to the
+issue-creation step and start dispatching stories.
