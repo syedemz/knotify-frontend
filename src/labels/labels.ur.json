@@ -387,6 +387,16 @@
         "Friend": "دوست",
         "Ward": "زیر کفالت"
       }
+    },
+    "photos": {
+      "title": "اپنی تصاویر شامل کریں",
+      "subtitle": "جاری رکھنے کے لیے کم از کم ایک تصویر شامل کریں",
+      "continueLabel": "جاری رکھیں",
+      "addPhotosLabel": "تصاویر شامل کریں",
+      "grantAccessHint": "تصاویر شامل کرنے کے لیے گیلری تک رسائی دیں",
+      "removePhotoAccessibility": "تصویر ہٹائیں",
+      "tileAccessibilityEmpty": "تصویر شامل کریں",
+      "tileAccessibilityFilled": "تصویر {{index}}"
     }
   },
   "siblingForm": {

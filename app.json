@@ -17,7 +17,8 @@
       "package": "com.knotify.app",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES"
       ]
     },
     "plugins": [
@@ -27,7 +28,13 @@
       "expo-secure-store",
       "expo-localization",
       "expo-splash-screen",
-      "expo-location"
+      "expo-location",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Knotify needs access to your photos so you can add profile pictures."
+        }
+      ]
     ]
   }
 }

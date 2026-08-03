@@ -387,6 +387,16 @@
         "Friend": "Friend",
         "Ward": "Ward"
       }
+    },
+    "photos": {
+      "title": "Add your photos",
+      "subtitle": "Add at least one photo to continue",
+      "continueLabel": "Continue",
+      "addPhotosLabel": "Add photos",
+      "grantAccessHint": "Grant photos access to add pictures",
+      "removePhotoAccessibility": "Remove photo",
+      "tileAccessibilityEmpty": "Add photo",
+      "tileAccessibilityFilled": "Photo {{index}}"
     }
   },
   "siblingForm": {

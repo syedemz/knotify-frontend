@@ -31,6 +31,9 @@ const palette = {
   warning: "#F4A261",
   info: "#5B8DEF",
 
+  // Overlay — semi-transparent black for badges and overlays on images
+  overlay: "rgba(0,0,0,0.55)",
+
   // Dark mode brand
   brandPinkDark: "#FF4081",
   brandPinkSoftDark: "#7A2547",
@@ -63,6 +66,7 @@ export const lightColors = {
     input: palette.gray100,
     muted: palette.gray50,
     premium: palette.brandGoldBg,
+    overlay: palette.overlay,
   },
   text: {
     primary: palette.black,
@@ -102,6 +106,7 @@ export const darkColors = {
     input: palette.inputBgDark,
     muted: palette.bgSurfaceDark,
     premium: palette.brandGoldBgDark,
+    overlay: palette.overlay,
   },
   text: {
     primary: palette.textPrimaryDark,

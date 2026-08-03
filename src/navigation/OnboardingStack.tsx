@@ -2,10 +2,11 @@
  * Onboarding wizard navigator.
  *
  * Registers all 31 routes using the semantic names defined by `PAGE_MAP` in
- * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-25
- * and 27 are real screens (phases 2-9, B1-B8 stories 9.1-9.2); pages 28-31
- * remain as `EmptyState` placeholders — real screens land in phases 10-11
- * (B9-B10). Page 26 is intentionally unused — wizard advances 25 → 27 directly.
+ * `src/features/onboarding/pageMap.ts` (architecture §6.3, §11.2). Pages 1-28
+ * are real screens (phases 2-10, B1-B9 story 10.1); page 29 is a stub (story
+ * 10.2 replaces it); pages 30-31 remain as `EmptyState` placeholders — real
+ * screens land in phase 11 (B10). Page 26 is intentionally unused — wizard
+ * advances 25 → 27 directly.
  *
  * `useCheckpointResume` is wired as `initialRouteName` so users who resume
  * an in-progress wizard skip already-completed pages.
@@ -50,6 +51,8 @@ import { Page23MaritalStatusScreen as Page23MaritalStatusScreenImpl } from "@/fe
 import { Page24MoveAbroadScreen as Page24MoveAbroadScreenImpl } from "@/features/onboarding/screens/Page24MoveAbroadScreen";
 import { Page25PersonalityTraitsScreen as Page25PersonalityTraitsScreenImpl } from "@/features/onboarding/screens/Page25PersonalityTraitsScreen";
 import { Page27RelationScreen as Page27RelationScreenImpl } from "@/features/onboarding/screens/Page27RelationScreen";
+import { Page28PhotosScreen as Page28PhotosScreenImpl } from "@/features/onboarding/screens/Page28PhotosScreen";
+import { Page29PhoneScreen as Page29PhoneScreenImpl } from "@/features/onboarding/screens/Page29PhoneScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -121,8 +124,10 @@ const Page25Preferences1Screen = Page25PersonalityTraitsScreenImpl;
 const Page26Preferences2Screen = makePlaceholderScreen("Page26Preferences2Screen");
 // Page 27: real screen landed in phase 9 (B8, story 9.2). Advances 27 → 28.
 const Page27RelationScreen = Page27RelationScreenImpl;
-const Page28PhotosScreen = makePlaceholderScreen("Page28PhotosScreen");
-const Page29PhoneScreen = makePlaceholderScreen("Page29PhoneScreen");
+// Page 28: real screen landed in phase 10 (B9, story 10.1).
+const Page28PhotosScreen = Page28PhotosScreenImpl;
+// Page 29: stub from story 10.1; real screen lands in phase 10 story 10.2.
+const Page29PhoneScreen = Page29PhoneScreenImpl;
 const Page30FaceVerifyIntroScreen = makePlaceholderScreen("Page30FaceVerifyIntroScreen");
 const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen");
 
@@ -143,9 +148,10 @@ const Page31FaceCaptureScreen = makePlaceholderScreen("Page31FaceCaptureScreen")
  * - `'firstCheckpoint'`  → `Page09ReligionSubsectScreen`
  * - `null`               → `Page01WelcomeScreen`
  *
- * Pages 1-25 and 27 use real screens (phases 2-9, stories 9.1-9.2). Page 26 is
- * intentionally unused (wizard advances 25 → 27 directly). Pages 28-31 are
- * `EmptyState` placeholders; real screens land in phases 10-11.
+ * Pages 1-28 use real screens (phases 2-10, story 10.1). Page 26 is
+ * intentionally unused (wizard advances 25 → 27 directly). Page 29 is a stub
+ * (story 10.2 implements it). Pages 30-31 are `EmptyState` placeholders;
+ * real screens land in phase 11.
  *
  * @see {@link OnboardingStackParamList} for typed navigation.
  */
@@ -183,7 +189,7 @@ function OnboardingStackNavigator(): React.JSX.Element | null {
       <Stack.Screen name="Page03ConfirmCodeScreen" component={Page03ConfirmCodeScreen} />
       <Stack.Screen name="Page04GetStartedScreen" component={Page04GetStartedScreen} />
 
-      {/* Pages 5-20: real screens; EmptyState placeholders for 21-31 */}
+      {/* Pages 5-28: real screens; Page 29 is a stub (story 10.2); Pages 30-31 are EmptyState placeholders */}
       <Stack.Screen name="Page05SexScreen" component={Page05SexScreen} />
       <Stack.Screen name="Page06NameScreen" component={Page06NameScreen} />
       <Stack.Screen name="Page07BirthdayScreen" component={Page07BirthdayScreen} />
