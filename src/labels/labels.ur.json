@@ -438,6 +438,11 @@
       "submitRetry": "دوبارہ کوشش کریں"
     }
   },
+  "share": {
+    "action": "شیئر کریں",
+    "messagePrefix": "دیکھیں",
+    "actionAccessibility": "پروفائل شیئر کریں"
+  },
   "siblingForm": {
     "cardTitle": "بہن/بھائی",
     "name": {

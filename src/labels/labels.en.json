@@ -438,6 +438,11 @@
       "submitRetry": "Try again"
     }
   },
+  "share": {
+    "action": "Share",
+    "messagePrefix": "Check out",
+    "actionAccessibility": "Share profile"
+  },
   "siblingForm": {
     "cardTitle": "Sibling",
     "name": {
