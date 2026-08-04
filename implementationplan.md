@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-03 (phase 11 done)
+last_updated: 2026-08-04 (phase 12 PRD rewrite)
 
 phases:
 
@@ -70,8 +70,8 @@ phases:
   done: true
 
 - phase: 12
-  title: Profile - my profile + edit
-  file: implementationplan/phase-12-profile.md
+  title: Landing page + profile page + profile edit shell
+  file: implementationplan/phase-12-landing-profile.md
   ready: false
   done: false
 
