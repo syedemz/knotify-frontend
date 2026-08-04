@@ -492,5 +492,42 @@
       "superLike": "سپر لائک",
       "like": "پسند"
     }
+  },
+  "menu": {
+    "marriageDropdown": "نکاح v",
+    "settings": "ترتیبات",
+    "notifications": "اطلاعات",
+    "editPill": "ترمیم کریں",
+    "membershipCard": {
+      "title": "بنیادی پلان",
+      "subtitle": "پریمیم خصوصیات کے لیے گولڈ میں اپ گریڈ کریں",
+      "upgrade": "اپ گریڈ"
+    },
+    "chips": {
+      "membership": "رکنیت",
+      "invite": "دعوت",
+      "help": "مدد",
+      "safety": "حفاظت اور مشورہ"
+    },
+    "engagement": {
+      "likes": "پسند",
+      "compliments": "تعریف",
+      "boost": "پروفائل بوسٹ",
+      "discount": "€10 گولڈ پر چھوٹ",
+      "discountSubtitle": "مز گولڈ ڈسکاؤنٹ",
+      "getMore": "مزید حاصل کریں",
+      "claim": "چھوٹ حاصل کریں"
+    }
+  },
+  "myProfile": {
+    "tabs": {
+      "preview": "پیش نظارہ",
+      "edit": "ترمیم"
+    },
+    "editComingSoon": {
+      "title": "جلد آ رہا ہے",
+      "description": "پروفائل ترمیم بعد کے مرحلے میں آ رہی ہے"
+    },
+    "close": "پروفائل بند کریں"
   }
 }
