@@ -1,6 +1,6 @@
 phase: 12
 title: Landing page + profile page + profile edit shell
-last_updated: 2026-08-04
+last_updated: 2026-08-04 (amendments from phase-12 brainstorm)
 
 context_summary: |
   Phase 12 builds the FIRST post-onboarding UI: the "Marriage" landing page (the
@@ -102,29 +102,66 @@ stories:
         (a) `assets/dummyfemale.json` — a female candidate profile using
         `assets/female/Female3.png` and `assets/female/Female4.png` as its two
         photos, `faceSelfieUri` set to Female3.png, `siblings` populated with
-        two entries, `preferences.personalityTraits` populated with 5 traits
-        (see reference in phase-12 brainstorm), and a `__dummy_display_only`
-        block containing `is_active_today: true`, `membership_tier: "gold"`,
-        `has_unread_notifications: true`, `dress_code: "Modest"`,
-        `eats_halal: true`, `smokes: false`, `drinks: false`, `fasts: true`.
+        two entries (see sibling shape below), `preferences.personalityTraits`
+        populated with 5 traits (suggested: `["Adventurous", "Family-oriented",
+        "Bookworm", "Fitness enthusiast", "Foodie"]` — subagent may override
+        with equivalent traits from `src/config/options`), and a
+        `__dummy_display_only` block containing `is_active_today: true`,
+        `membership_tier: "gold"`, `has_unread_notifications: true`,
+        `dress_code: "Modest"`, `eats_halal: true`, `smokes: false`,
+        `drinks: false`, `fasts: true`.
         (b) `assets/dummyprofile.json` — the (male) test user's own profile
         using `assets/male/Male1.png` as its single photo, `siblings: []`
         (proves the hide-if-empty guard), `preferences.personalityTraits`
-        with exactly one trait (e.g. "Night owl"), a `__mutability_notes` block
+        with exactly one trait (`["Night owl"]`), a `__mutability_notes` block
         documenting `immutable_after_first_set`, `rate_limited`,
         `server_computed`, and `mutable` field categories per
         `src/Helper/immutableFieldHelper.ts`, and the same `__dummy_display_only`
         block shape as the female fixture.
+      - **Pinned literal identity values** (used by tests in 12.4 and 12.5 —
+        subagent must match these EXACTLY, not invent):
+        `dummyprofile`: `first_name: "Adnan"`, `last_name: "Malik"`,
+        `age: 29`, `current_residence_city: "Mannheim"`,
+        `current_residence_country: "Germany"`, `resident_country_code: "DE"`,
+        `job_title: "Software Engineer"`, `religion: "Islam"`,
+        `religious_level: "Practicing"`.
+        `dummyfemale`: `first_name: "Aisha"`, `last_name: "Khan"`,
+        `age: 27`, `current_residence_city: "Berlin"`,
+        `current_residence_country: "Germany"`, `resident_country_code: "DE"`,
+        `job_title: "Product Designer"`, `religion: "Islam"`,
+        `religious_level: "Practicing"`.
+        Every other required-for-completion field in the fixtures may be
+        filled with any plausible non-null value the subagent chooses.
       - Both fixtures satisfy every non-nullable field in `UserProfileWritable`
         so the file is a valid overlay of the real API shape when the API lands.
       - New type files added:
         `src/types/DummyFemaleProfile.ts` and `src/types/DummyOwnProfile.ts`.
-        Both extend `UserProfile` with an optional `photos: string[]`, an
-        optional `faceSelfieUri: string | null`, and an optional
-        `__dummy_display_only: { is_active_today?: boolean; membership_tier?:
-        'gold' | 'silver' | null; has_unread_notifications?: boolean;
-        dress_code?: string; eats_halal?: boolean; smokes?: boolean;
-        drinks?: boolean; fasts?: boolean; }`.
+        Both extend `UserProfile` with:
+        (1) an optional `photos: string[]`,
+        (2) an optional `faceSelfieUri: string | null`,
+        (3) an optional `siblings: DummySibling[]` where `DummySibling` is a
+        new exported type declared in the same file(s) (or in a shared
+        `src/types/DummySibling.ts` — subagent's choice) with shape
+        `{ name: string | null; age: number | null;
+        marital_status: string | null; gender: 'Male' | 'Female' | null;
+        profession: string | null }`. All fields nullable so per-chip hide
+        guards inside SiblingsSection (story 12.2) have something to test.
+        Add a TSDoc note on the `siblings` field: "Client-side dummy only in
+        phase 12. A future backend migration will introduce a dedicated
+        `siblings` table keyed by `user_id`; when that lands, this optional
+        override is removed and the field is served via a separate include on
+        the profile response." This documents the intent captured in the
+        brainstorm.
+        (4) an optional `__dummy_display_only: { is_active_today?: boolean;
+        membership_tier?: 'gold' | 'silver' | null;
+        has_unread_notifications?: boolean; dress_code?: string;
+        eats_halal?: boolean; smokes?: boolean; drinks?: boolean;
+        fasts?: boolean; }`.
+        (5) A narrowed `preferences` field:
+        `preferences?: ({ personalityTraits?: string[] } &
+        Record<string, unknown>) | null`. This lets PersonalitySection read
+        `preferences.personalityTraits` without a cast, while still allowing
+        arbitrary other keys.
         `DummyOwnProfile` additionally allows an optional `__mutability_notes`
         block (documentation-only).
       - A parse-time test at `__tests__/assets/dummyFixtures.test.ts` imports
@@ -132,9 +169,16 @@ stories:
         structural type-guard (`assertIs<DummyFemaleProfile>(dummyFemale)`).
         The test also asserts `dummyfemale.siblings.length === 2`,
         `dummyprofile.siblings.length === 0`, `dummyfemale.photos.length === 2`,
-        `dummyprofile.photos.length === 1`.
-      - `tsconfig.json` already has `resolveJsonModule: true` — no config change
-        required. Confirm this is set; if missing, add it as part of this story.
+        `dummyprofile.photos.length === 1`,
+        `dummyprofile.first_name === "Adnan"`,
+        `dummyprofile.last_name === "Malik"`,
+        `dummyfemale.first_name === "Aisha"`,
+        `dummyprofile.preferences?.personalityTraits?.length === 1`,
+        `dummyfemale.preferences?.personalityTraits?.length === 5`.
+      - `tsconfig.json` — confirm `resolveJsonModule: true` is set at the
+        `compilerOptions` level. It is NOT currently set in this repo — the
+        subagent must add it as part of this story or the JSON imports will
+        fail typecheck.
     notes: ""
 
   - id: 12.2
@@ -157,24 +201,23 @@ stories:
         no wrapper markup.
       - **Field bindings and guard rules (single source of truth)**:
         (1) **HeroBlock** — takes an implicit `viewer: 'other' | 'self'` prop
-        (propagated by `ProfileScrollView`). Reads `photos[0]` (fallback
-        `photo_url`), `first_name`, `age`, `current_residence_city`,
-        `current_residence_country`, `resident_country_code`, `job_title`,
-        `faceSelfieUri` (drives green tick), `__dummy_display_only.is_active_today`,
-        `__dummy_display_only.membership_tier`. Country-flag chip hides if
-        `resident_country_code` null; profession chip hides if `job_title` null;
-        Active-today bubble hides unless `is_active_today === true`; Gold bubble
-        hides unless `membership_tier === 'gold'`. Never hides overall (hero is
-        the entry point).
-        **Viewer variants:** when `viewer === 'other'` (landing candidate view),
-        renders the full-bleed image as the hero background with the name /
-        age / chips overlaid at the bottom of the image, per landing1.jpeg.
-        When `viewer === 'self'` (profile preview), renders the full-bleed
-        image with name / age / MANNHEIM, GERMANY subtitle / country-flag +
-        job-title + religious-level chip strip at the bottom of the image,
-        per profile1.jpeg. The Active-today and Gold overlay bubbles are
-        NOT rendered in the `'self'` variant (those are engagement-facing
-        surfaces for the OTHER viewer, not self-reflection).
+        (propagated by `ProfileScrollView`). **`viewer === 'other'` returns
+        `null`** — the landing candidate view supplies its own hero via
+        `<CandidateHero>` in story 12.4, so HeroBlock does not double-render.
+        For `viewer === 'self'` (profile preview), reads `photos[0]`
+        (fallback `photo_url`), `first_name`, `age`,
+        `current_residence_city`, `current_residence_country`,
+        `resident_country_code`, `job_title`, `faceSelfieUri` (drives green
+        tick), `religious_level`. Renders the full-bleed image with name /
+        age / "MANNHEIM, GERMANY" subtitle / country-flag + job-title +
+        religious-level chip strip at the bottom of the image, per
+        profile1.jpeg. Country-flag chip hides if `resident_country_code`
+        null; profession chip hides if `job_title` null; religious-level
+        chip hides if `religious_level` null. The Active-today and Gold
+        overlay bubbles are NOT rendered — those are engagement-facing
+        surfaces for the OTHER viewer, owned by `CandidateHero` in 12.4.
+        Never hides overall in the `'self'` variant (hero is the entry
+        point of the Preview tab).
         (2) **AboutMeSection** — reads `marital_status`, `has_children`. Each
         chip hides on null. Section hides if both null.
         (3) **MarriageIntentionsSection** — reads `relation`, `marriage_time`.
@@ -233,11 +276,18 @@ stories:
         section-level hide path, (c) at least one bubble-level hide path.
       - Guard-behavior integration test:
         `__tests__/features/profile-sections/ProfileScrollView.hideEmpty.test.tsx`
-        renders the whole `<ProfileScrollView>` against `dummyprofile.json`
-        (siblings empty, one photo) and asserts SiblingsSection and
-        PhotoBlockSection are NOT in the tree while other sections are; then
-        renders against a synthetic profile with only `first_name` and
-        `birthday` set and asserts only HeroBlock is in the tree.
+        renders the whole `<ProfileScrollView profile={dummyprofile}
+        viewer="self" />` (siblings empty, one photo) and asserts
+        SiblingsSection and PhotoBlockSection and ContactActionsSection are
+        NOT in the tree while HeroBlock (self variant) and the other
+        sections are; then renders `<ProfileScrollView viewer="self"
+        profile={syntheticMinimalProfile} />` (only `first_name` and
+        `birthday` set) and asserts only HeroBlock is in the tree; then
+        renders `<ProfileScrollView viewer="other" profile={dummyfemale}
+        />` and asserts HeroBlock is NOT in the tree (it returns null for
+        viewer='other') while the other sections render (ContactActions,
+        Siblings, PhotoBlock, etc. are all present because the female
+        fixture is full).
       - No screen wiring in this story — sections are validated through the
         harness. Screen consumers land in 12.4 and 12.5.
     notes: ""
@@ -288,9 +338,15 @@ stories:
       - New folder `src/features/landing/` with barrel `index.ts` and the
         following components:
         - `screens/MarriageLandingScreen.tsx` — the landing screen. Statically
-          imports `assets/dummyfemale.json` and hands it to `<ProfileScrollView
-          profile={dummyfemale} viewer="other" />`. Wraps the scroll in a
-          `<HeaderBar />` (top) and a `<CollapsingActionBar />` (bottom overlay).
+          imports `assets/dummyfemale.json`. Composes, top-to-bottom:
+          `<HeaderBar />` (sticky top), `<CandidateHero profile={dummyfemale}
+          />` (full-bleed hero at the top of the scroll), then the section
+          catalog via `<ProfileScrollView profile={dummyfemale}
+          viewer="other" />` for the body (HeroBlock inside ProfileScrollView
+          returns `null` for `viewer === 'other'` per 12.2, so no double
+          hero), then a floating `<CollapsingActionBar />` overlay at the
+          bottom. CandidateHero is rendered as the first child of the scroll
+          content, not as a sticky overlay — it scrolls up with the page.
         - `components/HeaderBar.tsx` — thin sticky header. Left: filter icon
           (`Ionicons/options-outline` via `@expo/vector-icons`), press is a
           no-op. Right: notification bell (`Ionicons/notifications-outline`),
@@ -300,42 +356,78 @@ stories:
           bell renders with a small red dot when
           `dummyfemale.__dummy_display_only?.has_unread_notifications === true`
           (guarded — hides if the key is absent).
-        - `components/CandidateHero.tsx` — full-bleed hero image (first photo),
-          the two overlay bubbles ("Active today" / "Gold" — guarded), and the
+        - `components/CandidateHero.tsx` — the standalone landing hero (this
+          is NOT redundant with HeroBlock; HeroBlock only renders the
+          self-preview hero per 12.2, and returns `null` for
+          `viewer === 'other'`). Takes `{ profile: DummyFemaleProfile }`.
+          Renders full-bleed hero image (`photos[0]` fallback `photo_url`),
+          the two overlay bubbles ("Active today" / "Gold" — each guarded
+          on the matching `__dummy_display_only` key), and the
           name / age / green-tick / city-and-country / country-flag /
-          profession chip strip beneath. Delegates to `HeroBlock` in the
-          section catalog for the actual chip strip.
-        - `components/CollapsingActionBar.tsx` — bottom overlay with two rows:
-          row 1 = four round action buttons (X / undo / star / ✓); row 2 = the
-          bottom tab bar navigation. Both rows use colors matching the
-          reference screenshot. Only row 2 collapses on scroll.
-      - **Collapse animation**: `CollapsingActionBar` uses `react-native-reanimated`
-        (already installed). `MarriageLandingScreen` creates a
-        `useSharedValue<number>` and passes an `onScroll` handler
-        (`useAnimatedScrollHandler`) to `<Animated.ScrollView>`. The handler
-        tracks scroll direction by comparing `event.contentOffset.y` to a
-        `previousScrollY.value`. Row 2 uses `useAnimatedStyle` to map scroll
-        direction to `translateY` (target = tabBarHeight on scroll-down, 0 on
-        scroll-up) and `opacity` (0 / 1 respectively), animated with
-        `withTiming(target, { duration: 220 })`. Minimum scroll-delta threshold
-        is 8px to avoid twitchy hides. Row 1 stays anchored at the bottom.
-      - **Action-button no-op behavior**: each of the four round buttons
-        (X / undo / star / ✓) has an `onPress` that calls `showSnackbar(
-        t('landing.actionUnavailable'))`. New label
-        `landing.actionUnavailable: "Available in a later phase"` added to both
-        locales.
+          profession chip strip beneath the image. Green tick appears only
+          when `faceSelfieUri` is non-null. Country-flag chip hides if
+          `resident_country_code` null; profession chip hides if `job_title`
+          null.
+        - `components/CollapsingActionBar.tsx` — bottom floating overlay
+          containing ONLY the four round action buttons (X / undo / star /
+          ✓) in a single row. Sits above (and independent of) the native
+          React Navigation bottom tab bar. Uses colors matching landing1.jpeg.
+      - **Collapse animation** — done in TWO independent pieces:
+        (a) The four action buttons in `CollapsingActionBar` stay anchored;
+        they do NOT collapse. Only the underlying tab bar collapses.
+        (b) The native React Navigation bottom tab bar collapses on
+        downward scroll. Achieved without a custom tab-bar reimpl: the
+        `Marriage` tab entry (registered in 12.6) sets `screenOptions` such
+        that `tabBarStyle` is an animated style bound to a shared value
+        published by `MarriageLandingScreen`. The screen creates
+        `previousScrollY = useSharedValue(0)` and `tabBarHidden =
+        useSharedValue(0)`; `useAnimatedScrollHandler` diffs
+        `event.contentOffset.y` vs `previousScrollY.value`, and when the
+        delta exceeds 8px sets `tabBarHidden.value = withTiming(1,
+        { duration: 220 })` (scroll down) or `withTiming(0, ...)` (scroll
+        up). The AppTabs Marriage `tabBarStyle` reads that shared value via
+        `useAnimatedStyle` to map to `translateY` (0 → tabBarHeight) and
+        `opacity` (1 → 0). Coordination: MarriageLandingScreen exports a
+        module-scope shared value (`marriageTabBarHidden`) that AppTabs
+        imports for its Marriage-tab `tabBarStyle`. This keeps
+        MarriageLandingScreen self-contained: no navigation-level scroll
+        hooks, no wrapper component around AppTabs. Minimum scroll-delta
+        threshold is 8px to avoid twitchy hides.
+      - **Action-button no-op behavior**: local-state Snackbar pattern
+        (matches Page25 and Page30). `MarriageLandingScreen` holds
+        `const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null)`.
+        Each of the four round buttons calls
+        `setSnackbarMsg(t('landing.actionUnavailable'))`. The screen renders
+        `<Snackbar visible={snackbarMsg !== null} message={snackbarMsg ??
+        ""} onDismiss={() => setSnackbarMsg(null)} />` at its root. New label
+        `landing.actionUnavailable: "Available in a later phase"` added to
+        both locales. NO global `showSnackbar()` helper is introduced —
+        that infrastructure change is out of scope for phase 12.
+      - **Reanimated Jest mock** (prerequisite for the screen wiring test):
+        add `jest.mock('react-native-reanimated', () =>
+        require('react-native-reanimated/mock'));` to `jest.setup.ts` (the
+        repo's Jest global setup — if the file does not exist, create it
+        and register it in `jest.config` under `setupFilesAfterEach` or the
+        preset's equivalent hook). This is not currently present — the
+        subagent must verify and add. Without it, MarriageLandingScreen
+        tests will crash on Reanimated worklet imports.
       - Screen wiring test at
         `__tests__/features/landing/MarriageLandingScreen.test.tsx`:
-        (a) renders the hero with `dummyfemale.first_name` visible,
-        (b) all 14 sections (from 12.2) are mounted in the DOM tree (except
-        those that hide on dummy — female fixture is full, so all 14 render
-        including Photo interleave),
-        (c) tapping the ✓ button shows the `showSnackbar` mock with the
-        `actionUnavailable` label,
-        (d) HeaderBar renders filter icon + bell icon and NO Sort pill / green
-        lightning bubble.
+        (a) renders the hero with `dummyfemale.first_name` ("Aisha") visible,
+        (b) all sections that should render on the female fixture are
+        mounted: AboutMe, MarriageIntentions, Faith, FuturePlans,
+        PhotoBlock (photos.length === 2), Personality, Education,
+        ProfessionalCareer, Parents, Address, Siblings (siblings.length
+        === 2), VerifiedProfile, ContactActions. (HeroBlock is skipped
+        because viewer === 'other' — CandidateHero handles it instead.
+        So 13 sections in the ScrollView + 1 CandidateHero above.)
+        (c) tapping the ✓ button renders the toast with text
+        `t('landing.actionUnavailable')` (queried via `getByText`, not via
+        a mock),
+        (d) HeaderBar renders filter icon + bell icon and NO Sort pill /
+        green lightning bubble.
       - Animation is NOT tested (Reanimated worklets are mocked to no-op per
-        the existing `__mocks__/react-native-reanimated` setup).
+        the setup added above).
       - Labels added: `landing.*` (`landing.actionUnavailable`,
         `landing.header.filter`, `landing.header.notifications`,
         `landing.hero.activeToday`, `landing.hero.gold`, `landing.hero.verified`,
@@ -352,17 +444,20 @@ stories:
         - `screens/MenuHomeScreen.tsx` — the Menu-tab home. Statically imports
           `assets/dummyprofile.json`. Renders header (top bar with "Marriage v"
           dropdown left, settings + bell right — dropdown / settings are
-          no-ops, bell is a no-op), then the profile row (round avatar,
-          "Adnan Malik" + verified tick, Share `pill` variant, Edit pill —
-          Edit press is a no-op that navigates to `MyProfileScreen`
-          (Edit tab)), then a static chip row (Membership / Invite / Help /
-          Safety & Advice — all press no-ops), then the Basic-plan card
-          (static copy, Upgrade button no-op), then the engagement cards row
-          (`15 Likes` / `3 Compliments` / `1 Profile Boost` — hard-coded
-          numbers, all Get-more buttons no-op), then the €10 off Muzz Gold
-          discount card (hard-coded, Claim-discount button no-op). Tapping
-          the avatar navigates to `MyProfileScreen` with initial tab
-          "Preview".
+          no-ops, bell is a no-op), then the profile row (round avatar
+          composed via `ProfileThumbnailCircle`, "Adnan Malik" + verified
+          tick, `<ShareProfileButton variant="pill" />`, Edit pill — the
+          Edit pill's press navigates to `MyProfileScreen` with
+          `{ initialTab: 'edit' }` (the Edit TAB itself renders an
+          `EmptyState` "Coming soon" and does not mutate profile state; the
+          pill is not itself a no-op, the destination tab is)), then a
+          static chip row (Membership / Invite / Help / Safety & Advice —
+          all press no-ops), then the Basic-plan card (static copy, Upgrade
+          button no-op), then the engagement cards row (`15 Likes` /
+          `3 Compliments` / `1 Profile Boost` — hard-coded numbers, all
+          Get-more buttons no-op), then the €10 off Muzz Gold discount card
+          (hard-coded, Claim-discount button no-op). Tapping the avatar
+          navigates to `MyProfileScreen` with `{ initialTab: 'preview' }`.
         - `screens/MyProfileScreen.tsx` — takes `{ initialTab?: 'preview' |
           'edit' }`. Renders a header: close X (goBack) left, "Adnan Malik" +
           verified tick center, `<ShareProfileButton variant="icon-only" />`
@@ -378,10 +473,15 @@ stories:
           `<ShareProfileButton variant="row-link" />`. The Edit tab renders an
           `EmptyState` with title "Coming soon" and description "Profile
           editing is coming in a later phase".
-        - `components/ProfileThumbnailCircle.tsx` — reusable round avatar with
-          optional small edit-pencil dot in the corner. Takes
-          `{ uri: string; onPress?: () => void; showEditDot?: boolean; size?:
-          number }`.
+        - `components/ProfileThumbnailCircle.tsx` — a thin wrapper that
+          COMPOSES the existing `<Avatar />` primitive
+          (`src/components/Avatar.tsx`) and layers an optional small
+          edit-pencil dot overlay in the corner. Does NOT reimplement avatar
+          rendering. Takes `{ uri: string; onPress?: () => void;
+          showEditDot?: boolean; size?: number }`. Internally renders
+          `<Avatar uri={uri} size={size} />` inside a pressable wrapper and
+          absolutely-positions a small `<Icon name="pencil" />` badge when
+          `showEditDot === true`.
       - Screen wiring tests:
         `__tests__/features/profile/MenuHomeScreen.test.tsx`:
         (a) renders with `dummyprofile.first_name + " " + last_name` visible,
@@ -440,10 +540,16 @@ stories:
         (`Discover`, `Requests`) or the labels `nav.tabs.discover` /
         `nav.tabs.requests` is updated in-place to use the new names. Grep
         confirms zero remaining references after the rename.
-      - Auth-gate wiring test at
-        `__tests__/navigation/RootNavigator.authGate.test.tsx` (or whatever
-        equivalent exists) is updated so its positive-identify assertion looks
-        for `nav.tabs.marriage` instead of `nav.tabs.discover`.
+      - **Specifically, the following existing test files must be updated
+        in-place** (both currently reference `nav.tabs.discover`):
+        (1) `__tests__/navigation/AppTabs.test.tsx` (currently asserts
+        `queryByText(t("nav.tabs.discover"))` — swap to `nav.tabs.marriage`),
+        (2) `__tests__/navigation/auth-gate.test.tsx` (currently asserts
+        `nav.tabs.discover` at multiple lines: 248, 272, 275, 287, 290-291,
+        319, 348 — all positive-identify checks swap to `nav.tabs.marriage`;
+        negative-identify checks stay semantic).
+      - After the rename, grep for `nav.tabs.discover` and `nav.tabs.requests`
+        across `__tests__/` must return zero hits.
       - End-to-end wiring test at
         `__tests__/navigation/MenuStack.test.tsx` asserts: mounting the Menu
         tab lands on `MenuHomeScreen`; tapping the avatar navigates to

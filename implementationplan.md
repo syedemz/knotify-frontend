@@ -72,7 +72,7 @@ phases:
 - phase: 12
   title: Landing page + profile page + profile edit shell
   file: implementationplan/phase-12-landing-profile.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 13
