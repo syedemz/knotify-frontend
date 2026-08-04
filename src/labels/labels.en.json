@@ -26,6 +26,8 @@
     "tabs": {
       "discover": "Discover",
       "requests": "Requests",
+      "marriage": "Marriage",
+      "explore": "Explore",
       "chat": "Chat",
       "menu": "Menu"
     }

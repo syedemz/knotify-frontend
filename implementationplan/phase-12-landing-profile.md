@@ -1,6 +1,6 @@
 phase: 12
 title: Landing page + profile page + profile edit shell
-last_updated: 2026-08-05 (story 12.5 complete)
+last_updated: 2026-08-04 (story 12.6 complete — phase done)
 
 context_summary: |
   Phase 12 builds the FIRST post-onboarding UI: the "Marriage" landing page (the
@@ -513,7 +513,7 @@ stories:
   - id: 12.6
     title: AppTabs rename + Menu nested stack wiring
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [12.4, 12.5]
     tracking_issue: 117
     acceptance_criteria:
