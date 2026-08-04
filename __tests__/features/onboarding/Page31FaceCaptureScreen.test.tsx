@@ -1,18 +1,15 @@
 /**
- * Wiring tests for Page31FaceCaptureScreen (story 11.2).
+ * Wiring tests for Page31FaceCaptureScreen (capture-only).
  *
- * The state machine (useAutoCaptureController) is mocked — tests do not wait
- * for real camera frames. This keeps tests synchronous and deterministic.
+ * Page 31 is now capture-only: it renders the camera preview + oval overlay
+ * and a shutter button. On capture it writes the URI to the onboarding draft
+ * and navigates to Page32ConfirmSelfieScreen with `{ faceSelfieUri }`. The
+ * PATCH submit sequence lives on Page 32 and is tested there.
  *
  * AC coverage:
- * (a) Initial render — camera preview and shutter button visible; no post-capture UI.
- * (b) Manual shutter tap → captured state; submit + retake buttons appear.
- * (c) Submit success → markComplete() called, clear() called.
- * (d) Submit step 3 throws (dummy.profile write fails) → draft NOT cleared, retry visible.
- * (e) 409 collision → username regenerated, retry called, second success clears draft.
- * (f) 500 error → error surface visible, draft not cleared.
- * (g) Retake → back to initial capture state.
- * (h) mockOnboardingComplete triggers do NOT call navigation.navigate directly.
+ * (a) Initial render — camera preview and shutter button visible.
+ * (b) Shutter tap → setFaceSelfieUri is called with a `file://` URI.
+ * (c) Shutter tap → navigation.navigate('Page32ConfirmSelfieScreen', { faceSelfieUri }).
  */
 
 import React from 'react';
@@ -80,67 +77,41 @@ jest.mock('react-native-reanimated', () => {
   return m;
 });
 
-// ── expo-secure-store mock ────────────────────────────────────────────────────
-
-const mockSetItemAsync = jest.fn();
-
-jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn(() => Promise.resolve(null)),
-  setItemAsync: (...args: any[]) => mockSetItemAsync(...args),
-  deleteItemAsync: jest.fn(() => Promise.resolve()),
-}));
-
-// ── HTTP client mock ──────────────────────────────────────────────────────────
-
-const mockRequest = jest.fn();
-
-jest.mock('@/services/api/httpClient', () => ({
-  request: (...args: any[]) => mockRequest(...args),
-}));
-
-// ── OnboardingCompletionProvider mock ─────────────────────────────────────────
-
-const mockMarkComplete = jest.fn();
-const mockOnboardingCompletionReset = jest.fn();
-
-jest.mock('@/state/onboardingCompletion/OnboardingCompletionProvider', () => ({
-  // TODO(mock-only): remove when real backend + JWT claim decode ship
-  OnboardingCompletionProvider: ({ children }: any) => children,
-  useOnboardingCompletion: () => ({
-    loading: false,
-    complete: false,
-    markComplete: mockMarkComplete,
-    reset: mockOnboardingCompletionReset,
-  }),
-}));
+// useFocusEffect requires a NavigationContainer at runtime. Stub it to call
+// the effect callback once on mount — mirrors the "focused" behavior for the
+// initial render.
+jest.mock('@react-navigation/native', () => {
+  const Rct = require('react') as typeof import('react');
+  return {
+    useFocusEffect: (cb: () => void | (() => void)) => {
+      Rct.useEffect(() => cb(), [cb]);
+    },
+  };
+});
 
 // ── useOnboardingDraft mock ───────────────────────────────────────────────────
 
-const mockGetDraft = jest.fn();
 const mockSetFaceSelfieUri = jest.fn();
-const mockClear = jest.fn();
-const mockUpdate = jest.fn();
 
 jest.mock('@/features/onboarding/hooks/useOnboardingDraft', () => ({
   OnboardingDraftProvider: ({ children }: any) => children,
   useOnboardingDraft: () => ({
-    update: mockUpdate,
+    update: jest.fn(),
     advance: jest.fn(),
     advanceWithCheckpoint: jest.fn(),
     reset: jest.fn(),
-    getDraft: mockGetDraft,
+    getDraft: jest.fn(),
     setSiblings: jest.fn(),
     setNotificationPermissionStatus: jest.fn(),
     setLocationPermissionStatus: jest.fn(),
     setPhotoPreviewUris: jest.fn(),
     setFaceSelfieUri: mockSetFaceSelfieUri,
-    clear: mockClear,
+    clear: jest.fn(),
     isLoading: false,
   }),
 }));
 
 // ── useAutoCaptureController mock ─────────────────────────────────────────────
-// Mock so tests don't depend on real frame-counting logic.
 
 const mockAutoCaptureReset = jest.fn();
 const mockAutoCaptureOnFrame = jest.fn();
@@ -151,17 +122,17 @@ jest.mock('@/features/onboarding/hooks/useAutoCaptureController', () => ({
     onFrame: mockAutoCaptureOnFrame,
     reset: mockAutoCaptureReset,
   }),
-  CONSECUTIVE_FRAMES_REQUIRED: 15,
+  CONSECUTIVE_FRAMES_REQUIRED: 150,
 }));
 
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Imports under test ────────────────────────────────────────────────────────
 
+import { useCameraDevice } from 'react-native-vision-camera';
 import { ThemeProvider } from '@/theme';
 import { t } from '@/labels';
 import { Page31FaceCaptureScreen } from '@/features/onboarding/screens/Page31FaceCaptureScreen';
-import { createEmptyDraft } from '@/features/onboarding/draftSchema';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -181,20 +152,7 @@ function mockRoute() {
   };
 }
 
-function makeDraft(fields: Record<string, unknown> = {}) {
-  return {
-    ...createEmptyDraft(),
-    phone_number: '+919812345678',
-    fields: {
-      first_name: 'Sara',
-      last_name: 'Khan',
-      ...fields,
-    },
-  };
-}
-
 function renderScreen(nav = mockNavigation()) {
-  mockGetDraft.mockReturnValue(makeDraft());
   return {
     nav,
     ...render(
@@ -210,11 +168,12 @@ function renderScreen(nav = mockNavigation()) {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockGetDraft.mockReturnValue(makeDraft());
-  mockRequest.mockResolvedValue({ success: true });
-  mockMarkComplete.mockResolvedValue(undefined);
-  mockSetItemAsync.mockResolvedValue(undefined);
-  mockClear.mockReturnValue(undefined);
+  // The __mocks__/react-native-vision-camera.ts auto-mock returns `undefined`
+  // from useCameraDevice by default; override so <Camera> mounts.
+  (useCameraDevice as unknown as jest.Mock).mockReturnValue({
+    id: 'mock-front',
+    position: 'front',
+  });
 });
 
 // ── AC (a): initial render ────────────────────────────────────────────────────
@@ -230,21 +189,16 @@ describe('Page31FaceCaptureScreen — AC (a): initial render', () => {
     expect(screen.getByTestId('shutter-button')).toBeTruthy();
   });
 
-  it('given fresh mount, then submit button is NOT visible', () => {
+  it('given fresh mount, then camera preview is visible', () => {
     renderScreen();
-    expect(screen.queryByTestId('submit-button')).toBeNull();
-  });
-
-  it('given fresh mount, then retake button is NOT visible', () => {
-    renderScreen();
-    expect(screen.queryByTestId('retake-button')).toBeNull();
+    expect(screen.getByTestId('camera-preview')).toBeTruthy();
   });
 });
 
-// ── AC (b): manual shutter tap → captured state ───────────────────────────────
+// ── AC (b): shutter tap → setFaceSelfieUri ────────────────────────────────────
 
-describe('Page31FaceCaptureScreen — AC (b): manual shutter tap', () => {
-  it('given shutter button tapped, then submit and retake buttons appear', async () => {
+describe('Page31FaceCaptureScreen — AC (b): shutter tap writes URI to draft', () => {
+  it('given shutter button tapped, then setFaceSelfieUri is called with file:// URI', async () => {
     renderScreen();
 
     await act(async () => {
@@ -252,334 +206,26 @@ describe('Page31FaceCaptureScreen — AC (b): manual shutter tap', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).toBeTruthy();
-      expect(screen.getByTestId('retake-button')).toBeTruthy();
-    });
-  });
-
-  it('given shutter button tapped, then setFaceSelfieUri is called', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-
-    expect(mockSetFaceSelfieUri).toHaveBeenCalledWith(expect.stringContaining('mock://face-selfie-'));
-  });
-
-  it('given shutter button tapped, then shutter button is no longer visible', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('shutter-button')).toBeNull();
+      expect(mockSetFaceSelfieUri).toHaveBeenCalledWith(expect.stringMatching(/^file:\/\//));
     });
   });
 });
 
-// ── AC (c): submit success ────────────────────────────────────────────────────
+// ── AC (c): shutter tap → navigate to Page 32 ────────────────────────────────
 
-describe('Page31FaceCaptureScreen — AC (c): submit success', () => {
-  it('given submit tap, then PATCH /profile/me is called via request()', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(mockRequest).toHaveBeenCalledWith(
-        expect.objectContaining({ method: 'PATCH', path: '/profile/me' }),
-      );
-    });
-  });
-
-  it('given submit success, then dummy.profile is written to secure-store', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(mockSetItemAsync).toHaveBeenCalledWith(
-        'dummy.profile',
-        expect.any(String),
-      );
-    });
-  });
-
-  it('given submit success, then markComplete() is called', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(mockMarkComplete).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('given submit success, then clear() is called to wipe the onboarding draft', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(mockClear).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('given submit success, then navigation.navigate is NOT called (state-driven transition)', async () => {
+describe('Page31FaceCaptureScreen — AC (c): navigates to Page 32 with URI', () => {
+  it('given shutter button tapped, then navigation.navigate is called with Page32 + URI param', async () => {
     const { nav } = renderScreen();
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('shutter-button'));
     });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
 
     await waitFor(() => {
-      expect(mockMarkComplete).toHaveBeenCalled();
-    });
-
-    expect(nav.navigate).not.toHaveBeenCalled();
-  });
-});
-
-// ── AC (d): step 3 throws → draft preserved ──────────────────────────────────
-
-describe('Page31FaceCaptureScreen — AC (d): step 3 failure preserves draft', () => {
-  it('given dummy.profile write throws, then clear() is NOT called', async () => {
-    // Step 2 succeeds, step 3 (SecureStore write) throws.
-    mockRequest.mockResolvedValueOnce({ success: true });
-    mockSetItemAsync.mockRejectedValueOnce(new Error('SecureStore write failed'));
-
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('retry-submit-button')).toBeTruthy();
-    });
-
-    expect(mockClear).not.toHaveBeenCalled();
-  });
-
-  it('given step 3 throws, then error surface is shown with retry action', async () => {
-    mockRequest.mockResolvedValueOnce({ success: true });
-    mockSetItemAsync.mockRejectedValueOnce(new Error('SecureStore write failed'));
-
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('retry-submit-button')).toBeTruthy();
-    });
-  });
-});
-
-// ── AC (e): 409 collision → username regenerated → retry ────────────────────
-
-describe('Page31FaceCaptureScreen — AC (e): 409 collision retry', () => {
-  it('given 409 then 200, then update() is called with a new username', async () => {
-    const collision409 = Object.assign(new Error('Username taken'), { status: 409 });
-    mockRequest
-      .mockRejectedValueOnce(collision409)
-      .mockResolvedValueOnce({ success: true });
-
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(mockUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ username: expect.any(String) }),
+      expect(nav.navigate).toHaveBeenCalledWith(
+        'Page32ConfirmSelfieScreen',
+        expect.objectContaining({ faceSelfieUri: expect.stringMatching(/^file:\/\//) }),
       );
-    });
-  });
-
-  it('given 409 then 200, then clear() is eventually called on retry success', async () => {
-    const collision409 = Object.assign(new Error('Username taken'), { status: 409 });
-    mockRequest
-      .mockRejectedValueOnce(collision409)
-      .mockResolvedValueOnce({ success: true });
-
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(mockClear).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('given 409 twice, then error surface is shown and clear() is NOT called', async () => {
-    const collision409 = Object.assign(new Error('Username taken'), { status: 409 });
-    mockRequest
-      .mockRejectedValueOnce(collision409)
-      .mockRejectedValueOnce(collision409);
-
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('retry-submit-button')).toBeTruthy();
-    });
-
-    expect(mockClear).not.toHaveBeenCalled();
-  });
-});
-
-// ── AC (f): 500 error → error surface ────────────────────────────────────────
-
-describe('Page31FaceCaptureScreen — AC (f): 500 error', () => {
-  it('given PATCH returns 500, then error surface is shown', async () => {
-    const serverError = Object.assign(new Error('Internal server error'), { status: 500 });
-    mockRequest.mockRejectedValueOnce(serverError);
-
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('retry-submit-button')).toBeTruthy();
-    });
-  });
-
-  it('given PATCH returns 500, then clear() is NOT called', async () => {
-    const serverError = Object.assign(new Error('Internal server error'), { status: 500 });
-    mockRequest.mockRejectedValueOnce(serverError);
-
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('submit-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('submit-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('retry-submit-button')).toBeTruthy();
-    });
-
-    expect(mockClear).not.toHaveBeenCalled();
-  });
-});
-
-// ── AC (g): retake ────────────────────────────────────────────────────────────
-
-describe('Page31FaceCaptureScreen — AC (g): retake', () => {
-  it('given retake tapped after capture, then shutter button is visible again', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('retake-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('retake-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('shutter-button')).toBeTruthy();
-    });
-  });
-
-  it('given retake tapped, then submit button is hidden again', async () => {
-    renderScreen();
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('shutter-button'));
-    });
-    await waitFor(() => expect(screen.getByTestId('retake-button')).toBeTruthy());
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('retake-button'));
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('submit-button')).toBeNull();
     });
   });
 });

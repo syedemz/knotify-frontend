@@ -34,17 +34,20 @@ export type AuthStackParamList = {
 /**
  * Route params for the `OnboardingStack` navigator.
  *
- * Keys are typed against `OnboardingRouteName` imported from
- * `src/features/onboarding/pageMap.ts` — the single source of truth for all
- * 31 route names. This import guarantees `types.ts` and `pageMap.ts` cannot
- * drift: adding or renaming a route in `pageMap.ts` is immediately reflected
- * here via the mapped type.
+ * Keys 1–31 are typed against `OnboardingRouteName` imported from
+ * `src/features/onboarding/pageMap.ts` — the single source of truth for the
+ * numbered wizard flow. Adding or renaming a numbered route in `pageMap.ts`
+ * is immediately reflected here via the mapped type.
  *
- * All routes carry `undefined` params (no required navigation params on any
- * onboarding screen); real param shapes are added per-screen as needed.
+ * `Page32ConfirmSelfieScreen` sits *outside* the numbered wizard — it is a
+ * post-capture confirmation step, not part of the progress bar — so it is
+ * declared as an intersection here rather than added to `PAGE_MAP`. It
+ * carries the captured selfie's `file://` URI as a required param.
  */
 export type OnboardingStackParamList = {
   [K in OnboardingRouteName]: undefined;
+} & {
+  Page32ConfirmSelfieScreen: { faceSelfieUri: string };
 };
 
 // ---------------------------------------------------------------------------

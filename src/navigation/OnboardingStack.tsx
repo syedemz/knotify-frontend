@@ -53,6 +53,7 @@ import { Page28PhotosScreen as Page28PhotosScreenImpl } from "@/features/onboard
 import { Page29PhoneScreen as Page29PhoneScreenImpl } from "@/features/onboarding/screens/Page29PhoneScreen";
 import { Page30FaceIntroScreen as Page30FaceIntroScreenImpl } from "@/features/onboarding/screens/Page30FaceIntroScreen";
 import { Page31FaceCaptureScreen as Page31FaceCaptureScreenImpl } from "@/features/onboarding/screens/Page31FaceCaptureScreen";
+import { Page32ConfirmSelfieScreen as Page32ConfirmSelfieScreenImpl } from "@/features/onboarding/screens/Page32ConfirmSelfieScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -132,6 +133,9 @@ const Page29PhoneScreen = Page29PhoneScreenImpl;
 const Page30FaceVerifyIntroScreen = Page30FaceIntroScreenImpl;
 // Page 31: real screen landed in phase 11 (B10, story 11.2).
 const Page31FaceCaptureScreen = Page31FaceCaptureScreenImpl;
+// Page 32: post-capture confirmation screen — owns Continue (submit) / Retake.
+// Not part of the numbered wizard flow (not in PAGE_MAP / TOTAL_PAGES).
+const Page32ConfirmSelfieScreen = Page32ConfirmSelfieScreenImpl;
 
 // ---------------------------------------------------------------------------
 // Navigator
@@ -217,6 +221,7 @@ function OnboardingStackNavigator(): React.JSX.Element | null {
       <Stack.Screen name="Page29PhoneScreen" component={Page29PhoneScreen} />
       <Stack.Screen name="Page30FaceVerifyIntroScreen" component={Page30FaceVerifyIntroScreen} />
       <Stack.Screen name="Page31FaceCaptureScreen" component={Page31FaceCaptureScreen} />
+      <Stack.Screen name="Page32ConfirmSelfieScreen" component={Page32ConfirmSelfieScreen} />
     </Stack.Navigator>
   );
 }

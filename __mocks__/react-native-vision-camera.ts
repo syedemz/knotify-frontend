@@ -30,11 +30,25 @@ export type CameraPermissionRequestResult = 'granted' | 'denied';
 
 /**
  * Minimal mock of the `Camera` component and its static permission API.
+ *
+ * The component forwards refs and exposes a stubbed `takePhoto` that resolves
+ * to `{ path: 'mock/face-selfie-<ts>.jpg' }` — enough for callers that build
+ * a `file://` URI and pass it through navigation.
  */
 export const Camera = Object.assign(
-  function Camera(_props: Record<string, unknown>): React.ReactElement {
-    return React.createElement(View, { testID: 'mock-camera' });
-  },
+  React.forwardRef(function Camera(
+    props: Record<string, unknown>,
+    ref: React.Ref<{ takePhoto: () => Promise<{ path: string }> }>,
+  ): React.ReactElement {
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        takePhoto: () => Promise.resolve({ path: `mock/face-selfie-${Date.now()}.jpg` }),
+      }),
+      [],
+    );
+    return React.createElement(View, { testID: (props.testID as string) ?? 'mock-camera' });
+  }),
   {
     getCameraPermissionStatus: jest.fn<CameraPermissionStatus, []>(() => 'not-determined'),
     requestCameraPermission: jest.fn<Promise<CameraPermissionRequestResult>, []>(

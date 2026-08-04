@@ -426,6 +426,16 @@
       "submitError": "Something went wrong. Please try again.",
       "submitRetry": "Try again",
       "usernameRegenerating": "Checking availability…"
+    },
+    "confirmSelfie": {
+      "title": "Looks good?",
+      "subtitle": "Review your selfie. Tap Continue to finish, or Retake to try again.",
+      "imageAccessibility": "Captured selfie",
+      "continueLabel": "Continue",
+      "retakeLabel": "Retake",
+      "submitting": "Finishing up…",
+      "submitError": "Something went wrong. Please try again.",
+      "submitRetry": "Try again"
     }
   },
   "siblingForm": {
