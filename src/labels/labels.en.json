@@ -474,5 +474,23 @@
         "invalidCharacters": "Only letters, digits, spaces, hyphens, apostrophes, ampersands, and periods are allowed."
       }
     }
+  },
+  "landing": {
+    "actionUnavailable": "Available in a later phase",
+    "header": {
+      "filter": "Filter",
+      "notifications": "Notifications"
+    },
+    "hero": {
+      "activeToday": "Active today",
+      "gold": "Gold",
+      "verified": "Verified profile"
+    },
+    "actions": {
+      "pass": "Pass",
+      "undo": "Undo",
+      "superLike": "Super like",
+      "like": "Like"
+    }
   }
 }

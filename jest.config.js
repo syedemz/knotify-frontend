@@ -1,9 +1,10 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: "jest-expo",
-  moduleNameMapper: {
-    "^@/(.*)$": "<rootDir>/src/$1",
-  },
+  // Registered for any future global setup steps. Does NOT call jest.mock —
+  // native module mocks are handled via moduleNameMapper (below) and the
+  // __mocks__/ directory.
+  setupFiles: ["./jest.setup.ts"],
   transformIgnorePatterns: [
     "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@gorhom/.*|lucide-react-native|react-native-vision-camera|react-native-vision-camera-face-detector|react-native-worklets-core)",
   ],
@@ -11,8 +12,7 @@ module.exports = {
     "**/__tests__/**/*.{ts,tsx}",
     "**/?(*.)+(spec|test).{ts,tsx}",
   ],
-  // Automatically mock native modules that require device APIs unavailable in
-  // the Jest environment. Each entry maps the module to its automatic mock.
+  // Redirect native modules to test-friendly stubs.
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
     // Provide the official in-memory mock for AsyncStorage so any test that
@@ -25,6 +25,12 @@ module.exports = {
     // individual jest.mock() call.
     "^lucide-react-native$":
       "<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js",
+    // react-native-reanimated requires the Worklets native runtime which is
+    // unavailable in Jest/Node. Redirect to the project-local manual mock
+    // (__mocks__/react-native-reanimated.js) which stubs all hooks and
+    // animated components with lightweight React Native equivalents.
+    "^react-native-reanimated$":
+      "<rootDir>/__mocks__/react-native-reanimated.js",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

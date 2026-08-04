@@ -474,5 +474,23 @@
         "invalidCharacters": "صرف حروف، اعداد، خالی جگہیں، ہائفن، اپوسٹروفی، ایمپرسینڈ اور نقطے کی اجازت ہے۔"
       }
     }
+  },
+  "landing": {
+    "actionUnavailable": "بعد کے مرحلے میں دستیاب",
+    "header": {
+      "filter": "فلٹر",
+      "notifications": "اطلاعات"
+    },
+    "hero": {
+      "activeToday": "آج سرگرم",
+      "gold": "گولڈ",
+      "verified": "تصدیق شدہ پروفائل"
+    },
+    "actions": {
+      "pass": "گزرو",
+      "undo": "واپس کریں",
+      "superLike": "سپر لائک",
+      "like": "پسند"
+    }
   }
 }

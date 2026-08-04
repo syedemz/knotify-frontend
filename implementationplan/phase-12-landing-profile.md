@@ -1,6 +1,6 @@
 phase: 12
 title: Landing page + profile page + profile edit shell
-last_updated: 2026-08-04 (story 12.2 complete)
+last_updated: 2026-08-04 (story 12.4 complete)
 
 context_summary: |
   Phase 12 builds the FIRST post-onboarding UI: the "Marriage" landing page (the
@@ -335,7 +335,7 @@ stories:
   - id: 12.4
     title: MarriageLandingScreen + CollapsingActionBar + HeaderBar
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [12.2]
     tracking_issue: 115
     acceptance_criteria:
