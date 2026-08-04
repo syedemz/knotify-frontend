@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-04 (phase 12 PRD rewrite)
+last_updated: 2026-08-04 (phase 12 complete)
 
 phases:
 
@@ -73,7 +73,7 @@ phases:
   title: Landing page + profile page + profile edit shell
   file: implementationplan/phase-12-landing-profile.md
   ready: true
-  done: false
+  done: true
 
 - phase: 13
   title: Discover - deck, other-profile, filters, search

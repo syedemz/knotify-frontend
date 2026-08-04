@@ -26,6 +26,8 @@
     "tabs": {
       "discover": "Discover",
       "requests": "Requests",
+      "marriage": "Marriage",
+      "explore": "Explore",
       "chat": "Chat",
       "menu": "Menu"
     }
@@ -438,6 +440,11 @@
       "submitRetry": "Try again"
     }
   },
+  "share": {
+    "action": "Share",
+    "messagePrefix": "Check out",
+    "actionAccessibility": "Share profile"
+  },
   "siblingForm": {
     "cardTitle": "Sibling",
     "name": {
@@ -469,5 +476,60 @@
         "invalidCharacters": "Only letters, digits, spaces, hyphens, apostrophes, ampersands, and periods are allowed."
       }
     }
+  },
+  "landing": {
+    "actionUnavailable": "Available in a later phase",
+    "header": {
+      "filter": "Filter",
+      "notifications": "Notifications"
+    },
+    "hero": {
+      "activeToday": "Active today",
+      "gold": "Gold",
+      "verified": "Verified profile"
+    },
+    "actions": {
+      "pass": "Pass",
+      "undo": "Undo",
+      "superLike": "Super like",
+      "like": "Like"
+    }
+  },
+  "menu": {
+    "marriageDropdown": "Marriage v",
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "editPill": "Edit",
+    "membershipCard": {
+      "title": "Basic Plan",
+      "subtitle": "Upgrade to Gold to unlock premium features",
+      "upgrade": "Upgrade"
+    },
+    "chips": {
+      "membership": "Membership",
+      "invite": "Invite",
+      "help": "Help",
+      "safety": "Safety & Advice"
+    },
+    "engagement": {
+      "likes": "Likes",
+      "compliments": "Compliments",
+      "boost": "Profile Boost",
+      "discount": "€10 off Gold",
+      "discountSubtitle": "Muzz Gold discount",
+      "getMore": "Get more",
+      "claim": "Claim discount"
+    }
+  },
+  "myProfile": {
+    "tabs": {
+      "preview": "Preview",
+      "edit": "Edit"
+    },
+    "editComingSoon": {
+      "title": "Coming soon",
+      "description": "Profile editing is coming in a later phase"
+    },
+    "close": "Close profile"
   }
 }

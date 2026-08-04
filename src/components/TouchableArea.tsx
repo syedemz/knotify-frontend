@@ -38,6 +38,10 @@ export interface TouchableAreaProps {
    * Content to render inside the touchable area.
    */
   children: React.ReactNode;
+  /**
+   * Optional test identifier forwarded to the underlying `Pressable`.
+   */
+  testID?: string;
 }
 
 /**
@@ -63,6 +67,7 @@ export function TouchableArea({
   disabled = false,
   padding,
   children,
+  testID,
 }: TouchableAreaProps) {
   const theme = useTheme();
   const styles = useMemo(
@@ -83,6 +88,7 @@ export function TouchableArea({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
+      testID={testID}
     >
       {children}
     </Pressable>

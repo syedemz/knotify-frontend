@@ -1,0 +1,91 @@
+{
+  "user_id": "f9a1b2c3-d4e5-4f60-a7b8-c9d0e1f2a3b4",
+  "email": "aisha.khan@example.com",
+  "phone_number": "+4915112345678",
+  "username": "aisha_khan",
+  "first_name": "Aisha",
+  "last_name": "Khan",
+  "sex": "Female",
+  "birthday": "1997-04-15",
+  "age": 27,
+  "religion": "Islam",
+  "subsect": "Sunni",
+  "religious_level": "Practicing",
+  "chosen_profile_avatar": null,
+  "photo_url": "assets/female/Female3.png",
+  "college_name": "Freie Universität Berlin",
+  "current_residence_city": "Berlin",
+  "current_residence_country": "Germany",
+  "resident_country_code": "DE",
+  "district": "Mitte",
+  "education_level": "Masters",
+  "employer_name": "Design Studio GmbH",
+  "employment_type": "Full-time",
+  "family_residence_address": "Hauptstraße 12, 10115 Berlin",
+  "father_retired": "NO",
+  "fathers_job": "Retired Engineer",
+  "fathers_name": "Tariq Khan",
+  "graduation_year": 2022,
+  "has_children": false,
+  "higher_secondary": "Berlin Grammar School",
+  "higher_secondary_passing_year": 2016,
+  "highest_degree": "MSc Human-Computer Interaction",
+  "high_school": "Berlin Secondary School",
+  "high_school_passing_year": 2014,
+  "job_title": "Product Designer",
+  "marital_status": "Never Married",
+  "marriage_time": "Within 1 year",
+  "mother_retired": "NO",
+  "mothers_job": "Teacher",
+  "mothers_name": "Fatima Khan",
+  "move_abroad": true,
+  "office_address": "Potsdamer Platz 1, 10785 Berlin",
+  "partners_religious_level": "Practicing",
+  "professional_category": "Technology & Design",
+  "profile_complete_verified": true,
+  "relation": "Myself",
+  "salary_range": "40000–60000 EUR",
+  "preferences": {
+    "personalityTraits": [
+      "Adventurous",
+      "Family-oriented",
+      "Bookworm",
+      "Fitness enthusiast",
+      "Foodie"
+    ]
+  },
+  "created_at": "2024-03-01T10:00:00.000Z",
+  "updated_at": "2024-03-15T14:30:00.000Z",
+  "deleted_at": null,
+  "photos": [
+    "assets/female/Female3.png",
+    "assets/female/Female4.png"
+  ],
+  "faceSelfieUri": "assets/female/Female3.png",
+  "siblings": [
+    {
+      "name": "Zara Khan",
+      "age": 24,
+      "marital_status": "Never Married",
+      "gender": "Female",
+      "profession": "Medical Student"
+    },
+    {
+      "name": "Omar Khan",
+      "age": 30,
+      "marital_status": "Married",
+      "gender": "Male",
+      "profession": "Civil Engineer"
+    }
+  ],
+  "__dummy_display_only": {
+    "is_active_today": true,
+    "membership_tier": "gold",
+    "has_unread_notifications": true,
+    "dress_code": "Modest",
+    "eats_halal": true,
+    "smokes": false,
+    "drinks": false,
+    "fasts": true
+  }
+}

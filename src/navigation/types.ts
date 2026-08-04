@@ -8,6 +8,8 @@
  * @module navigation/types
  */
 
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
 import type { OnboardingRouteName } from "@/features/onboarding/pageMap";
 
 // ---------------------------------------------------------------------------
@@ -51,21 +53,37 @@ export type OnboardingStackParamList = {
 };
 
 // ---------------------------------------------------------------------------
+// Menu Stack
+// ---------------------------------------------------------------------------
+
+/**
+ * Route params for the `MenuStack` nested navigator.
+ *
+ * Screens: `MenuHomeScreen` (initial) and `MyProfileScreen`.
+ * `MyProfileScreen` accepts an optional `initialTab` to open directly on
+ * the Preview or Edit segment.
+ */
+export type MenuStackParamList = {
+  MenuHomeScreen: undefined;
+  MyProfileScreen: { initialTab?: 'preview' | 'edit' } | undefined;
+};
+
+// ---------------------------------------------------------------------------
 // App Tabs
 // ---------------------------------------------------------------------------
 
 /**
  * Route params for the `AppTabs` bottom-tab navigator.
  *
- * Tabs: `Discover`, `Requests`, `Chat`, `Menu`.
- * Each tab will eventually host a nested stack; params are `undefined`
- * until those stacks are wired in their respective phases.
+ * Tabs: `Marriage`, `Explore`, `Chat`, `Menu`.
+ * `Menu` hosts a nested `MenuStack`; `Explore` and `Chat` remain
+ * `EmptyState` placeholders until their feature phases ship.
  */
 export type AppTabsParamList = {
-  Discover: undefined;
-  Requests: undefined;
+  Marriage: undefined;
+  Explore: undefined;
   Chat: undefined;
-  Menu: undefined;
+  Menu: NavigatorScreenParams<MenuStackParamList>;
 };
 
 // ---------------------------------------------------------------------------

@@ -1,14 +1,18 @@
 /**
  * Tests for src/navigation/AppTabs.tsx
  *
- * Verifies that the four-tab placeholder navigator renders identifiable
- * screen content for its initial tab (Discover).
+ * Verifies that the four-tab navigator renders identifiable screen content
+ * for its initial tab (Marriage) and that the navigator itself mounts cleanly.
  *
  * The `@react-navigation/bottom-tabs` `BottomTabBar` triggers a native
  * Animated driver call in Jest which causes a React version mismatch.
  * To work around this, we mock `createBottomTabNavigator` with a lightweight
  * stub that renders only the initial screen — sufficient to assert that
  * `AppTabs` passes the correct screen components to the navigator.
+ *
+ * `MarriageLandingScreen` and `MenuStack` are mocked with lightweight stubs
+ * so the test does not pull in the Reanimated worklet chain or the full
+ * profile-sections tree.
  */
 
 // Mock factory bodies cannot use TypeScript type annotations that reference
@@ -20,6 +24,32 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
+
+// Stub MarriageLandingScreen so the first-tab render is lightweight.
+jest.mock("@/features/landing/screens/MarriageLandingScreen", () => {
+  const RN = require("react-native") as typeof import("react-native");
+  const Rct = require("react") as typeof import("react");
+  return {
+    MarriageLandingScreen: function MockMarriageLandingScreen() {
+      return Rct.createElement(
+        RN.Text,
+        { testID: "marriage-landing-screen" },
+        "MARRIAGE_SCREEN",
+      );
+    },
+  };
+});
+
+// Stub MenuStack to avoid pulling in the nested stack navigator chain.
+jest.mock("@/navigation/MenuStack", () => {
+  const RN = require("react-native") as typeof import("react-native");
+  const Rct = require("react") as typeof import("react");
+  return {
+    MenuStack: function MockMenuStack() {
+      return Rct.createElement(RN.Text, { testID: "menu-stack" }, "MENU_STACK");
+    },
+  };
+});
 
 // Mock @gorhom/bottom-sheet to prevent the gesture-handler native chain.
 jest.mock("@gorhom/bottom-sheet", () => {
@@ -60,11 +90,8 @@ jest.mock("react-native-gesture-handler", () => {
   };
 });
 
-jest.mock("react-native-reanimated", () => {
-  const m = require("react-native-reanimated/mock");
-  m.default.call = jest.fn();
-  return m;
-});
+// react-native-reanimated is handled by moduleNameMapper in jest.config.js
+// (redirects to __mocks__/react-native-reanimated.js). No jest.mock() needed.
 
 // Mock createBottomTabNavigator to avoid the native Animated driver call
 // that BottomTabBar triggers in Jest (React renderer version mismatch).
@@ -120,17 +147,17 @@ describe("AppTabs", () => {
     expect(() => renderAppTabs()).not.toThrow();
   });
 
-  it("given AppTabs renders, then the Discover tab placeholder is visible (initial tab)", () => {
-    const { queryByText } = renderAppTabs();
+  it("given AppTabs renders, then the Marriage tab screen is visible (initial tab)", () => {
+    const { queryByTestId } = renderAppTabs();
 
-    // The mock navigator renders the first registered screen (Discover).
-    // DiscoverScreen's EmptyState title is t('nav.tabs.discover').
-    expect(queryByText(t("nav.tabs.discover"))).not.toBeNull();
+    // The mock navigator renders the first registered screen (MarriageLandingScreen
+    // stub). We assert the stub's testID is present to confirm that the
+    // Marriage tab is registered first and its component is mounted.
+    expect(queryByTestId("marriage-landing-screen")).not.toBeNull();
   });
 
-  it("given AppTabs renders, then the common.notImplemented description is visible", () => {
-    const { queryByText } = renderAppTabs();
-
-    expect(queryByText(t("common.notImplemented"))).not.toBeNull();
+  it("given AppTabs renders, then nav.tabs.marriage label is declared in labels", () => {
+    // Confirm the new label key resolves to a non-empty string.
+    expect(t("nav.tabs.marriage")).toBeTruthy();
   });
 });

@@ -1,6 +1,6 @@
 phase: 12
 title: Landing page + profile page + profile edit shell
-last_updated: 2026-08-04 (amendments from phase-12 brainstorm)
+last_updated: 2026-08-04 (story 12.6 complete — phase done)
 
 context_summary: |
   Phase 12 builds the FIRST post-onboarding UI: the "Marriage" landing page (the
@@ -95,8 +95,9 @@ stories:
   - id: 12.1
     title: Dummy JSON fixtures + type declarations
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
+    tracking_issue: 112
     acceptance_criteria:
       - Two fixture files are added under `assets/`:
         (a) `assets/dummyfemale.json` — a female candidate profile using
@@ -184,8 +185,9 @@ stories:
   - id: 12.2
     title: Profile-section catalog + hide-if-empty guards
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [12.1]
+    tracking_issue: 113
     acceptance_criteria:
       - New folder `src/features/profile-sections/` with one container
         `ProfileScrollView.tsx` and 14 section components under `sections/`:
@@ -295,8 +297,9 @@ stories:
   - id: 12.3
     title: Reusable Share primitive
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
+    tracking_issue: 114
     acceptance_criteria:
       - New pure helper `src/features/profile/buildShareMessage.ts` exposing
         `buildShareMessage(profile: Pick<UserProfile, 'user_id' | 'first_name'>):
@@ -332,8 +335,9 @@ stories:
   - id: 12.4
     title: MarriageLandingScreen + CollapsingActionBar + HeaderBar
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [12.2]
+    tracking_issue: 115
     acceptance_criteria:
       - New folder `src/features/landing/` with barrel `index.ts` and the
         following components:
@@ -437,8 +441,9 @@ stories:
   - id: 12.5
     title: MenuHomeScreen + MyProfileScreen (Preview tab + Edit shell)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [12.2, 12.3]
+    tracking_issue: 116
     acceptance_criteria:
       - New files under `src/features/profile/`:
         - `screens/MenuHomeScreen.tsx` — the Menu-tab home. Statically imports
@@ -508,8 +513,9 @@ stories:
   - id: 12.6
     title: AppTabs rename + Menu nested stack wiring
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [12.4, 12.5]
+    tracking_issue: 117
     acceptance_criteria:
       - `src/navigation/AppTabs.tsx` is updated to register FOUR tabs in this
         exact order: `Marriage` (icon: `MaterialCommunityIcons/ring`),

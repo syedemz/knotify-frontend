@@ -56,7 +56,7 @@ jest.mock("@/navigation/AppTabs", () => {
   const Rct = require("react") as typeof import("react");
   return {
     AppTabs: function MockAppTabs() {
-      return Rct.createElement(RN.Text, { testID: "app-tabs" }, "Discover");
+      return Rct.createElement(RN.Text, { testID: "app-tabs" }, "Marriage");
     },
   };
 });
@@ -242,10 +242,10 @@ describe("given status === 'unauthenticated'", () => {
     expect(queryByText("AUTH_STACK")).toBeNull();
   });
 
-  it("when RootNavigator renders, then AppTabs is absent (Discover tab text not present)", () => {
+  it("when RootNavigator renders, then AppTabs is absent (Marriage tab text not present)", () => {
     const { queryByText } = renderRoot();
 
-    expect(queryByText(t("nav.tabs.discover"))).toBeNull();
+    expect(queryByText(t("nav.tabs.marriage"))).toBeNull();
   });
 });
 
@@ -269,10 +269,10 @@ describe("given status === 'authenticated' and profileComplete === false", () =>
     expect(queryByText("AUTH_STACK")).toBeNull();
   });
 
-  it("when RootNavigator renders, then AppTabs is absent (nav.tabs.discover not present)", () => {
+  it("when RootNavigator renders, then AppTabs is absent (nav.tabs.marriage not present)", () => {
     const { queryByText } = renderRoot();
 
-    expect(queryByText(t("nav.tabs.discover"))).toBeNull();
+    expect(queryByText(t("nav.tabs.marriage"))).toBeNull();
   });
 });
 
@@ -284,11 +284,11 @@ describe("given status === 'authenticated' and profileComplete === true", () => 
     mockAuthState.profileComplete = true;
   });
 
-  it("when RootNavigator renders, then AppTabs is mounted (nav.tabs.discover text visible)", () => {
+  it("when RootNavigator renders, then AppTabs is mounted (nav.tabs.marriage text visible)", () => {
     const { queryByText } = renderRoot();
 
-    // The MockAppTabs stub renders 'Discover' which equals t('nav.tabs.discover').
-    expect(queryByText(t("nav.tabs.discover"))).not.toBeNull();
+    // The MockAppTabs stub renders 'Marriage' which equals t('nav.tabs.marriage').
+    expect(queryByText(t("nav.tabs.marriage"))).not.toBeNull();
   });
 
   it("when RootNavigator renders, then AuthStack is absent", () => {
@@ -316,7 +316,7 @@ describe("given status === 'loading'", () => {
 
     expect(queryByText("AUTH_STACK")).toBeNull();
     expect(queryByText("ONBOARDING_STACK")).toBeNull();
-    expect(queryByText(t("nav.tabs.discover"))).toBeNull();
+    expect(queryByText(t("nav.tabs.marriage"))).toBeNull();
   });
 
   it("when RootNavigator renders, then the loading label is visible", () => {
@@ -345,7 +345,7 @@ describe(
       () => {
         const { queryByText } = renderRoot();
 
-        expect(queryByText(t("nav.tabs.discover"))).not.toBeNull();
+        expect(queryByText(t("nav.tabs.marriage"))).not.toBeNull();
       },
     );
 
@@ -384,7 +384,7 @@ describe(
 
       expect(queryByText("AUTH_STACK")).toBeNull();
       expect(queryByText("ONBOARDING_STACK")).toBeNull();
-      expect(queryByText(t("nav.tabs.discover"))).toBeNull();
+      expect(queryByText(t("nav.tabs.marriage"))).toBeNull();
     });
   },
 );
