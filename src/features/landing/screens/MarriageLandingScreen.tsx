@@ -126,8 +126,9 @@ export function MarriageLandingScreen(): React.ReactElement {
         />
       </Animated.ScrollView>
 
-      {/* Floating 4-button action bar anchored above the tab bar */}
-      <CollapsingActionBar onAction={handleAction} />
+      {/* Floating 4-button action bar anchored above the tab bar. Collapses
+          in lock-step with the tab bar via the shared value. */}
+      <CollapsingActionBar onAction={handleAction} hidden={marriageTabBarHidden} />
 
       {/* Local snackbar — shown when any action button is pressed */}
       <Snackbar

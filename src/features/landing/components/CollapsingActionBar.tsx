@@ -6,20 +6,35 @@
  * toast via the `onAction` callback passed from `MarriageLandingScreen` — the
  * real swipe handlers ship in phase 13 (discover deck).
  *
- * The bar itself does NOT collapse or animate — it stays anchored above the
- * native React Navigation tab bar at all times. The tab bar collapse (driven
- * by `marriageTabBarHidden`) is handled separately in `AppTabs` (story 12.6).
+ * **Scroll-coupled motion.** The bar animates in lock-step with the native
+ * tab bar via the shared `hidden` value (`0` visible → `1` hidden). It sits
+ * `TAB_BAR_HEIGHT` above the bottom of the screen so that when the tab bar
+ * slides off, the buttons slide the same distance and continue to hover
+ * above the (now hidden) bar, leaving no dead gap on the screen.
  *
  * @module features/landing/components/CollapsingActionBar
  */
 
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { X, Undo2, Star, Check } from 'lucide-react-native';
 
 import { useTheme } from '@/theme';
 import type { Theme } from '@/theme/theme';
 import { t } from '@/labels';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/**
+ * Height of the native React Navigation tab bar. Kept in sync with the
+ * matching constant in `AppTabs.tsx` — used to translate the action bar in
+ * lock-step with the tab-bar collapse animation.
+ */
+const TAB_BAR_HEIGHT = 49;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +44,14 @@ export interface CollapsingActionBarProps {
    * The screen uses this to show the "Available in a later phase" Snackbar.
    */
   readonly onAction: () => void;
+  /**
+   * Shared value in the range [0, 1] driving the collapse animation:
+   * `0` = fully visible (bar sits above the tab bar), `1` = fully collapsed
+   * (bar has translated down by `TAB_BAR_HEIGHT`). Wired to the same
+   * `marriageTabBarHidden` shared value that drives the tab-bar animation
+   * in `AppTabs`.
+   */
+  readonly hidden: SharedValue<number>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -41,56 +64,67 @@ export interface CollapsingActionBarProps {
  */
 export function CollapsingActionBar({
   onAction,
+  hidden,
 }: CollapsingActionBarProps): React.ReactElement {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: hidden.value * TAB_BAR_HEIGHT }],
+  }));
+
   return (
-    <View style={styles.container} testID="collapsing-action-bar">
-      {/* Pass (X) */}
-      <Pressable
-        onPress={onAction}
-        style={({ pressed }) => [styles.button, styles.buttonPass, pressed && styles.buttonPressed]}
-        accessibilityRole="button"
-        accessibilityLabel={t('landing.actions.pass')}
-        testID="action-button-pass"
-      >
-        <X size={26} color={theme.colors.status.error} strokeWidth={2} />
-      </Pressable>
+    <Animated.View
+      style={[styles.container, animatedStyle]}
+      testID="collapsing-action-bar"
+      pointerEvents="box-none"
+    >
+      <View style={styles.row}>
+        {/* Pass (X) */}
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => [styles.button, styles.buttonPass, pressed && styles.buttonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('landing.actions.pass')}
+          testID="action-button-pass"
+        >
+          <X size={26} color={theme.colors.status.error} strokeWidth={2} />
+        </Pressable>
 
-      {/* Undo */}
-      <Pressable
-        onPress={onAction}
-        style={({ pressed }) => [styles.button, styles.buttonUndo, pressed && styles.buttonPressed]}
-        accessibilityRole="button"
-        accessibilityLabel={t('landing.actions.undo')}
-        testID="action-button-undo"
-      >
-        <Undo2 size={22} color={theme.colors.accent.tertiary} strokeWidth={2} />
-      </Pressable>
+        {/* Undo */}
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => [styles.button, styles.buttonUndo, pressed && styles.buttonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('landing.actions.undo')}
+          testID="action-button-undo"
+        >
+          <Undo2 size={22} color={theme.colors.accent.tertiary} strokeWidth={2} />
+        </Pressable>
 
-      {/* Super-like (Star) */}
-      <Pressable
-        onPress={onAction}
-        style={({ pressed }) => [styles.button, styles.buttonSuperLike, pressed && styles.buttonPressed]}
-        accessibilityRole="button"
-        accessibilityLabel={t('landing.actions.superLike')}
-        testID="action-button-super-like"
-      >
-        <Star size={22} color={theme.colors.status.info} strokeWidth={2} />
-      </Pressable>
+        {/* Super-like (Star) */}
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => [styles.button, styles.buttonSuperLike, pressed && styles.buttonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('landing.actions.superLike')}
+          testID="action-button-super-like"
+        >
+          <Star size={22} color={theme.colors.status.info} strokeWidth={2} />
+        </Pressable>
 
-      {/* Like (✓) */}
-      <Pressable
-        onPress={onAction}
-        style={({ pressed }) => [styles.button, styles.buttonLike, pressed && styles.buttonPressed]}
-        accessibilityRole="button"
-        accessibilityLabel={t('landing.actions.like')}
-        testID="action-button-like"
-      >
-        <Check size={26} color={theme.colors.status.success} strokeWidth={2.5} />
-      </Pressable>
-    </View>
+        {/* Like (✓) */}
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => [styles.button, styles.buttonLike, pressed && styles.buttonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('landing.actions.like')}
+          testID="action-button-like"
+        >
+          <Check size={26} color={theme.colors.status.success} strokeWidth={2.5} />
+        </Pressable>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -100,9 +134,14 @@ function createStyles(theme: Theme) {
   return StyleSheet.create({
     container: {
       position: 'absolute',
-      bottom: theme.spacing.xl,
+      // Sit directly above the tab bar. When `hidden` → 1, the whole
+      // container translates down by TAB_BAR_HEIGHT, coming to rest just
+      // above the screen bottom.
+      bottom: TAB_BAR_HEIGHT + theme.spacing.sm,
       left: 0,
       right: 0,
+    },
+    row: {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
