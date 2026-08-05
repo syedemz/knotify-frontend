@@ -94,7 +94,7 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.md,
     },
     title: {
-      ...textStyles.heading.md,
+      ...textStyles.heading.lg,
       color: theme.colors.text.primary,
     },
     phoneRow: {

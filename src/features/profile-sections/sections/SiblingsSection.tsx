@@ -116,7 +116,7 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.md,
     },
     title: {
-      ...textStyles.heading.md,
+      ...textStyles.heading.lg,
       color: theme.colors.text.primary,
     },
     cards: {
@@ -129,7 +129,7 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
     },
     siblingName: {
-      ...textStyles.label.md,
+      ...textStyles.label.lg,
       color: theme.colors.text.primary,
     },
     chipRow: {
@@ -144,7 +144,7 @@ function createStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.sm,
     },
     chipLabel: {
-      ...textStyles.label.sm,
+      ...textStyles.label.md,
       color: theme.colors.text.secondary,
     },
   });

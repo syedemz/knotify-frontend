@@ -138,7 +138,7 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
     },
     title: {
-      ...textStyles.heading.md,
+      ...textStyles.heading.lg,
       color: theme.colors.text.primary,
     },
     card: {
@@ -168,7 +168,7 @@ function createStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.sm,
     },
     stageChipLabel: {
-      ...textStyles.label.sm,
+      ...textStyles.label.md,
       color: theme.colors.text.secondary,
     },
     timelineRow: {
@@ -201,7 +201,7 @@ function createStyles(theme: Theme) {
       justifyContent: 'space-between',
     },
     anchorLabel: {
-      ...textStyles.label.sm,
+      ...textStyles.label.md,
       color: theme.colors.text.secondary,
       flex: 1,
       textAlign: 'center',

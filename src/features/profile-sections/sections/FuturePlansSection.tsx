@@ -84,7 +84,7 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.md,
     },
     title: {
-      ...textStyles.heading.md,
+      ...textStyles.heading.lg,
       color: theme.colors.text.primary,
     },
     chipRow: {
@@ -99,7 +99,7 @@ function createStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.md,
     },
     chipLabel: {
-      ...textStyles.label.sm,
+      ...textStyles.label.md,
       color: theme.colors.text.secondary,
     },
   });
