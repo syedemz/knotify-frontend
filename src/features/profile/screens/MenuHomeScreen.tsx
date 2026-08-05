@@ -113,7 +113,7 @@ export function MenuHomeScreen(): React.ReactElement {
             <ChevronDown size={16} strokeWidth={2} />
           </Row>
         </TouchableArea>
-        <Row gap="sm" align="center">
+        <Row gap="lg" align="center">
           <TouchableArea
             onPress={noop}
             accessibilityLabel={t('menu.settings')}

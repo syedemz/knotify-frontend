@@ -136,7 +136,7 @@ export function MyProfileScreen(): React.ReactElement {
       </Row>
 
       {/* ── In-screen tab bar ────────────────────────────────────────── */}
-      <Row paddingX="lg" justify="center" gap="xl">
+      <Row paddingX="lg" justify="center" gap="huge">
         <TouchableArea
           onPress={handleSelectPreview}
           accessibilityLabel={t('myProfile.tabs.preview')}

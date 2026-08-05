@@ -69,17 +69,18 @@ export function CollapsingActionBar({
 }: CollapsingActionBarProps): React.ReactElement {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  // Match the tab-bar collapse geometry exactly: the tab bar's visible
-  // height is TAB_BAR_HEIGHT + safe-area bottom, so the action bar must
-  // travel the same distance to occupy the vacated space cleanly.
-  const totalHiddenDistance = TAB_BAR_HEIGHT + insets.bottom;
+  // The tab bar travels TAB_BAR_HEIGHT + insets.bottom to fully hide. The
+  // action bar travels only TAB_BAR_HEIGHT, so when collapsed the buttons
+  // rest above the safe-area gesture zone rather than sitting flush against
+  // the physical screen bottom — the user asked for a visible gap below.
+  const actionBarTravel = TAB_BAR_HEIGHT;
   const styles = useMemo(
-    () => createStyles(theme, totalHiddenDistance),
-    [theme, totalHiddenDistance],
+    () => createStyles(theme, insets.bottom),
+    [theme, insets.bottom],
   );
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: hidden.value * totalHiddenDistance }],
+    transform: [{ translateY: hidden.value * actionBarTravel }],
   }));
 
   return (
@@ -97,7 +98,7 @@ export function CollapsingActionBar({
           accessibilityLabel={t('landing.actions.pass')}
           testID="action-button-pass"
         >
-          <X size={26} color={theme.colors.status.error} strokeWidth={2} />
+          <X size={30} color={theme.colors.text.inverse} strokeWidth={2.5} />
         </Pressable>
 
         {/* Undo */}
@@ -130,7 +131,7 @@ export function CollapsingActionBar({
           accessibilityLabel={t('landing.actions.like')}
           testID="action-button-like"
         >
-          <Check size={26} color={theme.colors.status.success} strokeWidth={2.5} />
+          <Check size={30} color={theme.colors.text.inverse} strokeWidth={2.5} />
         </Pressable>
       </View>
     </Animated.View>
@@ -139,18 +140,18 @@ export function CollapsingActionBar({
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-function createStyles(theme: Theme, hideDistance: number) {
+function createStyles(theme: Theme, safeAreaBottom: number) {
   return StyleSheet.create({
     container: {
       position: 'absolute',
-      // Sit directly above the tab bar. The tab bar's outer height is
-      // TAB_BAR_HEIGHT + safe-area bottom, so the action row rests
-      // `hideDistance + gap` above the physical screen bottom. When
-      // `hidden` → 1 the container translates down by `hideDistance`,
-      // coming to rest `safeAreaBottom + gap` above the bottom — inside
-      // where the tab bar used to sit, so the vacated area is fully
-      // occupied and no white gap remains.
-      bottom: hideDistance + theme.spacing.xxs,
+      // Rest position: `TAB_BAR_HEIGHT + safeAreaBottom + xs` above the
+      // physical bottom = xs (4 px) above the tab bar's TOP edge. The bar
+      // translates down by TAB_BAR_HEIGHT only (not the full tab-bar
+      // outer height), so when the tab bar has fully hidden the buttons
+      // rest `safeAreaBottom + xs` above the screen bottom — a small,
+      // visible gap sits below the round buttons instead of them being
+      // flush against the physical edge.
+      bottom: TAB_BAR_HEIGHT + safeAreaBottom + theme.spacing.xs,
       left: 0,
       right: 0,
     },
@@ -162,8 +163,8 @@ function createStyles(theme: Theme, hideDistance: number) {
       paddingHorizontal: theme.spacing.xxl,
     },
     button: {
-      width: 56,
-      height: 56,
+      width: 64,
+      height: 64,
       borderRadius: theme.radii.pill,
       alignItems: 'center',
       justifyContent: 'center',
@@ -171,24 +172,22 @@ function createStyles(theme: Theme, hideDistance: number) {
       ...theme.shadows.md,
     },
     buttonPass: {
-      borderWidth: 1.5,
-      borderColor: theme.colors.status.error,
+      backgroundColor: theme.colors.status.error,
     },
     buttonUndo: {
-      width: 48,
-      height: 48,
+      width: 54,
+      height: 54,
       borderWidth: 1.5,
       borderColor: theme.colors.accent.tertiary,
     },
     buttonSuperLike: {
-      width: 48,
-      height: 48,
+      width: 54,
+      height: 54,
       borderWidth: 1.5,
       borderColor: theme.colors.status.info,
     },
     buttonLike: {
-      borderWidth: 1.5,
-      borderColor: theme.colors.status.success,
+      backgroundColor: theme.colors.status.success,
     },
     buttonPressed: {
       opacity: 0.7,

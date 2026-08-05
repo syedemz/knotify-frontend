@@ -182,6 +182,9 @@ function createStyles(theme: Theme) {
       width: '100%',
       height: HERO_HEIGHT,
       position: 'relative',
+      borderTopLeftRadius: theme.radii.xl,
+      borderTopRightRadius: theme.radii.xl,
+      overflow: 'hidden',
     },
     image: {
       width: '100%',
