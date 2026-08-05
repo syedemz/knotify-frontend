@@ -45,6 +45,7 @@ import { t } from '@/labels';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { MenuStack } from './MenuStack';
 import { marriageTabBarHidden } from '@/features/landing/shared/marriageTabBarHidden';
+import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import type { AppTabsParamList } from './types';
 
 // ---------------------------------------------------------------------------
@@ -93,19 +94,20 @@ function ChatScreen(): React.JSX.Element {
  * Props for the menu tab avatar icon.
  */
 interface MenuTabIconProps {
-  uri: string;
+  source: number | { uri: string } | undefined;
   color: string;
   size: number;
 }
 
 /**
  * Renders the user's avatar cropped to a 24×24 circle.
- * Falls back to the `Menu` lucide icon if the image fails to load.
+ * Falls back to the `Menu` lucide icon if the image fails to load or the
+ * source could not be resolved.
  */
-function MenuTabIcon({ uri, color, size }: MenuTabIconProps): React.JSX.Element {
+function MenuTabIcon({ source, color, size }: MenuTabIconProps): React.JSX.Element {
   const [failed, setFailed] = useState(false);
 
-  if (failed) {
+  if (failed || source === undefined) {
     return <Menu color={color} size={size} />;
   }
 
@@ -119,7 +121,7 @@ function MenuTabIcon({ uri, color, size }: MenuTabIconProps): React.JSX.Element 
       }}
     >
       <Image
-        source={{ uri }}
+        source={source}
         style={{ width: 24, height: 24 }}
         onError={() => setFailed(true)}
         accessibilityLabel={t('nav.tabs.menu')}
@@ -134,16 +136,19 @@ function MenuTabIcon({ uri, color, size }: MenuTabIconProps): React.JSX.Element 
 
 const Tab = createBottomTabNavigator<AppTabsParamList>();
 
-// Resolve the avatar URI for the Menu tab icon at module load. The dummy
-// profile's first photo is used as the tab icon; if unavailable we fall
-// through to the Menu lucide fallback inside MenuTabIcon.
+// Resolve the avatar source for the Menu tab icon at module load. The
+// dummy profile's first photo path (a bundled asset like
+// "assets/male/Male1.png") is looked up in the shared photo registry so
+// Metro's asset resolver can serve the real bundled file — passing the
+// raw string through `<Image source={{ uri }}>` renders nothing on device.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const dummyprofile = require('../../assets/dummyprofile.json') as {
   photos?: string[];
   photo_url?: string;
 };
-const menuAvatarUri: string =
-  (dummyprofile.photos?.[0] ?? dummyprofile.photo_url) ?? '';
+const menuAvatarPath: string | undefined =
+  dummyprofile.photos?.[0] ?? dummyprofile.photo_url;
+const menuAvatarSource = resolveDummyPhoto(menuAvatarPath);
 
 /**
  * Custom tab bar. Wraps the default `BottomTabBar` in an `Animated.View`
@@ -220,7 +225,7 @@ export function AppTabs(): React.JSX.Element {
         options={{
           tabBarLabel: t('nav.tabs.menu'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <MenuTabIcon uri={menuAvatarUri} color={color} size={size} />
+            <MenuTabIcon source={menuAvatarSource} color={color} size={size} />
           ),
         }}
       />

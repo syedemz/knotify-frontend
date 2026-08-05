@@ -34,6 +34,8 @@ import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
 import type { UserProfile } from '@/types/api/UserProfile';
 import type { DummyOverlay, ProfileViewer } from '@/types/DummyOverlay';
+import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
+import { CountryFlag } from '@/components/CountryFlag';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,7 +57,8 @@ export function HeroBlock({ profile, viewer }: HeroBlockProps): React.ReactEleme
     return null;
   }
 
-  const photoUri = profile.photos?.[0] ?? profile.photo_url ?? undefined;
+  const photoPath = profile.photos?.[0] ?? profile.photo_url ?? undefined;
+  const photoSource = resolveDummyPhoto(photoPath);
   const cityCountry =
     profile.current_residence_city !== null &&
     profile.current_residence_country !== null
@@ -70,9 +73,9 @@ export function HeroBlock({ profile, viewer }: HeroBlockProps): React.ReactEleme
 
   return (
     <View style={styles.container} testID="hero-block">
-      {photoUri !== undefined ? (
+      {photoSource !== undefined ? (
         <ExpoImage
-          source={{ uri: photoUri }}
+          source={photoSource}
           style={styles.image}
           contentFit="cover"
           accessibilityLabel={`${profile.first_name ?? 'Profile'} photo`}
@@ -113,9 +116,13 @@ export function HeroBlock({ profile, viewer }: HeroBlockProps): React.ReactEleme
         {/* Chip strip: country flag, job title, religious level */}
         <View style={styles.chipRow}>
           {profile.resident_country_code !== null && (
-            <View style={styles.chip} testID="hero-country-chip">
+            <View
+              style={[styles.chip, styles.countryChip]}
+              testID="hero-country-chip"
+            >
+              <CountryFlag isoCode={profile.resident_country_code} size={14} />
               <RNText style={styles.chipLabel}>
-                {countryCodeToFlag(profile.resident_country_code)} {profile.resident_country_code}
+                {profile.resident_country_code}
               </RNText>
             </View>
           )}
@@ -133,22 +140,6 @@ export function HeroBlock({ profile, viewer }: HeroBlockProps): React.ReactEleme
       </View>
     </View>
   );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Converts an ISO 3166-1 alpha-2 country code to the corresponding regional
- * indicator emoji flag.
- *
- * Works by mapping each letter to its regional indicator symbol codepoint
- * (U+1F1E6 + offset). Standard Unicode emoji flag pairs are supported on all
- * modern iOS and Android versions.
- */
-function countryCodeToFlag(code: string): string {
-  return [...code.toUpperCase()]
-    .map((ch) => String.fromCodePoint(0x1f1e0 + ch.charCodeAt(0) - 65))
-    .join('');
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -205,10 +196,17 @@ function createStyles(theme: Theme) {
       marginTop: theme.spacing.xxs,
     },
     chip: {
-      backgroundColor: 'rgba(255,255,255,0.22)',
+      backgroundColor: 'rgba(0,0,0,0.45)',
       borderRadius: theme.radii.pill,
       paddingVertical: theme.spacing.xxs,
       paddingHorizontal: theme.spacing.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.35)',
+    },
+    countryChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xxs,
     },
     chipLabel: {
       ...textStyles.label.sm,
