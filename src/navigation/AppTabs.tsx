@@ -9,19 +9,34 @@
  *   `MenuHomeScreen` and can push to `MyProfileScreen`.
  *
  * **Tab-bar collapse (Marriage tab only)**
- * The Marriage tab imports `marriageTabBarHidden` (a module-scope Reanimated
- * shared value written by `MarriageLandingScreen`) and binds it to the
- * Marriage screen's `tabBarStyle` via `useAnimatedStyle`. On downward
- * scroll past 8 px, `tabBarHidden` transitions from 0 → 1, which maps to:
+ * A custom `tabBar` prop wraps the default `BottomTabBar` in an
+ * `Animated.View`. The wrapper reads `marriageTabBarHidden` (a module-scope
+ * Reanimated shared value written by `MarriageLandingScreen`) via
+ * `useAnimatedStyle`. When the focused route is `Marriage` and the user
+ * scrolls down past 8 px, `marriageTabBarHidden` transitions from 0 → 1,
+ * which maps to:
  * - `translateY`: 0 → `TAB_BAR_HEIGHT` (slides the bar off-screen)
  * - `opacity`: 1 → 0 (fades simultaneously)
+ * On any other focused route the transform is forced to identity so the
+ * bar always stays visible on Explore / Chat / Menu regardless of the
+ * shared value's last written state.
+ *
+ * The custom-`tabBar` approach avoids the RN-Navigation-7 crash where
+ * passing a Reanimated animated style directly into `screenOptions.tabBarStyle`
+ * triggers "attempted to set the key 'current' with the value undefined on an
+ * object that is meant to be immutable and has been frozen" — RN freezes the
+ * screen options object, then Reanimated tries to attach a view ref to it.
  *
  * @module navigation/AppTabs
  */
 
 import React, { useState } from 'react';
 import { Image, View } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  BottomTabBar,
+  type BottomTabBarProps,
+} from '@react-navigation/bottom-tabs';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Heart, Compass, MessageCircle, Menu } from 'lucide-react-native';
 
@@ -131,6 +146,30 @@ const menuAvatarUri: string =
   (dummyprofile.photos?.[0] ?? dummyprofile.photo_url) ?? '';
 
 /**
+ * Custom tab bar. Wraps the default `BottomTabBar` in an `Animated.View`
+ * whose transform reads `marriageTabBarHidden` only when the currently
+ * focused route is `Marriage`. Any other focused route pins the transform
+ * to identity so the bar remains visible on Explore / Chat / Menu.
+ */
+function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element {
+  const focusedRoute = props.state.routes[props.state.index]?.name;
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const hidden = focusedRoute === 'Marriage' ? marriageTabBarHidden.value : 0;
+    return {
+      transform: [{ translateY: hidden * TAB_BAR_HEIGHT }],
+      opacity: 1 - hidden,
+    };
+  }, [focusedRoute]);
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <BottomTabBar {...props} />
+    </Animated.View>
+  );
+}
+
+/**
  * Bottom-tab navigator for the authenticated main application.
  *
  * Tabs: `Marriage` / `Explore` / `Chat` / `Menu`.
@@ -140,18 +179,11 @@ const menuAvatarUri: string =
  * @see {@link AppTabsParamList} for typed navigation.
  */
 export function AppTabs(): React.JSX.Element {
-  // Animated style applied to the Marriage tab's `tabBarStyle`.
-  // Maps `marriageTabBarHidden` (0–1) → translateY (0 → TAB_BAR_HEIGHT)
-  // and opacity (1 → 0) so the native tab bar collapses on downward scroll.
-  const marriageTabBarStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: marriageTabBarHidden.value * TAB_BAR_HEIGHT },
-    ],
-    opacity: 1 - marriageTabBarHidden.value,
-  }));
-
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => <CollapsingTabBar {...props} />}
+    >
       <Tab.Screen
         name="Marriage"
         component={MarriageLandingScreen}
@@ -160,9 +192,6 @@ export function AppTabs(): React.JSX.Element {
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Heart color={color} size={size} />
           ),
-          // Bind the tab bar's style to the Reanimated shared value so it
-          // collapses on downward scroll within MarriageLandingScreen.
-          tabBarStyle: marriageTabBarStyle as object,
         }}
       />
       <Tab.Screen
