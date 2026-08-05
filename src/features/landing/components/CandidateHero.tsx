@@ -97,8 +97,15 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
         <View style={[styles.image, styles.imagePlaceholder]} testID="candidate-hero-image" />
       )}
 
-      {/* Dark gradient overlay at bottom */}
-      <View style={styles.gradient} />
+      {/* Stacked semi-transparent bands fake a bottom-up gradient — the
+          single-block overlay previously covered the bottom half of every
+          hero photo at a uniform 50 % opacity, which read as "the image is
+          darkened", not as a soft fade. */}
+      <View pointerEvents="none" style={styles.gradientStack}>
+        <View style={[styles.gradientBand, styles.gradientBand1]} />
+        <View style={[styles.gradientBand, styles.gradientBand2]} />
+        <View style={[styles.gradientBand, styles.gradientBand3]} />
+      </View>
 
       {/* Top-right overlay bubbles */}
       <View style={styles.topBubbles}>
@@ -183,13 +190,32 @@ function createStyles(theme: Theme) {
     imagePlaceholder: {
       backgroundColor: theme.colors.bg.input,
     },
-    gradient: {
+    gradientStack: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
-      height: HERO_HEIGHT * 0.55,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      height: HERO_HEIGHT * 0.32,
+    },
+    gradientBand: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+    },
+    gradientBand1: {
+      bottom: 0,
+      height: '45%',
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    gradientBand2: {
+      bottom: '45%',
+      height: '30%',
+      backgroundColor: 'rgba(0,0,0,0.3)',
+    },
+    gradientBand3: {
+      bottom: '75%',
+      height: '25%',
+      backgroundColor: 'rgba(0,0,0,0.12)',
     },
     topBubbles: {
       position: 'absolute',
@@ -241,11 +267,17 @@ function createStyles(theme: Theme) {
     name: {
       ...textStyles.display.md,
       color: theme.colors.text.inverse,
+      textShadowColor: 'rgba(0,0,0,0.55)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
     },
     subtitle: {
       ...textStyles.body.sm,
-      color: 'rgba(255,255,255,0.85)',
+      color: 'rgba(255,255,255,0.9)',
       letterSpacing: 0.5,
+      textShadowColor: 'rgba(0,0,0,0.55)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
     chipRow: {
       flexDirection: 'row',

@@ -17,6 +17,7 @@
 
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
   type SharedValue,
@@ -67,10 +68,18 @@ export function CollapsingActionBar({
   hidden,
 }: CollapsingActionBarProps): React.ReactElement {
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+  // Match the tab-bar collapse geometry exactly: the tab bar's visible
+  // height is TAB_BAR_HEIGHT + safe-area bottom, so the action bar must
+  // travel the same distance to occupy the vacated space cleanly.
+  const totalHiddenDistance = TAB_BAR_HEIGHT + insets.bottom;
+  const styles = useMemo(
+    () => createStyles(theme, totalHiddenDistance),
+    [theme, totalHiddenDistance],
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: hidden.value * TAB_BAR_HEIGHT }],
+    transform: [{ translateY: hidden.value * totalHiddenDistance }],
   }));
 
   return (
@@ -130,14 +139,18 @@ export function CollapsingActionBar({
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-function createStyles(theme: Theme) {
+function createStyles(theme: Theme, hideDistance: number) {
   return StyleSheet.create({
     container: {
       position: 'absolute',
-      // Sit directly above the tab bar. When `hidden` → 1, the whole
-      // container translates down by TAB_BAR_HEIGHT, coming to rest just
-      // above the screen bottom.
-      bottom: TAB_BAR_HEIGHT + theme.spacing.sm,
+      // Sit directly above the tab bar. The tab bar's outer height is
+      // TAB_BAR_HEIGHT + safe-area bottom, so the action row rests
+      // `hideDistance + gap` above the physical screen bottom. When
+      // `hidden` → 1 the container translates down by `hideDistance`,
+      // coming to rest `safeAreaBottom + gap` above the bottom — inside
+      // where the tab bar used to sit, so the vacated area is fully
+      // occupied and no white gap remains.
+      bottom: hideDistance + theme.spacing.sm,
       left: 0,
       right: 0,
     },

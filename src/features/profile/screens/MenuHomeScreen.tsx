@@ -21,6 +21,7 @@
 
 import React, { useCallback } from 'react';
 import { ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings, Bell, ChevronDown, CheckCircle } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -74,6 +75,7 @@ const ENGAGEMENT_BOOST = 1;
  */
 export function MenuHomeScreen(): React.ReactElement {
   const navigation = useNavigation<MenuHomeNav>();
+  const insets = useSafeAreaInsets();
 
   const handleAvatarPress = useCallback(() => {
     navigation.navigate('MyProfileScreen', { initialTab: 'preview' });
@@ -95,7 +97,10 @@ export function MenuHomeScreen(): React.ReactElement {
   };
 
   return (
-    <ScrollView testID="menu-home-screen">
+    <ScrollView
+      testID="menu-home-screen"
+      contentContainerStyle={{ paddingTop: insets.top }}
+    >
       {/* ── Top bar ──────────────────────────────────────────────────── */}
       <Row paddingX="lg" paddingY="md" justify="space-between" align="center">
         <TouchableArea

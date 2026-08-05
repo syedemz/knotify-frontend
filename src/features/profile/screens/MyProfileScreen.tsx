@@ -17,6 +17,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, CheckCircle } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -74,6 +75,7 @@ type TabKey = 'preview' | 'edit';
 export function MyProfileScreen(): React.ReactElement {
   const navigation = useNavigation<MyProfileNav>();
   const route = useRoute<MyProfileRoute>();
+  const insets = useSafeAreaInsets();
 
   const initialTab: TabKey =
     route.params?.initialTab === 'edit' ? 'edit' : 'preview';
@@ -105,7 +107,7 @@ export function MyProfileScreen(): React.ReactElement {
   const profileForSections = dummyprofile as unknown as UserProfile & DummyOverlay;
 
   return (
-    <View testID="my-profile-screen" style={{ flex: 1 }}>
+    <View testID="my-profile-screen" style={{ flex: 1, paddingTop: insets.top }}>
       {/* ── Header ──────────────────────────────────────────────────── */}
       <Row paddingX="lg" paddingY="md" align="center" justify="space-between">
         {/* Close X */}

@@ -32,6 +32,7 @@
 
 import React, { useState } from 'react';
 import { Image, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createBottomTabNavigator,
   BottomTabBar,
@@ -158,14 +159,20 @@ const menuAvatarSource = resolveDummyPhoto(menuAvatarPath);
  */
 function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element {
   const focusedRoute = props.state.routes[props.state.index]?.name;
+  const insets = useSafeAreaInsets();
+  // The tab bar's rendered height includes the bottom safe-area inset
+  // (Android gesture-bar padding / iOS home-indicator). Translating by the
+  // full amount slides the ENTIRE bar off-screen — otherwise the safe-area
+  // padding would remain visible as a white strip after the labels leave.
+  const totalHiddenDistance = TAB_BAR_HEIGHT + insets.bottom;
 
   const animatedStyle = useAnimatedStyle(() => {
     const hidden = focusedRoute === 'Marriage' ? marriageTabBarHidden.value : 0;
     return {
-      transform: [{ translateY: hidden * TAB_BAR_HEIGHT }],
+      transform: [{ translateY: hidden * totalHiddenDistance }],
       opacity: 1 - hidden,
     };
-  }, [focusedRoute]);
+  }, [focusedRoute, totalHiddenDistance]);
 
   return (
     <Animated.View style={animatedStyle}>
