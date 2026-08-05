@@ -99,7 +99,7 @@ export function MenuHomeScreen(): React.ReactElement {
   return (
     <ScrollView
       testID="menu-home-screen"
-      contentContainerStyle={{ paddingTop: insets.top }}
+      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 120 }}
     >
       {/* ── Top bar ──────────────────────────────────────────────────── */}
       <Row paddingX="lg" paddingY="md" justify="space-between" align="center">

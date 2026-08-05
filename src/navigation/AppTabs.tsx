@@ -174,12 +174,27 @@ function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element {
     };
   }, [focusedRoute, totalHiddenDistance]);
 
+  // Absolute overlay: React Navigation would otherwise shrink each screen
+  // container to sit ABOVE the tab bar. That means an absolute-positioned
+  // child (like the action bar) with `bottom: 0` is pinned to the tab bar's
+  // TOP edge, not the physical screen bottom — so no translation can push it
+  // into the tab bar's vacated space. Overlaying the bar lets screens fill
+  // the full physical height, and the action bar's collapse geometry works.
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View style={[styles.overlay, animatedStyle]}>
       <BottomTabBar {...props} />
     </Animated.View>
   );
 }
+
+const styles = {
+  overlay: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+};
 
 /**
  * Bottom-tab navigator for the authenticated main application.

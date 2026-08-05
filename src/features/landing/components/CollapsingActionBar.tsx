@@ -150,7 +150,7 @@ function createStyles(theme: Theme, hideDistance: number) {
       // coming to rest `safeAreaBottom + gap` above the bottom — inside
       // where the tab bar used to sit, so the vacated area is fully
       // occupied and no white gap remains.
-      bottom: hideDistance + theme.spacing.sm,
+      bottom: hideDistance + theme.spacing.xxs,
       left: 0,
       right: 0,
     },

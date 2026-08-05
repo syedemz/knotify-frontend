@@ -170,7 +170,10 @@ export function MyProfileScreen(): React.ReactElement {
 
       {/* ── Tab content ──────────────────────────────────────────────── */}
       {activeTab === 'preview' ? (
-        <ScrollView testID="my-profile-preview-scroll">
+        <ScrollView
+          testID="my-profile-preview-scroll"
+          contentContainerStyle={{ paddingBottom: 120 }}
+        >
           <ProfileScrollView profile={profileForSections} viewer="self" />
           <ShareProfileButton
             profile={profileSlice}

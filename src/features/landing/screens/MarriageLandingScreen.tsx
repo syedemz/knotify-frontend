@@ -111,7 +111,7 @@ export function MarriageLandingScreen(): React.ReactElement {
         testID="marriage-landing-scroll"
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 200 }}
       >
         {/* Hero scrolls with the content */}
         <CandidateHero profile={candidateProfile} />
