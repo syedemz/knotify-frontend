@@ -20,19 +20,19 @@ describe('AddressSection', () => {
 
     it('renders city row', () => {
       renderSection(<AddressSection profile={fullProfile} />);
-      expect(screen.getByTestId('address-city-row')).toBeTruthy();
+      expect(screen.getByTestId('address-city-chip')).toBeTruthy();
       expect(screen.getByText('Mannheim')).toBeTruthy();
     });
 
     it('renders district row', () => {
       renderSection(<AddressSection profile={fullProfile} />);
-      expect(screen.getByTestId('address-district-row')).toBeTruthy();
+      expect(screen.getByTestId('address-district-chip')).toBeTruthy();
       expect(screen.getByText('Quadrate')).toBeTruthy();
     });
 
     it('renders family address row', () => {
       renderSection(<AddressSection profile={fullProfile} />);
-      expect(screen.getByTestId('address-family-row')).toBeTruthy();
+      expect(screen.getByTestId('address-family-chip')).toBeTruthy();
     });
   });
 
@@ -56,8 +56,8 @@ describe('AddressSection', () => {
         family_residence_address: null,
       });
       renderSection(<AddressSection profile={profile} />);
-      expect(screen.queryByTestId('address-district-row')).toBeNull();
-      expect(screen.getByTestId('address-city-row')).toBeTruthy();
+      expect(screen.queryByTestId('address-district-chip')).toBeNull();
+      expect(screen.getByTestId('address-city-chip')).toBeTruthy();
     });
   });
 });

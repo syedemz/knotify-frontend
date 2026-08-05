@@ -1,13 +1,17 @@
 /**
- * ParentsSection — renders father and mother information blocks.
+ * ParentsSection — one card per parent, mirroring `SiblingsSection`.
+ *
+ * Each parent card is a muted-bg rounded block containing the parent's name
+ * on top and a flex-wrapping chip row of white chips below (matching the
+ * two-tone contrast rule: chips inside grey cards are white).
  *
  * Field bindings:
- * - Father block: `fathers_name` (primary guard), `fathers_job`, `father_retired`.
- * - Mother block: `mothers_name` (primary guard), `mothers_job`, `mother_retired`.
+ * - Father card: `fathers_name` (primary guard) + `fathers_job` +
+ *   `father_retired` chips.
+ * - Mother card: `mothers_name` (primary guard) + `mothers_job` +
+ *   `mother_retired` chips.
  *
- * Father block hides if `fathers_name` is null; job and retired chips inside the
- * father block each hide independently. Mother block is symmetric. Section hides
- * if both parent blocks would hide.
+ * Section hides if both parent names are null.
  *
  * @module features/profile-sections/sections/ParentsSection
  */
@@ -21,13 +25,9 @@ import type { Theme } from '@/theme/theme';
 import type { UserProfile } from '@/types/api/UserProfile';
 import type { DummyOverlay } from '@/types/DummyOverlay';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 export interface ParentsSectionProps {
   readonly profile: UserProfile & DummyOverlay;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export function ParentsSection({
   profile,
@@ -45,51 +45,65 @@ export function ParentsSection({
   return (
     <View style={styles.section} testID="parents-section">
       <RNText style={styles.title}>Parents</RNText>
-      <View style={styles.blocks}>
+      <View style={styles.cards}>
         {hasFather && (
-          <View style={styles.parentBlock} testID="parents-father-block">
-            <RNText style={styles.parentName}>{profile.fathers_name}</RNText>
-            <View style={styles.chipRow}>
-              {profile.fathers_job !== null && (
-                <View style={styles.chip} testID="parents-father-job-chip">
-                  <RNText style={styles.chipLabel}>{profile.fathers_job}</RNText>
-                </View>
-              )}
-              {profile.father_retired !== null && (
-                <View style={styles.chip} testID="parents-father-retired-chip">
-                  <RNText style={styles.chipLabel}>
-                    {profile.father_retired === 'YES' ? 'Retired' : 'Not retired'}
-                  </RNText>
-                </View>
-              )}
-            </View>
-          </View>
+          <ParentCard
+            key="father"
+            testIDPrefix="parents-father"
+            name={profile.fathers_name}
+            job={profile.fathers_job}
+            retired={profile.father_retired}
+            styles={styles}
+          />
         )}
         {hasMother && (
-          <View style={styles.parentBlock} testID="parents-mother-block">
-            <RNText style={styles.parentName}>{profile.mothers_name}</RNText>
-            <View style={styles.chipRow}>
-              {profile.mothers_job !== null && (
-                <View style={styles.chip} testID="parents-mother-job-chip">
-                  <RNText style={styles.chipLabel}>{profile.mothers_job}</RNText>
-                </View>
-              )}
-              {profile.mother_retired !== null && (
-                <View style={styles.chip} testID="parents-mother-retired-chip">
-                  <RNText style={styles.chipLabel}>
-                    {profile.mother_retired === 'YES' ? 'Retired' : 'Not retired'}
-                  </RNText>
-                </View>
-              )}
-            </View>
-          </View>
+          <ParentCard
+            key="mother"
+            testIDPrefix="parents-mother"
+            name={profile.mothers_name}
+            job={profile.mothers_job}
+            retired={profile.mother_retired}
+            styles={styles}
+          />
         )}
       </View>
     </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+interface ParentCardProps {
+  readonly testIDPrefix: string;
+  readonly name: string | null;
+  readonly job: string | null;
+  readonly retired: string | null;
+  readonly styles: ReturnType<typeof createStyles>;
+}
+
+function ParentCard({ testIDPrefix, name, job, retired, styles }: ParentCardProps) {
+  return (
+    <View style={styles.card} testID={`${testIDPrefix}-block`}>
+      {name !== null && (
+        <RNText style={styles.parentName} testID={`${testIDPrefix}-name`}>
+          {name}
+        </RNText>
+      )}
+      <View style={styles.chipRow}>
+        {job !== null && (
+          <View style={styles.chip} testID={`${testIDPrefix}-job-chip`}>
+            <RNText style={styles.chipLabel}>{job}</RNText>
+          </View>
+        )}
+        {retired !== null && (
+          <View style={styles.chip} testID={`${testIDPrefix}-retired-chip`}>
+            <RNText style={styles.chipLabel}>
+              {retired === 'YES' ? 'Retired' : 'Not retired'}
+            </RNText>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -103,16 +117,18 @@ function createStyles(theme: Theme) {
       ...textStyles.heading.md,
       color: theme.colors.text.primary,
     },
-    blocks: {
-      gap: theme.spacing.lg,
+    cards: {
+      gap: theme.spacing.md,
     },
-    parentBlock: {
+    card: {
+      backgroundColor: theme.colors.bg.chip,
+      borderRadius: theme.radii.md,
+      padding: theme.spacing.md,
       gap: theme.spacing.xs,
     },
     parentName: {
-      ...textStyles.body.md,
+      ...textStyles.label.md,
       color: theme.colors.text.primary,
-      fontFamily: undefined,
     },
     chipRow: {
       flexDirection: 'row',
@@ -120,8 +136,8 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
     },
     chip: {
-      backgroundColor: theme.colors.bg.muted,
-      borderRadius: theme.radii.sm,
+      backgroundColor: theme.colors.bg.surface,
+      borderRadius: theme.radii.pill,
       paddingVertical: theme.spacing.xxs,
       paddingHorizontal: theme.spacing.sm,
     },

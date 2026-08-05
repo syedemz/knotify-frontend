@@ -306,3 +306,229 @@ stories 12.1, 12.4, and 12.6 will produce work that has to be reworked
 during test runs; the imperative `showSnackbar` will surface at
 implementation time; `CandidateHero` will produce dead / duplicated hero
 markup that needs a cleanup PR).
+
+## 2026-08-04 14:20 brainstorm — re-audit of amended PRD
+
+Targeted re-audit of `implementationplan/phase-12-landing-profile.md` after
+the amendments. Same 5 /implement-phase criteria. Codebase probed with
+`grep` before writing.
+
+---
+
+### Resolution of prior blockers + sharpens
+
+- **Blocker 1 — `siblings` type gap.** RESOLVED. PRD 12.1 now defines a
+  new exported `DummySibling` shape (`{ name, age, marital_status,
+  gender, profession }`, all nullable) and adds `siblings?: DummySibling[]`
+  to both `DummyFemaleProfile` and `DummyOwnProfile`. TSDoc note on the
+  field documents the future backend `siblings` table. Chose to
+  intentionally diverge from the existing onboarding `SiblingDraft` shape
+  — client-fixture-only, replaced when the backend ships. Coherent.
+- **Blocker 2 — Reanimated Jest mock.** RESOLVED. PRD 12.4 has an
+  explicit AC line requiring `jest.setup.ts` be created (currently
+  missing — verified) with
+  `jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'))`
+  and registered in `jest.config.js`. Jest preset is `jest-expo`; the
+  subagent will need to add `setupFilesAfterEach: ['./jest.setup.ts']`
+  (or `setupFiles`, depending on whether the mock runs before or after
+  jest-expo's own setup) — the PRD says "setupFilesAfterEach or the
+  preset's equivalent hook", which is close enough to the right
+  configuration key that no rewording is required.
+- **Blocker 3 — `showSnackbar()` imperative helper.** RESOLVED. PRD 12.4
+  now uses the local-state pattern already in Page25/Page30 —
+  `MarriageLandingScreen` holds `[snackbarMsg, setSnackbarMsg]` and
+  renders `<Snackbar visible={snackbarMsg !== null} message={snackbarMsg
+  ?? ""} onDismiss={...} />`. Verified `src/components/Snackbar.tsx`
+  exposes `{ visible, message, onDismiss }` — API match. Test AC (c)
+  correctly asserts via `getByText`, not a mock spy.
+- **Blocker 4 — `CandidateHero` vs. `HeroBlock` duplication.** RESOLVED,
+  though with a different resolution than the prior brainstorm
+  recommended. Instead of deleting `CandidateHero.tsx`, PRD 12.2 pins
+  `HeroBlock` to return `null` for `viewer === 'other'`, and PRD 12.4
+  gives `CandidateHero` sole ownership of the landing hero (including
+  the two dummy overlay bubbles that self-preview does not render).
+  This is coherent — each hero variant has one owner — and matches the
+  brainstorm's Muzz-screenshot analysis. Guard-behavior integration
+  test (12.2 line 279-290) explicitly asserts `HeroBlock` is NOT in the
+  tree for `viewer === 'other'`.
+- **Blocker 5 — `CollapsingActionBar` row-2 semantics.** RESOLVED via
+  option (a). PRD 12.4 now reduces `CollapsingActionBar` to ONLY the
+  four round action buttons; the native React Navigation tab bar
+  collapses via a module-scope shared value
+  (`marriageTabBarHidden`) published by `MarriageLandingScreen` and
+  consumed by `AppTabs`'s Marriage-tab `tabBarStyle`. Explicit
+  minimum-delta threshold (8px) to avoid twitchy hides. Cleanly bounded
+  — no custom tab-bar reimpl.
+- **Sharpen 6 — `AppTabs.test.tsx` also references old labels.**
+  RESOLVED. PRD 12.6 explicitly enumerates both `AppTabs.test.tsx`
+  (line 127-128) AND `auth-gate.test.tsx` (lines 248, 272, 275, 287,
+  290-291, 319, 348) as required updates, plus the catch-all grep-must-
+  be-zero AC. See NEW finding 1 below re: one un-enumerated line.
+- **Sharpen 7 — narrow `preferences.personalityTraits`.** RESOLVED. PRD
+  12.1 now narrows to `preferences?: ({ personalityTraits?: string[] } &
+  Record<string, unknown>) | null`. PersonalitySection reads without a
+  cast.
+- **Sharpen 8 — reuse `Avatar` primitive.** RESOLVED. PRD 12.5 now
+  reads "COMPOSES the existing `<Avatar />` primitive
+  (`src/components/Avatar.tsx`) and layers an optional small
+  edit-pencil dot overlay". No reinvention.
+- **Sharpen 9 — Edit pill wording.** RESOLVED. PRD 12.5 now reads
+  "the Edit pill's press navigates to `MyProfileScreen` with
+  `{ initialTab: 'edit' }` (the Edit TAB itself renders an
+  `EmptyState` "Coming soon" and does not mutate profile state; the
+  pill is not itself a no-op, the destination tab is)". Unambiguous.
+
+---
+
+### New findings
+
+**Sharpen 1 — one un-enumerated `nav.tabs.discover` reference at
+`auth-gate.test.tsx:387`.** PRD 12.6 lists lines 248, 272, 275, 287,
+290-291, 319, 348 — grep confirms there is a 9th occurrence at line
+387. The catch-all "grep for `nav.tabs.discover` must return zero
+hits" AC will catch it, but the enumerated list is stale by one line.
+Non-blocking — the subagent will find it via the grep gate. Worth a
+one-line PRD tweak for accuracy.
+
+**Sharpen 2 — Menu tab icon image-load-fallback pattern is implicit.**
+PRD 12.6 says the Menu tab icon is `dummyprofile.photos[0]` cropped to
+a 24×24 circle "falls back to `Ionicons/menu` if the image is
+unloadable". This requires an `<Image>` `onError` handler tracked in
+state, then a conditional swap to the icon. Doable but the PRD is
+implicit about the mechanism (useState + onError, or an Image
+primitive that swaps internally). Non-blocking — the subagent can
+choose the pattern. A brief AC note ("track load-failure in local
+state; on failure render the fallback icon in place of the image")
+would remove ambiguity.
+
+**Sharpen 3 — `resolveJsonModule` is required by story 12.1 but also
+affects story 12.4 (which imports `dummyfemale.json`) and 12.5 (which
+imports `dummyprofile.json`).** The `depends_on` chain already makes
+this correct — 12.4 depends on 12.2 which depends on 12.1, and 12.5
+depends on 12.2 + 12.3 (12.3 has no depends but doesn't import JSON),
+so `resolveJsonModule` will be set before any JSON import runs. No
+change needed. Flagging for the subagent chain of custody.
+
+**Sharpen 4 — no functional wiring test for the tab-bar collapse
+shared value.** PRD 12.4 correctly notes "Animation is NOT tested
+(Reanimated worklets are mocked to no-op)". Consequence: the shared
+value / tabBarStyle plumbing is un-tested. This is acceptable for a
+UI polish story — visual QA happens on-device. Not a blocker; just
+explicit note that no test exists for the collapse behavior itself,
+only for the screen's static composition.
+
+**Sharpen 5 — story 12.4 mentions two overlay bubbles on
+CandidateHero ("Active today" / "Gold"), each guarded on the
+matching `__dummy_display_only` key. PRD 12.1 pins
+`is_active_today: true` and `membership_tier: "gold"` in
+`dummyfemale.__dummy_display_only`, so the female hero WILL render
+both bubbles.** PRD 12.1 does NOT set these keys on
+`dummyprofile.__dummy_display_only` (the same block is described as
+"same shape" but the specific values are only pinned for the female
+fixture). This is intentional — self-preview hero is via HeroBlock,
+which per PRD 12.2 line 218 does NOT render the Active-today / Gold
+bubbles at all in `viewer === 'self'`. Coherent; just wanted to
+confirm no drift.
+
+---
+
+### External dependency re-check
+
+- `jest.setup.ts`: MISSING (as expected — PRD 12.4 creates it). ✓
+- `jest.config.js`: EXISTS, uses `preset: "jest-expo"`. ✓
+- `__mocks__/react-native-reanimated`: MISSING (as expected — PRD 12.4
+  adds via `jest.mock` in `jest.setup.ts`, not a `__mocks__/` shim). ✓
+- `src/components/Snackbar.tsx`: EXISTS, exposes
+  `{ visible, message, onDismiss }`. ✓
+- `src/components/Avatar.tsx`: EXISTS. ✓
+- `src/components/EmptyState.tsx`: EXISTS. ✓
+- `assets/female/Female3.png`, `Female4.png`, `assets/male/Male1.png`:
+  ALL EXIST. ✓
+- `src/features/onboarding/draftSchema.ts` (host of `SiblingDraft`):
+  EXISTS. PRD intentionally diverges from `SiblingDraft` — see
+  Blocker 1 resolution above. ✓
+- `resolveJsonModule` in `tsconfig.json`: NOT SET (as expected — PRD
+  12.1 adds it). ✓
+
+---
+
+### depends_on re-survey
+
+Unchanged from the 2026-08-04 12:00 brainstorm. All edges correct:
+12.1 → []; 12.2 → [12.1]; 12.3 → []; 12.4 → [12.2]; 12.5 → [12.2, 12.3];
+12.6 → [12.4, 12.5]. Topological order for serial execution:
+12.1 → 12.3 → 12.2 → 12.4 → 12.5 → 12.6 (12.3 can go before or after
+12.2; both order permutations are valid).
+
+---
+
+### Verdict
+
+All 5 prior blockers and all 4 prior sharpens are resolved in the PRD
+text. 5 new findings are all **sharpens** (non-blocking).
+
+**Recommend `proceed`.** The 5 new sharpens are either:
+- caught by an existing catch-all AC (sharpen 1 grep gate),
+- an implementation choice the subagent can safely make on its own
+  (sharpens 2 & 3), or
+- an intentional testing-scope decision (sharpens 4 & 5).
+
+None will produce work that has to be reworked.
+
+## 2026-08-05 audit — drift patch after post-QA polish
+
+Post-implementation drift audit. Phase was marked `done: true` on 2026-08-04
+after story 12.6 shipped, but a subsequent QA pass
+(`QA/uimess.txt` — "looks nothing like Muzz") triggered a UI polish rework
+that changed several section shapes. The PRD text was not updated at the
+time. This entry records the reconciliation.
+
+### Findings
+
+**Drift 1 — MarriageIntentionsSection reshape (BREAKING).**
+Shipped `MarriageIntentionsSection.tsx` now renders a Muzz-style intent
+timeline (Match anchor + tick marks + stage chips Chatting/Family/Marriage +
+four anchor labels ending in `marriage_time`). PRD 12.2 line 226 still
+described the old two-anchor rail `Match! ─── <relation> (<marriage_time>)`.
+The `relation` field is no longer rendered.
+`__tests__/features/profile-sections/MarriageIntentionsSection.test.tsx`
+still asserted `/Myself.*Within 2 years/` — a broken test on a phase marked
+done.
+
+**Drift 2 — Education / ProfessionalCareer / Address reshaped to bubble
+grids.** Shipped implementations replaced the labelled row stacks with
+flex-wrapping pill-chip grids (uppercase field labels dropped, values written
+directly into the chip). Chip testIDs switched from `-row` to `-chip`. Test
+files were updated in place at the time; PRD text was not. Non-breaking, but
+the AC text was factually wrong about the layout.
+
+**Drift 3 — ParentsSection reshaped to mirror SiblingsSection.** Shipped
+`ParentsSection.tsx` uses the same two-tone card-and-chip layout as
+`SiblingsSection` (grey `bg.chip` cards, white `bg.surface` chips inside).
+PRD 12.2 line 250 described a generic "father block / mother block" without
+capturing the card-and-chip shape or the two-tone contrast rule.
+
+**Drift 4 — new `bg.chip` semantic token in theme.** Added to
+`src/theme/theme.ts` during the polish pass. Not captured in any AC. The
+convention (chips darker on white section bg, white inside grey cards) also
+wasn't documented anywhere in the PRD.
+
+### Resolution
+
+1. Rewrote `MarriageIntentionsSection.test.tsx` to assert the shipped
+   timeline shape: Match! + stage chips + Let's chat + Agree together +
+   `marriage_time` in `intent-marriage-label`. Dropped the stale
+   `Myself.*Within 2 years` assertion.
+2. Amended PRD 12.2 section catalog entries (3), (8), (9), (10), (11), (12)
+   to describe the shipped bubble/timeline/card-and-chip layouts, including
+   the new chip testIDs.
+3. Added a **Two-tone chip contrast rule** block to the phase
+   `context_summary` documenting the `bg.chip` token and the chips-on-white
+   vs. chips-in-card convention.
+4. Bumped PRD `last_updated` to `2026-08-05`.
+
+### Verdict
+
+PRD text is now aligned with shipped code. Test suite is unblocked. Ready
+to tag `phase-12-complete` once the fix commit lands and CI is green.
+

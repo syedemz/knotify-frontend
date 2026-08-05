@@ -1,12 +1,13 @@
 /**
- * AddressSection — renders current residence, home district, and home address.
+ * AddressSection — Muzz-style bubble grid for address info.
  *
- * Field bindings:
- * - `current_residence_city` — "Current residence". Hides if null.
- * - `district` — "Home district". Hides if null.
- * - `family_residence_address` — "Home address". Hides if null.
+ * All three address fields render as flex-wrapping chips; uppercase field
+ * labels ("CURRENT RESIDENCE" etc.) are gone.
  *
- * Section hides if all three are null.
+ * Field bindings (each guarded independently):
+ * - `current_residence_city`
+ * - `district`
+ * - `family_residence_address`
  *
  * @module features/profile-sections/sections/AddressSection
  */
@@ -20,13 +21,9 @@ import type { Theme } from '@/theme/theme';
 import type { UserProfile } from '@/types/api/UserProfile';
 import type { DummyOverlay } from '@/types/DummyOverlay';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 export interface AddressSectionProps {
   readonly profile: UserProfile & DummyOverlay;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export function AddressSection({
   profile,
@@ -34,42 +31,38 @@ export function AddressSection({
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const hasCity = profile.current_residence_city !== null;
-  const hasDistrict = profile.district !== null;
-  const hasAddress = profile.family_residence_address !== null;
+  const chips: ReadonlyArray<{ testID: string; label: string }> = [
+    profile.current_residence_city !== null && {
+      testID: 'address-city-chip',
+      label: profile.current_residence_city,
+    },
+    profile.district !== null && {
+      testID: 'address-district-chip',
+      label: profile.district,
+    },
+    profile.family_residence_address !== null && {
+      testID: 'address-family-chip',
+      label: profile.family_residence_address,
+    },
+  ].filter((c): c is { testID: string; label: string } => c !== false);
 
-  if (!hasCity && !hasDistrict && !hasAddress) {
+  if (chips.length === 0) {
     return null;
   }
 
   return (
     <View style={styles.section} testID="address-section">
       <RNText style={styles.title}>Address</RNText>
-      <View style={styles.rows}>
-        {hasCity && (
-          <View style={styles.row} testID="address-city-row">
-            <RNText style={styles.rowLabel}>Current residence</RNText>
-            <RNText style={styles.rowValue}>{profile.current_residence_city}</RNText>
+      <View style={styles.chipRow}>
+        {chips.map((c) => (
+          <View key={c.testID} style={styles.chip} testID={c.testID}>
+            <RNText style={styles.chipLabel}>{c.label}</RNText>
           </View>
-        )}
-        {hasDistrict && (
-          <View style={styles.row} testID="address-district-row">
-            <RNText style={styles.rowLabel}>Home district</RNText>
-            <RNText style={styles.rowValue}>{profile.district}</RNText>
-          </View>
-        )}
-        {hasAddress && (
-          <View style={styles.row} testID="address-family-row">
-            <RNText style={styles.rowLabel}>Home address</RNText>
-            <RNText style={styles.rowValue}>{profile.family_residence_address}</RNText>
-          </View>
-        )}
+        ))}
       </View>
     </View>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -83,21 +76,20 @@ function createStyles(theme: Theme) {
       ...textStyles.heading.md,
       color: theme.colors.text.primary,
     },
-    rows: {
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: theme.spacing.sm,
     },
-    row: {
-      gap: theme.spacing.xxs,
+    chip: {
+      backgroundColor: theme.colors.bg.chip,
+      borderRadius: theme.radii.pill,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.md,
     },
-    rowLabel: {
-      ...textStyles.caption,
-      color: theme.colors.text.tertiary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    rowValue: {
-      ...textStyles.body.md,
-      color: theme.colors.text.primary,
+    chipLabel: {
+      ...textStyles.label.sm,
+      color: theme.colors.text.secondary,
     },
   });
 }

@@ -1,5 +1,8 @@
 /**
- * ProfessionalCareerSection — renders professional information chips and rows.
+ * ProfessionalCareerSection — Muzz-style bubble grid.
+ *
+ * All fields render as independent, flex-wrapping chips instead of a
+ * labelled row stack. Chips pack multiple per line when they fit.
  *
  * Field bindings (each guarded independently):
  * - `professional_category`
@@ -8,8 +11,6 @@
  * - `employment_type`
  * - `office_address`
  * - `salary_range`
- *
- * Section hides if all fields are null.
  *
  * @module features/profile-sections/sections/ProfessionalCareerSection
  */
@@ -23,13 +24,9 @@ import type { Theme } from '@/theme/theme';
 import type { UserProfile } from '@/types/api/UserProfile';
 import type { DummyOverlay } from '@/types/DummyOverlay';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 export interface ProfessionalCareerSectionProps {
   readonly profile: UserProfile & DummyOverlay;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export function ProfessionalCareerSection({
   profile,
@@ -37,94 +34,50 @@ export function ProfessionalCareerSection({
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const hasAny =
-    profile.professional_category !== null ||
-    profile.job_title !== null ||
-    profile.employer_name !== null ||
-    profile.employment_type !== null ||
-    profile.office_address !== null ||
-    profile.salary_range !== null;
+  const chips: ReadonlyArray<{ testID: string; label: string }> = [
+    profile.professional_category !== null && {
+      testID: 'career-category-chip',
+      label: profile.professional_category,
+    },
+    profile.job_title !== null && {
+      testID: 'career-job-title-chip',
+      label: profile.job_title,
+    },
+    profile.employer_name !== null && {
+      testID: 'career-employer-chip',
+      label: profile.employer_name,
+    },
+    profile.employment_type !== null && {
+      testID: 'career-employment-type-chip',
+      label: profile.employment_type,
+    },
+    profile.office_address !== null && {
+      testID: 'career-office-address-chip',
+      label: profile.office_address,
+    },
+    profile.salary_range !== null && {
+      testID: 'career-salary-chip',
+      label: profile.salary_range,
+    },
+  ].filter((c): c is { testID: string; label: string } => c !== false);
 
-  if (!hasAny) {
+  if (chips.length === 0) {
     return null;
   }
 
   return (
     <View style={styles.section} testID="professional-career-section">
       <RNText style={styles.title}>Professional career</RNText>
-      <View style={styles.rows}>
-        {profile.professional_category !== null && (
-          <InfoRow
-            label="Category"
-            value={profile.professional_category}
-            testID="career-category-row"
-            styles={styles}
-          />
-        )}
-        {profile.job_title !== null && (
-          <InfoRow
-            label="Job title"
-            value={profile.job_title}
-            testID="career-job-title-row"
-            styles={styles}
-          />
-        )}
-        {profile.employer_name !== null && (
-          <InfoRow
-            label="Employer"
-            value={profile.employer_name}
-            testID="career-employer-row"
-            styles={styles}
-          />
-        )}
-        {profile.employment_type !== null && (
-          <InfoRow
-            label="Employment type"
-            value={profile.employment_type}
-            testID="career-employment-type-row"
-            styles={styles}
-          />
-        )}
-        {profile.office_address !== null && (
-          <InfoRow
-            label="Office address"
-            value={profile.office_address}
-            testID="career-office-address-row"
-            styles={styles}
-          />
-        )}
-        {profile.salary_range !== null && (
-          <InfoRow
-            label="Salary range"
-            value={profile.salary_range}
-            testID="career-salary-row"
-            styles={styles}
-          />
-        )}
+      <View style={styles.chipRow}>
+        {chips.map((c) => (
+          <View key={c.testID} style={styles.chip} testID={c.testID}>
+            <RNText style={styles.chipLabel}>{c.label}</RNText>
+          </View>
+        ))}
       </View>
     </View>
   );
 }
-
-// ── Internal helpers ──────────────────────────────────────────────────────────
-
-interface InfoRowProps {
-  readonly label: string;
-  readonly value: string;
-  readonly testID: string;
-  readonly styles: ReturnType<typeof createStyles>;
-}
-
-function InfoRow({ label, value, testID, styles }: InfoRowProps) {
-  return (
-    <View style={styles.row} testID={testID}>
-      <RNText style={styles.rowLabel}>{label}</RNText>
-      <RNText style={styles.rowValue}>{value}</RNText>
-    </View>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -138,21 +91,20 @@ function createStyles(theme: Theme) {
       ...textStyles.heading.md,
       color: theme.colors.text.primary,
     },
-    rows: {
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: theme.spacing.sm,
     },
-    row: {
-      gap: theme.spacing.xxs,
+    chip: {
+      backgroundColor: theme.colors.bg.chip,
+      borderRadius: theme.radii.pill,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.md,
     },
-    rowLabel: {
-      ...textStyles.caption,
-      color: theme.colors.text.tertiary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    rowValue: {
-      ...textStyles.body.md,
-      color: theme.colors.text.primary,
+    chipLabel: {
+      ...textStyles.label.sm,
+      color: theme.colors.text.secondary,
     },
   });
 }

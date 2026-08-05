@@ -79,10 +79,10 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.sm,
     },
     chip: {
-      backgroundColor: theme.colors.bg.muted,
-      borderRadius: theme.radii.sm,
-      paddingVertical: theme.spacing.xxs,
-      paddingHorizontal: theme.spacing.sm,
+      backgroundColor: theme.colors.bg.chip,
+      borderRadius: theme.radii.pill,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.md,
     },
     chipLabel: {
       ...textStyles.label.sm,
