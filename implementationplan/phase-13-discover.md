@@ -1,6 +1,6 @@
 phase: 13
 title: Discover — deck (landing), friends + requests (Explore), gated full-profile view
-last_updated: 2026-08-26 (brainstorm-2 answers incorporated)
+last_updated: 2026-08-26 (story 13.1 complete)
 
 context_summary: |
   Phase 13 replaces the single-candidate MarriageLandingScreen (Aisha as a full profile) with a **deck of condensed profiles** and introduces the **friendship gate** on full-profile visibility. Two users only see each other's *full* profile when they are already friends, OR when one has sent the other a pending friend request (the recipient can then view the sender's full profile as part of the accept/decline decision).
@@ -40,8 +40,9 @@ stories:
   - id: 13.1
     title: Deck fixtures + DummyDeckProfile type + photo-registry entries
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
+    tracking_issue: 48
     acceptance_criteria:
       - New type `src/types/DummyDeckProfile.ts` that mirrors the backend `deck_view` shape (`user_id`, `first_name`, `last_name`, `sex`, `age`, `chosen_profile_avatar`, `photo_url`, `current_residence_city`, `current_residence_country`, `resident_country_code`, `religion`, `job_title`, `username`, `profile_complete_verified`) **plus** the frontend-only extensions needed by the deck card sections — `photos[]`, `faceSelfieUri`, `marital_status`, `has_children`, `marriage_time`, `meet_time` (as introduced in batch C), `professional_category`, `employer_name`, `employment_type`, `office_address`, `salary_range`, `highest_degree`, `education_level`, `college_name`, `graduation_year`, `higher_secondary`, `higher_secondary_passing_year`, `high_school`, `high_school_passing_year`, and `__dummy_display_only` (`is_active_today`, `membership_tier`, `has_unread_notifications`). All frontend-only fields tagged with a JSDoc `@frontend-extension` comment so the divergence from backend `deck_view` is grep-able.
       - Fixture files under `assets/dummydeck/`:
@@ -66,6 +67,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [13.1]
+    tracking_issue: 49
     acceptance_criteria:
       - `assets/dummymehvish.json` — full profile of **Mehvish Hayat** (female, sex=Female, all `requiredForCompletion` fields populated per `knotify-backend/db-schema.json`, includes `siblings[]`, `faceSelfieUri`, `preferences.personalityTraits[]`). Uses `Female3.png` or `Female4.png` for `photo_url` + `photos[]`. `__dummy_display_only` block present.
       - `assets/dummyqurat.json` — full profile of **Qurat Baloch** (female, same shape as Mehvish, all fields populated). Uses the other of Female3/Female4.
@@ -96,6 +98,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [13.1]
+    tracking_issue: 50
     acceptance_criteria:
       - **CandidateHero prop widening (B2, answer b).** Widen `CandidateHero`'s `profile` prop type from `DummyFemaleProfile` to a new narrower structural interface `CandidateHeroProfile` extracted into `src/features/landing/components/CandidateHero.tsx` (co-located with the component). `CandidateHeroProfile` must include exactly the fields CandidateHero reads today — `first_name`, `age`, `current_residence_city`, `current_residence_country`, `resident_country_code`, `job_title`, `photos` (nullable string array), `photo_url` (nullable string), `faceSelfieUri` (nullable string), and an optional `__dummy_display_only` block with `is_active_today?` + `membership_tier?` fields. Both `DummyFemaleProfile` and `DummyDeckProfile` must be assignable to `CandidateHeroProfile` structurally without any cast. Re-run the phase-12 CandidateHero test suite to confirm no regression. Do NOT edit `MarriageLandingScreen`'s existing `dummyfemale as unknown as DummyFemaleProfile` cast — that is orthogonal to this widening.
       - New component `src/features/landing/components/DeckCard.tsx` that renders, for a single `DummyDeckProfile`:
@@ -133,6 +136,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [13.2]
+    tracking_issue: 51
     acceptance_criteria:
       - **`ProfileScrollView` gains a `contactVisible?: boolean` prop (S5, answer a).** Extend `ProfileScrollViewProps` in `src/features/profile-sections/ProfileScrollView.tsx` with an optional `contactVisible?: boolean` (defaults to `true` so phase-12 callers — `MarriageLandingScreen` and `MyProfileScreen`'s Preview tab — continue to render `ContactActionsSection` unchanged). When `contactVisible === false`, `ContactActionsSection` is skipped entirely (not rendered → no phone row, no share button, no disabled Favourite/Block/Report triad). Add a phase-12-callers regression test asserting the section still renders by default when the prop is omitted.
       - **New reusable `BackHeaderBar` component (Note 4).** Create `src/features/profile/components/BackHeaderBar.tsx` — a back-arrow-only header visually consistent with phase-12's `HeaderBar` (same paddings, same `useSafeAreaInsets` handling, same `bg.primary` background, same subtle shadow, same 40×40 icon-button hit target). Props: `onBack: () => void` and `accessibilityLabel: string`. Icon: lucide `ArrowLeft`. Not inlined — this component is expected to be reused in phases 15, 17, and 18 (add a JSDoc note stating so). Test: renders, calls `onBack` on press, uses the passed accessibility label.
@@ -174,6 +178,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [13.2, 13.4]
+    tracking_issue: 52
     acceptance_criteria:
       - Replace the current Explore-tab `EmptyState` with an `ExploreStack` — a new `createNativeStackNavigator` at `src/navigation/ExploreStack.tsx`:
         - `ExploreHomeScreen` (initial route)
