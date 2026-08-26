@@ -15,4 +15,3 @@ export { CandidateHero } from './components/CandidateHero';
 export type { CandidateHeroProps } from './components/CandidateHero';
 export { CollapsingActionBar } from './components/CollapsingActionBar';
 export type { CollapsingActionBarProps } from './components/CollapsingActionBar';
-export { marriageTabBarHidden } from './shared/marriageTabBarHidden';

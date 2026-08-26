@@ -25,7 +25,7 @@
  *
  * **Scroll-driven tab-bar + FAB collapse (post-story-13.5 polish):**
  * The scroll surface is an `Animated.ScrollView` whose `onScroll` handler
- * writes to the shared `marriageTabBarHidden` value using the same 8 px
+ * writes to the shared `tabBarHidden` value using the same 8 px
  * delta threshold as `MarriageLandingScreen`. Both the bottom tab bar
  * (`AppTabs.CollapsingTabBar` — widened to also participate on the Explore
  * tab) and the friend-view `FloatingChatButton` read that same shared value
@@ -67,7 +67,7 @@ import type { UserProfile } from '@/types/api/UserProfile';
 import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import type { ExploreStackParamList } from '@/navigation/types';
 import { CandidateHero } from '@/features/landing/components/CandidateHero';
-import { marriageTabBarHidden } from '@/features/landing/shared/marriageTabBarHidden';
+import { tabBarHidden } from '@/state/ui/tabBarHidden';
 
 import { BackHeaderBar } from '../components/BackHeaderBar';
 import { FloatingChatButton } from '../components/FloatingChatButton';
@@ -118,13 +118,13 @@ export function OtherProfileScreen(): React.ReactElement {
   // and again on unmount so ExploreHomeScreen — which does not write to this
   // shared value — always sees the tab bar visible after we leave.
   useEffect(() => {
-    marriageTabBarHidden.value = withTiming(0, { duration: 220 });
+    tabBarHidden.value = withTiming(0, { duration: 220 });
     return () => {
-      marriageTabBarHidden.value = withTiming(0, { duration: 220 });
+      tabBarHidden.value = withTiming(0, { duration: 220 });
     };
   }, []);
 
-  // ── Scroll handler → drives marriageTabBarHidden ───────────────────────────
+  // ── Scroll handler → drives tabBarHidden ───────────────────────────
   const previousScrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -133,9 +133,9 @@ export function OtherProfileScreen(): React.ReactElement {
       const delta = currentY - previousScrollY.value;
 
       if (delta > SCROLL_DELTA_THRESHOLD) {
-        marriageTabBarHidden.value = withTiming(1, { duration: 220 });
+        tabBarHidden.value = withTiming(1, { duration: 220 });
       } else if (delta < -SCROLL_DELTA_THRESHOLD) {
-        marriageTabBarHidden.value = withTiming(0, { duration: 220 });
+        tabBarHidden.value = withTiming(0, { duration: 220 });
       }
 
       previousScrollY.value = currentY;
@@ -264,7 +264,7 @@ export function OtherProfileScreen(): React.ReactElement {
             '{name}',
             profile.first_name ?? '',
           )}
-          hidden={marriageTabBarHidden}
+          hidden={tabBarHidden}
         />
       )}
 

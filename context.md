@@ -35,6 +35,12 @@ Registration completion and the phase-12 profile pipeline are intentionally mock
 
 After all of the above: `grep -r 'TODO(mock-only)' src/` should return zero hits.
 
+### Naming debt to clean up when the last dummy fixture ships
+
+Both items below are pure naming — the code works correctly for real backend data today. Rename when the mock-only surfaces are gone so future readers aren't confused by stale names.
+
+1. **`resolveDummyPhoto()`** in `src/assets/dummyPhotoRegistry.ts`. Already handles real remote URIs correctly (pass-through as `{ uri }` when the path is not a registered bundled asset). Once the deck / friend / request fixtures are wiped, rename to `resolvePhotoSource()` (or inline at callsites) and delete the bundled-asset lookup map. Callsites: `src/components/Avatar.tsx`, `src/features/landing/components/CandidateHero.tsx`, `src/navigation/AppTabs.tsx` (Menu tab icon).
+
 ## Follow-up tickets
 
 - **Real face-in-oval bounds check on Page 31.** The frame processor in `Page31FaceCaptureScreen.tsx` currently passes `faces.length > 0` as `faceInsideOval` — i.e. "any face detected anywhere in the frame", not "face bounds intersect the oval". Auto-capture threshold is bumped to 150 frames (~5s @ 30fps) as a stop-gap so the manual shutter button remains the practical capture path. Proper fix: read face bounds from `detectFaces()`, translate camera-sensor coordinates → screen coordinates (accounting for preview scaling, letterboxing, and front-camera mirroring), and gate `onFrame(true)` on real intersection with the `FaceOvalOverlay`'s bounds. Verify on ≥2 device sizes before shipping. Revert `CONSECUTIVE_FRAMES_REQUIRED` back to 15 once implemented.
