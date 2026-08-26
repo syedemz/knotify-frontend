@@ -69,6 +69,7 @@ import { DECK_FIXTURES } from '@/features/discover/data/deckFixtures';
 import { HeaderBar } from '../components/HeaderBar';
 import { DeckCard } from '../components/DeckCard';
 import { CollapsingActionBar } from '../components/CollapsingActionBar';
+import { SendRequestModal } from '../components/SendRequestModal';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
 
 // Current-user profile — read once at module scope for the bell-dot (AC4 / S1).
@@ -142,6 +143,12 @@ export function MarriageLandingScreen(): React.ReactElement {
 
   // ── Local snackbar state ───────────────────────────────────────────────────
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
+
+  // ── Send-request modal state ───────────────────────────────────────────────
+  // Like now opens a two-step confirmation modal instead of advancing directly.
+  // The modal's `onConfirmed` callback is what actually triggers the deck
+  // slide-out animation + snackbar; No at any step just dismisses.
+  const [requestModalVisible, setRequestModalVisible] = useState(false);
 
   // ── Scroll ref for position reset on card advance ──────────────────────────
   const scrollRef = useRef<ScrollView>(null);
@@ -282,6 +289,17 @@ export function MarriageLandingScreen(): React.ReactElement {
   }, [animateDeckTransition]);
 
   const handleLike = useCallback(() => {
+    // Like opens the send-request confirmation modal. Only after the user
+    // confirms twice AND the pleasewait animation completes does the deck
+    // actually advance — see handleRequestConfirmed below.
+    setRequestModalVisible(true);
+  }, []);
+
+  const handleRequestCancel = useCallback(() => {
+    setRequestModalVisible(false);
+  }, []);
+
+  const handleRequestConfirmed = useCallback(() => {
     // TODO(mock-only): real request-create ships in phase 15
     animateDeckTransition(1);
     setSnackbarMsg(t('landing.likeSent'));
@@ -349,6 +367,20 @@ export function MarriageLandingScreen(): React.ReactElement {
         message={snackbarMsg ?? ''}
         onDismiss={handleSnackbarDismiss}
         duration={3000}
+      />
+
+      {/* Send-request confirmation modal — Like button opens it; the deck
+          advance only fires after the two-step Yes + pleasewait sequence. */}
+      <SendRequestModal
+        visible={requestModalVisible}
+        targetName={
+          !isExhausted
+            ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              `${DECK_FIXTURES[currentDeckIndex]!.first_name ?? ''} ${DECK_FIXTURES[currentDeckIndex]!.last_name ?? ''}`.trim()
+            : ''
+        }
+        onCancel={handleRequestCancel}
+        onConfirmed={handleRequestConfirmed}
       />
     </View>
   );

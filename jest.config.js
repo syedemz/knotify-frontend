@@ -31,6 +31,11 @@ module.exports = {
     // animated components with lightweight React Native equivalents.
     "^react-native-reanimated$":
       "<rootDir>/__mocks__/react-native-reanimated.js",
+    // lottie-react-native is a native module that cannot run under Jest.
+    // Redirect to the project-local mock that renders a plain View
+    // preserving testID + accessibility props for assertion.
+    "^lottie-react-native$":
+      "<rootDir>/__mocks__/lottie-react-native.js",
   },
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

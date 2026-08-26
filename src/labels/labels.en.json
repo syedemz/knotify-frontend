@@ -498,6 +498,13 @@
       "undo": "Undo",
       "superLike": "Super like",
       "like": "Like"
+    },
+    "request": {
+      "confirmQuestion": "Do you wish to send {name} a connection request?",
+      "confirmDouble": "CONFIRM?",
+      "yes": "YES",
+      "no": "NO",
+      "sending": "Sending Request"
     }
   },
   "menu": {

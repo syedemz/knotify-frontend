@@ -14,7 +14,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';
 import { t } from '@/labels';
 import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
@@ -85,13 +85,29 @@ describe('(b) deck index behaviour', () => {
     expect(screen.getByTestId('collapsing-action-bar')).toBeTruthy();
   });
 
-  it('Like (✓) advances to next card AND shows "Friend request sent" snackbar', () => {
-    renderScreen();
-    fireEvent.press(screen.getByTestId('action-button-like'));
+  it('Like (✓) opens the confirmation modal — snackbar + advance only fire after the full flow', () => {
+    jest.useFakeTimers();
+    try {
+      renderScreen();
+      fireEvent.press(screen.getByTestId('action-button-like'));
 
-    expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
-    // Still on a valid card (index 1 of 5)
-    expect(screen.getByTestId('candidate-hero')).toBeTruthy();
+      // Modal is open; snackbar has NOT fired yet.
+      expect(screen.getByTestId('send-request-card')).toBeTruthy();
+      expect(screen.queryByText(t('landing.likeSent'))).toBeNull();
+
+      // Walk the ask → confirm → sending flow.
+      fireEvent.press(screen.getByTestId('send-request-yes-ask'));
+      fireEvent.press(screen.getByTestId('send-request-yes-confirm'));
+      act(() => {
+        jest.advanceTimersByTime(1100);
+      });
+
+      // Now the snackbar fires and the deck has advanced (still on a valid card).
+      expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
+      expect(screen.getByTestId('candidate-hero')).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('Undo (↺) at index 0 stays bounded at 0 — card still visible', () => {
@@ -187,13 +203,26 @@ describe('(d) Like does not call FriendshipProvider mutators', () => {
       </Wrapper>,
     );
 
-    fireEvent.press(screen.getByTestId('action-button-like'));
+    jest.useFakeTimers();
+    try {
+      fireEvent.press(screen.getByTestId('action-button-like'));
+      // Walk the full send-request modal flow.
+      fireEvent.press(screen.getByTestId('send-request-yes-ask'));
+      fireEvent.press(screen.getByTestId('send-request-yes-confirm'));
+      act(() => {
+        jest.advanceTimersByTime(1100);
+      });
 
-    // Like only fires the snackbar and advances the index — no friendship writes
-    expect(acceptSpy).not.toHaveBeenCalled();
-    expect(declineSpy).not.toHaveBeenCalled();
-    // Snackbar confirms the Like did fire
-    expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
+      // Even after confirming, the mock-theatre flow does NOT touch
+      // FriendshipProvider — no accept/decline mutators are called anywhere
+      // along the path (real request-create ships in phase 15).
+      expect(acceptSpy).not.toHaveBeenCalled();
+      expect(declineSpy).not.toHaveBeenCalled();
+      // Snackbar confirms the Like flow completed
+      expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

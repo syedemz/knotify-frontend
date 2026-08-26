@@ -18,7 +18,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';
 import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
 import { t } from '@/labels';
@@ -173,10 +173,40 @@ describe('(b) DeckCard sections present/absent', () => {
 // ── (c) Action button behaviour ───────────────────────────────────────────────
 
 describe('(c) action button behaviour', () => {
-  it('tapping the like (✓) button shows t("landing.likeSent") ("Friend request sent")', () => {
+  it('tapping the like (✓) button opens the send-request modal (not the snackbar directly)', () => {
     renderScreen();
     fireEvent.press(screen.getByTestId('action-button-like'));
-    expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
+    // Like now opens a confirmation modal instead of firing the snackbar
+    // directly — see SendRequestModal. The snackbar only appears after the
+    // full ask → confirm → sending flow completes.
+    expect(screen.getByTestId('send-request-card')).toBeTruthy();
+    expect(screen.queryByText(t('landing.likeSent'))).toBeNull();
+  });
+
+  it('completing the send-request modal flow fires t("landing.likeSent") snackbar', () => {
+    jest.useFakeTimers();
+    try {
+      renderScreen();
+      fireEvent.press(screen.getByTestId('action-button-like'));
+      // Step 1: ask → Yes
+      fireEvent.press(screen.getByTestId('send-request-yes-ask'));
+      // Step 2: confirm → Yes
+      fireEvent.press(screen.getByTestId('send-request-yes-confirm'));
+      // Step 3: sending — advance past the 1000 ms pleasewait hold
+      act(() => {
+        jest.advanceTimersByTime(1100);
+      });
+      expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('cancelling the send-request modal (No at first step) does NOT fire the snackbar', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('action-button-like'));
+    fireEvent.press(screen.getByTestId('send-request-no-ask'));
+    expect(screen.queryByText(t('landing.likeSent'))).toBeNull();
   });
 
   it('tapping the pass (X) button does NOT show any snackbar', () => {
