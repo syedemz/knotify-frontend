@@ -549,5 +549,25 @@
       "accept": "Accept",
       "decline": "Decline"
     }
+  },
+  "explore": {
+    "title": "Explore",
+    "tabs": {
+      "friends": "Friends",
+      "requests": "Requests"
+    },
+    "friends": {
+      "emptyTitle": "No friends yet",
+      "emptyDescription": "Accept a friend request to see profiles here."
+    },
+    "requests": {
+      "sentYou": "Sent you a request",
+      "accept": "Accept",
+      "decline": "Decline",
+      "acceptedToast": "Friend added",
+      "declinedToast": "Request declined",
+      "emptyTitle": "No pending requests",
+      "emptyDescription": "When someone sends you a friend request, it will appear here."
+    }
   }
 }

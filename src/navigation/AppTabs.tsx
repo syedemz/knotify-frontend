@@ -3,8 +3,9 @@
  *
  * Registers the four bottom tabs: Marriage, Explore, Chat, Menu.
  * - `Marriage` renders `MarriageLandingScreen` (phase 12.4).
- * - `Explore` and `Chat` remain `EmptyState` placeholders until their
- *   feature phases ship.
+ * - `Explore` renders `ExploreStack` (phase 13.5) — a nested native stack
+ *   with Friends + Requests subtabs and OtherProfileScreen.
+ * - `Chat` remains an `EmptyState` placeholder until its feature phase ships.
  * - `Menu` renders `MenuStack` — a nested native stack that starts at
  *   `MenuHomeScreen` and can push to `MyProfileScreen`.
  *
@@ -45,6 +46,7 @@ import { EmptyState } from '@/components';
 import { t } from '@/labels';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { MenuStack } from './MenuStack';
+import { ExploreStack } from './ExploreStack';
 import { marriageTabBarHidden } from '@/features/landing/shared/marriageTabBarHidden';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import type { AppTabsParamList } from './types';
@@ -62,18 +64,6 @@ const TAB_BAR_HEIGHT = 49;
 // ---------------------------------------------------------------------------
 // Placeholder screens
 // ---------------------------------------------------------------------------
-
-/**
- * Placeholder for the Explore tab screen.
- */
-function ExploreScreen(): React.JSX.Element {
-  return (
-    <EmptyState
-      title={t('nav.tabs.explore')}
-      description={t('common.notImplemented')}
-    />
-  );
-}
 
 /**
  * Placeholder for the Chat tab screen.
@@ -223,7 +213,7 @@ export function AppTabs(): React.JSX.Element {
       />
       <Tab.Screen
         name="Explore"
-        component={ExploreScreen}
+        component={ExploreStack}
         options={{
           tabBarLabel: t('nav.tabs.explore'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (

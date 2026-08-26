@@ -23,10 +23,9 @@
  * guard because after `declineRequest()` the user is neither a friend nor a
  * pending-request sender.
  *
- * **Note:** `ExploreStackParamList` is created in Story 13.5. For this story,
- * a lightweight local `OtherProfileRouteParams` type is used via
- * `useRoute<RouteProp<{ OtherProfileScreen: OtherProfileRouteParams }, 'OtherProfileScreen'>>()`.
- * Story 13.5 will wire the real ParamList.
+ * **Route typing (story 13.5):** Uses `RouteProp<ExploreStackParamList, 'OtherProfileScreen'>`
+ * from `src/navigation/types.ts`. The local placeholder type from story 13.4 has been
+ * replaced with the real ParamList entry.
  *
  * @module features/profile/screens/OtherProfileScreen
  */
@@ -43,35 +42,21 @@ import { ProfileScrollView } from '@/features/profile-sections';
 import type { DummyOverlay } from '@/types/DummyOverlay';
 import type { UserProfile } from '@/types/api/UserProfile';
 import { useFriendship } from '@/state/friendship/FriendshipProvider';
+import type { ExploreStackParamList } from '@/navigation/types';
 
 import { BackHeaderBar } from '../components/BackHeaderBar';
 
 // ── Route types ────────────────────────────────────────────────────────────────
 
 /**
- * Lightweight local route params type for OtherProfileScreen.
+ * Navigation prop and route prop derived from the real `ExploreStackParamList`.
  *
- * Story 13.5 will replace this with the real `ExploreStackParamList` entry.
- * The local type is sufficient to keep this story unblocked.
+ * Wired in story 13.5 — replaces the lightweight local placeholder from 13.4.
+ *
+ * @see {@link ExploreStackParamList} in `src/navigation/types.ts`.
  */
-export interface OtherProfileRouteParams {
-  /** The `user_id` of the profile to display. */
-  readonly userId: string;
-  /**
-   * How the current user relates to this profile:
-   * - `'friend'`  → already friends; ContactActionsSection is shown.
-   * - `'request'` → pending request from this user; ContactActionsSection is
-   *   hidden and the Accept/Decline action bar is shown.
-   */
-  readonly source: 'friend' | 'request';
-}
-
-type LocalParamList = {
-  OtherProfileScreen: OtherProfileRouteParams;
-};
-
-type OtherProfileNav = NativeStackNavigationProp<LocalParamList, 'OtherProfileScreen'>;
-type OtherProfileRoute = RouteProp<LocalParamList, 'OtherProfileScreen'>;
+type OtherProfileNav = NativeStackNavigationProp<ExploreStackParamList, 'OtherProfileScreen'>;
+type OtherProfileRoute = RouteProp<ExploreStackParamList, 'OtherProfileScreen'>;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
