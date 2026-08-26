@@ -38,6 +38,11 @@ export interface SnackbarProps {
    * Accessibility label. Defaults to `message`.
    */
   accessibilityLabel?: string;
+  /**
+   * Test identifier forwarded to the root container `View`.
+   * Used by `@testing-library/react-native` for element lookup.
+   */
+  testID?: string;
 }
 
 /**
@@ -67,6 +72,7 @@ export function Snackbar({
   duration = 4000,
   onDismiss,
   accessibilityLabel,
+  testID,
 }: SnackbarProps) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -89,6 +95,7 @@ export function Snackbar({
       accessibilityRole="alert"
       accessibilityLabel={accessibilityLabel ?? message}
       accessibilityLiveRegion="polite"
+      testID={testID}
     >
       <RNText style={styles.message} numberOfLines={2}>
         {message}

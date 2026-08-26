@@ -99,6 +99,40 @@ export interface FriendshipContextValue {
    * TODO(mock-only): replace with real `GET /profiles/{userId}` query
    */
   readonly getFullProfile: (userId: string) => DummyFullProfile | undefined;
+
+  /**
+   * A toast message to be shown by the receiving screen (ExploreHomeScreen)
+   * after `OtherProfileScreen` fires Decline and calls `goBack()`.
+   *
+   * **Handoff mechanism (option b — story 13.4):** When `OtherProfileScreen`
+   * handles Decline it calls `declineRequest(userId)` and IMMEDIATELY calls
+   * `navigation.goBack()`. Since the screen unmounts before it can show a
+   * snackbar, the "Request declined" toast is deferred here. `ExploreHomeScreen`
+   * (story 13.5) reads this field on focus, shows the snackbar, then calls
+   * `consumePendingToast()` to clear it.
+   *
+   * `null` when no toast is pending.
+   *
+   * TODO(mock-only): remove when real backend friendship endpoints ship;
+   * real Decline confirmation will arrive via server push / mutation result.
+   */
+  readonly pendingToast: string | null;
+
+  /**
+   * Sets a pending toast message to be consumed by the next screen that gains
+   * focus (typically `ExploreHomeScreen`).
+   *
+   * Called by `OtherProfileScreen` before `navigation.goBack()` on Decline.
+   */
+  readonly setPendingToast: (message: string) => void;
+
+  /**
+   * Clears the pending toast after the receiving screen has shown it.
+   *
+   * Called by `ExploreHomeScreen` (story 13.5) inside a `useFocusEffect`
+   * after displaying the snackbar.
+   */
+  readonly consumePendingToast: () => void;
 }
 
 // ── ALL_FULL_PROFILES registry ────────────────────────────────────────────────
@@ -172,6 +206,14 @@ export function FriendshipProvider({ children }: FriendshipProviderProps): React
   const [friends, setFriends] = useState<DummyFullProfile[]>(hydrateFriends);
   const [requests, setRequests] = useState<PendingRequest[]>(hydrateRequests);
 
+  // ── Pending-toast cross-screen handoff (option b — story 13.4) ─────────────
+  // OtherProfileScreen sets this before calling goBack() on Decline so that
+  // ExploreHomeScreen (story 13.5) can show the "Request declined" snackbar
+  // when it gains focus. ExploreHomeScreen calls consumePendingToast() after
+  // displaying the message.
+  // TODO(mock-only): remove when real backend Decline confirmation ships
+  const [pendingToast, setPendingToastState] = useState<string | null>(null);
+
   const acceptRequest = useCallback((userId: string): void => {
     const profile = ALL_FULL_PROFILES[userId];
     if (profile === undefined) {
@@ -211,6 +253,14 @@ export function FriendshipProvider({ children }: FriendshipProviderProps): React
     [],
   );
 
+  const setPendingToast = useCallback((message: string): void => {
+    setPendingToastState(message);
+  }, []);
+
+  const consumePendingToast = useCallback((): void => {
+    setPendingToastState(null);
+  }, []);
+
   const value: FriendshipContextValue = {
     friends,
     requests,
@@ -219,6 +269,9 @@ export function FriendshipProvider({ children }: FriendshipProviderProps): React
     isFriend,
     receivedRequestFrom,
     getFullProfile,
+    pendingToast,
+    setPendingToast,
+    consumePendingToast,
   };
 
   return (

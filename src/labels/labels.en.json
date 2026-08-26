@@ -536,5 +536,18 @@
       "description": "Profile editing is coming in a later phase"
     },
     "close": "Close profile"
+  },
+  "otherProfile": {
+    "back": "Go back",
+    "acceptedToast": "Friend added",
+    "declinedToast": "Request declined",
+    "notAuthorized": {
+      "title": "Profile unavailable",
+      "description": "You are not authorized to view this profile."
+    },
+    "actions": {
+      "accept": "Accept",
+      "decline": "Decline"
+    }
   }
 }

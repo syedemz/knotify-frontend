@@ -286,3 +286,48 @@ describe('FriendshipProvider — AC (j): acceptRequest registry-lookup path', ()
     expect(addedFriend).toEqual(expectedProfile);
   });
 });
+
+// ── AC (k): pendingToast cross-screen handoff (story 13.4 option b) ──────────
+
+describe('FriendshipProvider — AC (k): pendingToast handoff mechanism', () => {
+  it('given initial state, then pendingToast is null', () => {
+    const { result } = renderFriendshipHook();
+    expect(result.current.pendingToast).toBeNull();
+  });
+
+  it('given setPendingToast called with a message, then pendingToast equals that message', () => {
+    const { result } = renderFriendshipHook();
+
+    act(() => {
+      result.current.setPendingToast('Request declined');
+    });
+
+    expect(result.current.pendingToast).toBe('Request declined');
+  });
+
+  it('given pendingToast is set, when consumePendingToast called, then pendingToast becomes null', () => {
+    const { result } = renderFriendshipHook();
+
+    act(() => {
+      result.current.setPendingToast('Request declined');
+    });
+    act(() => {
+      result.current.consumePendingToast();
+    });
+
+    expect(result.current.pendingToast).toBeNull();
+  });
+
+  it('given setPendingToast called twice, then pendingToast reflects the last message', () => {
+    const { result } = renderFriendshipHook();
+
+    act(() => {
+      result.current.setPendingToast('First message');
+    });
+    act(() => {
+      result.current.setPendingToast('Second message');
+    });
+
+    expect(result.current.pendingToast).toBe('Second message');
+  });
+});

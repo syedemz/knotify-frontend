@@ -1,6 +1,6 @@
 phase: 13
 title: Discover — deck (landing), friends + requests (Explore), gated full-profile view
-last_updated: 2026-08-26 (story 13.3 complete)
+last_updated: 2026-08-26 (story 13.4 complete)
 
 context_summary: |
   Phase 13 replaces the single-candidate MarriageLandingScreen (Aisha as a full profile) with a **deck of condensed profiles** and introduces the **friendship gate** on full-profile visibility. Two users only see each other's *full* profile when they are already friends, OR when one has sent the other a pending friend request (the recipient can then view the sender's full profile as part of the accept/decline decision).
@@ -134,7 +134,7 @@ stories:
   - id: 13.4
     title: OtherProfileScreen — full profile behind back-arrow header + access gate
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [13.2]
     tracking_issue: 51
     acceptance_criteria:
