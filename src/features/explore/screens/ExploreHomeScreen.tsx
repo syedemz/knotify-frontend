@@ -48,7 +48,6 @@ import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import type { DummyFullProfile } from '@/types/DummyFullProfile';
 import type { PendingRequest } from '@/state/friendship/FriendshipProvider';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
-import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import type { ExploreStackParamList } from '@/navigation/types';
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -152,11 +151,11 @@ export function ExploreHomeScreen(): React.ReactElement {
 
   const renderFriendRow = useCallback(
     ({ item }: { item: DummyFullProfile }) => {
+      // Pass the raw asset path — Avatar (inside ProfileThumbnailCircle)
+      // calls resolveDummyPhoto() internally. Pre-resolving here to a
+      // require handle and String()-ing it produces "12" which Avatar
+      // treats as a broken remote URL and falls back to the "?" initial.
       const photoPath = item.photos?.[0] ?? item.photo_url ?? '';
-      const photoSource = resolveDummyPhoto(photoPath);
-      const uri = photoSource !== undefined
-        ? String(photoSource)
-        : '';
       const fullName = `${item.first_name} ${item.last_name}`;
 
       return (
@@ -167,7 +166,7 @@ export function ExploreHomeScreen(): React.ReactElement {
         >
           <Row paddingX="lg" paddingY="md" gap="md" align="center">
             <ProfileThumbnailCircle
-              uri={uri}
+              uri={photoPath}
               size={48}
               accessibilityLabel={fullName}
             />
@@ -187,9 +186,8 @@ export function ExploreHomeScreen(): React.ReactElement {
         return null;
       }
 
+      // Pass raw asset path — see renderFriendRow for the same fix.
       const photoPath = profile.photos?.[0] ?? profile.photo_url ?? '';
-      const photoSource = resolveDummyPhoto(photoPath);
-      const uri = photoSource !== undefined ? String(photoSource) : '';
       const fullName = `${profile.first_name} ${profile.last_name}`;
 
       return (
@@ -206,7 +204,7 @@ export function ExploreHomeScreen(): React.ReactElement {
           >
             <Row gap="md" align="center">
               <ProfileThumbnailCircle
-                uri={uri}
+                uri={photoPath}
                 size={48}
                 accessibilityLabel={fullName}
               />

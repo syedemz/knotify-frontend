@@ -157,7 +157,14 @@ function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element {
   const totalHiddenDistance = TAB_BAR_HEIGHT + insets.bottom;
 
   const animatedStyle = useAnimatedStyle(() => {
-    const hidden = focusedRoute === 'Marriage' ? marriageTabBarHidden.value : 0;
+    // Marriage tab writes to the shared value from MarriageLandingScreen's
+    // scroll handler. Explore tab writes to the SAME shared value from
+    // OtherProfileScreen's scroll handler (phase 13). ExploreHomeScreen
+    // itself does not write — OtherProfileScreen resets the value to 0 on
+    // mount + unmount so ExploreHomeScreen always sees the bar visible.
+    const participates =
+      focusedRoute === 'Marriage' || focusedRoute === 'Explore';
+    const hidden = participates ? marriageTabBarHidden.value : 0;
     return {
       transform: [{ translateY: hidden * totalHiddenDistance }],
       opacity: 1 - hidden,

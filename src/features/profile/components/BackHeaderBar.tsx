@@ -20,7 +20,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, MoreVertical } from 'lucide-react-native';
 
 import { useTheme } from '@/theme';
 import type { Theme } from '@/theme/theme';
@@ -39,6 +39,23 @@ export interface BackHeaderBarProps {
    * Use a translated string, e.g. `t('otherProfile.back')`.
    */
   readonly accessibilityLabel: string;
+
+  /**
+   * Optional callback for a right-side kebab (⋮) menu button.
+   * When provided, renders a `MoreVertical` icon on the right of the header;
+   * when omitted, no right-side element is rendered (default).
+   *
+   * Currently a no-op placeholder for the friend-view "unfriend / block /
+   * report" dropdown that ships in a later phase — the callback fires but
+   * no dropdown UI exists yet.
+   */
+  readonly onMenuPress?: () => void;
+
+  /**
+   * Accessibility label for the menu button. Required if `onMenuPress` is
+   * provided. Use a translated string, e.g. `t('otherProfile.menu.accessibility')`.
+   */
+  readonly menuAccessibilityLabel?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -54,6 +71,8 @@ export interface BackHeaderBarProps {
 export function BackHeaderBar({
   onBack,
   accessibilityLabel,
+  onMenuPress,
+  menuAccessibilityLabel,
 }: BackHeaderBarProps): React.ReactElement {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -78,6 +97,23 @@ export function BackHeaderBar({
           strokeWidth={1.8}
         />
       </Pressable>
+
+      {onMenuPress !== undefined && (
+        <Pressable
+          onPress={onMenuPress}
+          accessibilityRole="button"
+          accessibilityLabel={menuAccessibilityLabel ?? 'More options'}
+          testID="back-header-menu-button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.iconButton}
+        >
+          <MoreVertical
+            size={22}
+            color={theme.colors.text.primary}
+            strokeWidth={1.8}
+          />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -89,8 +125,8 @@ function createStyles(theme: Theme) {
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      // Left-align the back button; no right-side element needed.
-      justifyContent: 'flex-start',
+      // Back button on the left, optional kebab menu on the right.
+      justifyContent: 'space-between',
       paddingHorizontal: theme.spacing.lg,
       // paddingTop applied inline with safe-area insets (same as HeaderBar).
       paddingBottom: theme.spacing.sm,

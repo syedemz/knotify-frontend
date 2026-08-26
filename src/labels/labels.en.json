@@ -548,6 +548,14 @@
     "actions": {
       "accept": "Accept",
       "decline": "Decline"
+    },
+    "menu": {
+      "accessibility": "More options",
+      "comingSoonToast": "Options coming soon"
+    },
+    "chat": {
+      "accessibility": "Chat with {name}",
+      "comingSoonToast": "Chat coming soon"
     }
   },
   "explore": {

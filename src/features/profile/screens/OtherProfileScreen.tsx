@@ -23,15 +23,38 @@
  * guard because after `declineRequest()` the user is neither a friend nor a
  * pending-request sender.
  *
+ * **Scroll-driven tab-bar + FAB collapse (post-story-13.5 polish):**
+ * The scroll surface is an `Animated.ScrollView` whose `onScroll` handler
+ * writes to the shared `marriageTabBarHidden` value using the same 8 px
+ * delta threshold as `MarriageLandingScreen`. Both the bottom tab bar
+ * (`AppTabs.CollapsingTabBar` — widened to also participate on the Explore
+ * tab) and the friend-view `FloatingChatButton` read that same shared value
+ * and translate in lock-step. On mount + unmount the value is reset to 0 so
+ * the bar always returns visible when arriving here or leaving.
+ *
+ * **Friend-view extras (post-story-13.5 polish):**
+ * - `BackHeaderBar` shows a right-side ⋮ menu button (unfriend / block /
+ *   report — dropdown UI ships in a later phase; for now the press fires a
+ *   "coming soon" snackbar).
+ * - `FloatingChatButton` — round bottom-right FAB. Pressed, it opens the
+ *   chat room with this friend (chat lands in phase 17; for now the press
+ *   fires a "coming soon" snackbar).
+ *
+ * Neither the menu button nor the chat FAB renders on the request view.
+ *
  * **Route typing (story 13.5):** Uses `RouteProp<ExploreStackParamList, 'OtherProfileScreen'>`
- * from `src/navigation/types.ts`. The local placeholder type from story 13.4 has been
- * replaced with the real ParamList entry.
+ * from `src/navigation/types.ts`.
  *
  * @module features/profile/screens/OtherProfileScreen
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -43,29 +66,25 @@ import type { DummyOverlay } from '@/types/DummyOverlay';
 import type { UserProfile } from '@/types/api/UserProfile';
 import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import type { ExploreStackParamList } from '@/navigation/types';
+import { CandidateHero } from '@/features/landing/components/CandidateHero';
+import { marriageTabBarHidden } from '@/features/landing/shared/marriageTabBarHidden';
 
 import { BackHeaderBar } from '../components/BackHeaderBar';
+import { FloatingChatButton } from '../components/FloatingChatButton';
 
 // ── Route types ────────────────────────────────────────────────────────────────
 
-/**
- * Navigation prop and route prop derived from the real `ExploreStackParamList`.
- *
- * Wired in story 13.5 — replaces the lightweight local placeholder from 13.4.
- *
- * @see {@link ExploreStackParamList} in `src/navigation/types.ts`.
- */
 type OtherProfileNav = NativeStackNavigationProp<ExploreStackParamList, 'OtherProfileScreen'>;
 type OtherProfileRoute = RouteProp<ExploreStackParamList, 'OtherProfileScreen'>;
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/** Minimum scroll delta (px) before the tab bar starts collapsing. Matches
+ *  MarriageLandingScreen so both surfaces feel identical. */
+const SCROLL_DELTA_THRESHOLD = 8;
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-/**
- * Renders a friend's or pending-request-sender's full profile.
- *
- * Gated by the access guard — renders an EmptyState if the viewer is no longer
- * authorized (e.g. the request was declined and they arrived via a stale link).
- */
 export function OtherProfileScreen(): React.ReactElement {
   const navigation = useNavigation<OtherProfileNav>();
   const route = useRoute<OtherProfileRoute>();
@@ -80,7 +99,7 @@ export function OtherProfileScreen(): React.ReactElement {
     setPendingToast,
   } = useFriendship();
 
-  // ── Accept snackbar state ──────────────────────────────────────────────────
+  // ── Snackbar (Accept toast + menu/chat "coming soon" toasts) ───────────────
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
 
   // ── goBack timer ref — cleared on unmount ──────────────────────────────────
@@ -94,23 +113,44 @@ export function OtherProfileScreen(): React.ReactElement {
     };
   }, []);
 
+  // ── Tab-bar-hidden lifecycle reset ─────────────────────────────────────────
+  // Reset to 0 on mount so we arrive with the tab bar (and chat FAB) visible,
+  // and again on unmount so ExploreHomeScreen — which does not write to this
+  // shared value — always sees the tab bar visible after we leave.
+  useEffect(() => {
+    marriageTabBarHidden.value = withTiming(0, { duration: 220 });
+    return () => {
+      marriageTabBarHidden.value = withTiming(0, { duration: 220 });
+    };
+  }, []);
+
+  // ── Scroll handler → drives marriageTabBarHidden ───────────────────────────
+  const previousScrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      'worklet';
+      const currentY = event.contentOffset.y;
+      const delta = currentY - previousScrollY.value;
+
+      if (delta > SCROLL_DELTA_THRESHOLD) {
+        marriageTabBarHidden.value = withTiming(1, { duration: 220 });
+      } else if (delta < -SCROLL_DELTA_THRESHOLD) {
+        marriageTabBarHidden.value = withTiming(0, { duration: 220 });
+      }
+
+      previousScrollY.value = currentY;
+    },
+  });
+
   // ── Access guard (B1 / Q7) ─────────────────────────────────────────────────
-  // Evaluated on every render so a state change (accept/decline) re-evaluates
-  // the guard without requiring a separate useEffect.
   const isAuthorized: boolean = (() => {
     if (source === 'friend') {
       return isFriend(userId);
     }
-    // source === 'request': authorized while either pending OR already a friend.
-    // The OR-clause prevents flicker during the 1500ms Accept window.
     return receivedRequestFrom(userId) || isFriend(userId);
   })();
 
   // ── Profile resolution (NG1 / Q15) ────────────────────────────────────────
-  // If the profile is not in the registry, isAuthorized will already be false
-  // (because neither isFriend nor receivedRequestFrom would match). The
-  // undefined-profile guard below is an additional defensive layer for the NG1
-  // defensive path (e.g. a userId that is in neither the registry nor state).
   const profile = getFullProfile(userId);
   const profileForSections = profile as unknown as UserProfile & DummyOverlay;
 
@@ -130,32 +170,40 @@ export function OtherProfileScreen(): React.ReactElement {
 
   const handleDecline = useCallback(() => {
     declineRequest(userId);
-    // Handoff mechanism (option b — story 13.4 / Q16):
-    // The "Request declined" toast is forwarded to ExploreHomeScreen via
-    // FriendshipProvider.pendingToast. ExploreHomeScreen reads it on focus
-    // (story 13.5). We do NOT show the toast here because:
-    //   1. goBack() unmounts this screen immediately.
-    //   2. Holding the screen open for even 1ms after declineRequest() would
-    //      trip the access guard (the user is no longer friend NOR pending).
     setPendingToast(t('otherProfile.declinedToast'));
     navigation.goBack();
   }, [declineRequest, userId, setPendingToast, navigation]);
+
+  const handleMenuPress = useCallback(() => {
+    // TODO(mock-only): dropdown UI (unfriend / block / report) ships in a
+    // later phase. For now the button is clickable but shows only a toast.
+    setSnackbarMsg(t('otherProfile.menu.comingSoonToast'));
+  }, []);
+
+  const handleChatPress = useCallback(() => {
+    // TODO(mock-only): real chat ships in phase 17. For now the FAB is
+    // clickable but shows only a toast.
+    setSnackbarMsg(t('otherProfile.chat.comingSoonToast'));
+  }, []);
 
   const handleSnackbarDismiss = useCallback(() => {
     setSnackbarMsg(null);
   }, []);
 
+  const isFriendView = source === 'friend';
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <View testID="other-profile-screen" style={styles.root}>
-      {/* Sticky back-arrow header */}
+      {/* Sticky back-arrow header. Friend view also gets a right-side kebab. */}
       <BackHeaderBar
         onBack={handleBack}
         accessibilityLabel={t('otherProfile.back')}
+        onMenuPress={isFriendView ? handleMenuPress : undefined}
+        menuAccessibilityLabel={t('otherProfile.menu.accessibility')}
       />
 
-      {/* Guard: render EmptyState if not authorized or profile not found */}
       {(!isAuthorized || profile === undefined) ? (
         <EmptyState
           title={t('otherProfile.notAuthorized.title')}
@@ -163,8 +211,10 @@ export function OtherProfileScreen(): React.ReactElement {
           accessibilityLabel={t('otherProfile.notAuthorized.title')}
         />
       ) : (
-        <ScrollView
+        <Animated.ScrollView
           testID="other-profile-scroll"
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
           contentContainerStyle={styles.scrollContent}
         >
           {/* Request-action bar (only for source='request') */}
@@ -191,16 +241,33 @@ export function OtherProfileScreen(): React.ReactElement {
             </View>
           )}
 
+          {/* Hero — HeroBlock inside ProfileScrollView returns null for
+              viewer='other' (phase-12 design), so we render CandidateHero
+              here directly, matching the MarriageLandingScreen pattern. */}
+          <CandidateHero profile={profile} />
+
           {/* Full profile — 14-section catalog */}
           <ProfileScrollView
             profile={profileForSections}
             viewer="other"
             contactVisible={source === 'friend'}
           />
-        </ScrollView>
+        </Animated.ScrollView>
       )}
 
-      {/* Accepted toast — shown during the 1500ms window, dismissed by Snackbar timer */}
+      {/* Friend-view chat FAB — collapses with the tab bar via the same
+          shared value. Not rendered on the request view. */}
+      {isFriendView && isAuthorized && profile !== undefined && (
+        <FloatingChatButton
+          onPress={handleChatPress}
+          accessibilityLabel={t('otherProfile.chat.accessibility').replace(
+            '{name}',
+            profile.first_name ?? '',
+          )}
+          hidden={marriageTabBarHidden}
+        />
+      )}
+
       <Snackbar
         visible={snackbarMsg !== null}
         message={snackbarMsg ?? ''}

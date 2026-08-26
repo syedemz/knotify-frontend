@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-04 (phase 12 complete)
+last_updated: 2026-08-26 (phase 13 complete)
 
 phases:
 
@@ -79,7 +79,7 @@ phases:
   title: Discover — deck (landing), friends + requests (Explore), gated full-profile view
   file: implementationplan/phase-13-discover.md
   ready: true
-  done: false
+  done: true
 
 - phase: 14
   title: Bookmarks

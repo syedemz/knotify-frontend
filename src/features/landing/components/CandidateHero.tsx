@@ -44,33 +44,19 @@ import { CountryFlag } from '@/components/CountryFlag';
  * @see {@link CandidateHeroProps}
  */
 export interface CandidateHeroProfile {
-  /** Given name displayed in the name row. */
-  readonly first_name: string | null;
-  /** Age displayed after the comma in the name row. */
-  readonly age: number | null;
-  /** City component of the city/country subtitle. */
-  readonly current_residence_city: string | null;
-  /** Country component of the city/country subtitle. */
-  readonly current_residence_country: string | null;
-  /** ISO 3166-1 alpha-2 code driving the country flag chip. */
-  readonly resident_country_code: string | null;
-  /** Job title driving the profession chip. */
-  readonly job_title: string | null;
-  /**
-   * Ordered photo URI array. `photos[0]` is the hero image.
-   * Nullable — falls back to `photo_url`.
-   */
-  readonly photos: string[] | null;
-  /**
-   * Direct photo URL used when `photos` is null or empty.
-   * Nullable — renders a placeholder when both are absent.
-   */
-  readonly photo_url: string | null;
-  /**
-   * URI of the verified face selfie. Non-null drives the green verified tick.
-   * Nullable — tick is hidden when null.
-   */
-  readonly faceSelfieUri: string | null;
+  // All nullable fields accept `null | undefined` so both JSON-derived types
+  // (DummyFemaleProfile, DummyDeckProfile — `T | null`) and UserProfile-derived
+  // types (DummyFullProfile — `T | null | undefined`) satisfy this interface
+  // without a cast. All guards below use `!= null` (loose) to catch both.
+  readonly first_name: string | null | undefined;
+  readonly age: number | null | undefined;
+  readonly current_residence_city: string | null | undefined;
+  readonly current_residence_country: string | null | undefined;
+  readonly resident_country_code: string | null | undefined;
+  readonly job_title: string | null | undefined;
+  readonly photos?: string[] | null;
+  readonly photo_url: string | null | undefined;
+  readonly faceSelfieUri?: string | null;
   /**
    * Optional display-only field bag for overlay bubbles (active-today dot,
    * membership-tier badge). Optional so callers without this block compile
@@ -118,12 +104,12 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
   const hasVerified = profile.faceSelfieUri != null;
 
   const cityCountry =
-    profile.current_residence_city !== null &&
-    profile.current_residence_country !== null
+    profile.current_residence_city != null &&
+    profile.current_residence_country != null
       ? `${profile.current_residence_city.toUpperCase()}, ${profile.current_residence_country.toUpperCase()}`
-      : profile.current_residence_city !== null
+      : profile.current_residence_city != null
       ? profile.current_residence_city.toUpperCase()
-      : profile.current_residence_country !== null
+      : profile.current_residence_country != null
       ? profile.current_residence_country.toUpperCase()
       : null;
 
@@ -179,7 +165,7 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
         <View style={styles.nameRow}>
           <RNText style={styles.name} testID="candidate-hero-name">
             {profile.first_name ?? ''}
-            {profile.age !== null ? `, ${profile.age}` : ''}
+            {profile.age != null ? `, ${profile.age}` : ''}
           </RNText>
           {hasVerified && (
             <View testID="candidate-hero-verified-tick">
@@ -201,7 +187,7 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
 
         {/* Chip strip */}
         <View style={styles.chipRow}>
-          {profile.resident_country_code !== null && (
+          {profile.resident_country_code != null && (
             <View
               style={[styles.chip, styles.countryChip]}
               testID="candidate-hero-country-chip"
@@ -212,7 +198,7 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
               </RNText>
             </View>
           )}
-          {profile.job_title !== null && (
+          {profile.job_title != null && (
             <View style={styles.chip} testID="candidate-hero-job-chip">
               <RNText style={styles.chipLabel}>{profile.job_title}</RNText>
             </View>
