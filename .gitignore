@@ -38,3 +38,6 @@ npm-debug.log*
 QA/*
 muzzscreenshots/*
 
+
+# EAS Build APK downloads
+builds/
