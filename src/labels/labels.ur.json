@@ -479,6 +479,11 @@
   },
   "landing": {
     "actionUnavailable": "بعد کے مرحلے میں دستیاب",
+    "likeSent": "دوستی کی درخواست بھیج دی گئی",
+    "deckExhausted": {
+      "title": "آپ نے سبھی کو دیکھ لیا",
+      "description": "نئی پروفائلز کے لیے بعد میں واپس آئیں۔"
+    },
     "header": {
       "filter": "فلٹر",
       "notifications": "اطلاعات"

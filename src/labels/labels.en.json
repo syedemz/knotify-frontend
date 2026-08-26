@@ -479,6 +479,11 @@
   },
   "landing": {
     "actionUnavailable": "Available in a later phase",
+    "likeSent": "Friend request sent",
+    "deckExhausted": {
+      "title": "You've seen everyone",
+      "description": "Check back later for new profiles."
+    },
     "header": {
       "filter": "Filter",
       "notifications": "Notifications"

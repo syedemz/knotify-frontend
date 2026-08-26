@@ -28,19 +28,68 @@ import { CheckCircle } from 'lucide-react-native';
 import { useTheme } from '@/theme';
 import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
-import type { DummyFemaleProfile } from '@/types/DummyFemaleProfile';
 import { t } from '@/labels';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import { CountryFlag } from '@/components/CountryFlag';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Narrower structural interface for `CandidateHero`'s `profile` prop.
+ *
+ * Includes exactly the fields CandidateHero reads. Both `DummyFemaleProfile`
+ * and `DummyDeckProfile` are assignable to this type structurally without any
+ * cast, satisfying the B2 widening requirement (story 13.3 AC1).
+ *
+ * @see {@link CandidateHeroProps}
+ */
+export interface CandidateHeroProfile {
+  /** Given name displayed in the name row. */
+  readonly first_name: string | null;
+  /** Age displayed after the comma in the name row. */
+  readonly age: number | null;
+  /** City component of the city/country subtitle. */
+  readonly current_residence_city: string | null;
+  /** Country component of the city/country subtitle. */
+  readonly current_residence_country: string | null;
+  /** ISO 3166-1 alpha-2 code driving the country flag chip. */
+  readonly resident_country_code: string | null;
+  /** Job title driving the profession chip. */
+  readonly job_title: string | null;
+  /**
+   * Ordered photo URI array. `photos[0]` is the hero image.
+   * Nullable — falls back to `photo_url`.
+   */
+  readonly photos: string[] | null;
+  /**
+   * Direct photo URL used when `photos` is null or empty.
+   * Nullable — renders a placeholder when both are absent.
+   */
+  readonly photo_url: string | null;
+  /**
+   * URI of the verified face selfie. Non-null drives the green verified tick.
+   * Nullable — tick is hidden when null.
+   */
+  readonly faceSelfieUri: string | null;
+  /**
+   * Optional display-only field bag for overlay bubbles (active-today dot,
+   * membership-tier badge). Optional so callers without this block compile
+   * without supplying it.
+   */
+  readonly __dummy_display_only?: {
+    readonly is_active_today?: boolean;
+    readonly membership_tier?: 'gold' | 'silver' | null;
+  };
+}
+
 export interface CandidateHeroProps {
   /**
-   * The candidate female profile to display. The hero reads `photos[0]`
-   * (fallback `photo_url`) for the background image.
+   * The candidate profile to display. Accepts any type assignable to
+   * {@link CandidateHeroProfile} — both `DummyFemaleProfile` and
+   * `DummyDeckProfile` satisfy this structurally without a cast (AC1 of
+   * story 13.3).
    */
-  readonly profile: DummyFemaleProfile;
+  readonly profile: CandidateHeroProfile;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────

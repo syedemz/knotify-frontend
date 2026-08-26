@@ -1,13 +1,16 @@
 /**
- * Screen-wiring tests for MarriageLandingScreen (story 12.4).
+ * Screen-wiring tests for MarriageLandingScreen (phase 12 → phase 13 update).
  *
- * (a) Renders hero with `dummyfemale.first_name` ("Aisha") visible.
- * (b) 13 ProfileScrollView sections + 1 CandidateHero mount on the female
- *     fixture. (HeroBlock is skipped because viewer === 'other'.)
- * (c) Tapping the ✓ (like) button renders the toast text
- *     t('landing.actionUnavailable') — queried via `getByText`, not a mock.
- * (d) HeaderBar renders filter icon button + bell icon button; NO Sort pill /
- *     green lightning bubble test IDs are present.
+ * Phase 13 refactor: the screen now renders a deck of condensed DeckCards
+ * (CandidateHero + 4 sections each) instead of a single full-profile
+ * ProfileScrollView. This file has been updated to match the phase-13 behavior.
+ *
+ * (a) Renders hero with the first deck card's first_name "Aisha" visible.
+ * (b) DeckCard sections: 4 sections rendered, 10 sections NOT rendered.
+ * (c) Action buttons: Like → "Friend request sent"; Pass → no toast;
+ *     Star → "Available in a later phase".
+ * (d) HeaderBar: filter + bell present; NO Sort pill / lightning bubble;
+ *     unread-dot derived from dummyprofile (defaults to false → dot absent).
  *
  * Animation is NOT tested — Reanimated worklets are mocked to no-op by the
  * global `jest.setup.ts` (registered via `setupFiles` in `jest.config.js`).
@@ -17,12 +20,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';
+import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
 import { t } from '@/labels';
 
 // ── Native-module mocks ───────────────────────────────────────────────────────
 
-// react-native-safe-area-context — stubs the provider so ThemeProvider and
-// any screen component using useSafeAreaInsets does not hit a native module.
 jest.mock('react-native-safe-area-context', () => {
   const RN = require('react-native') as typeof import('react-native');
   const Rct = require('react') as typeof import('react');
@@ -54,7 +56,6 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-// expo-image — avoid native module in test environment.
 jest.mock('expo-image', () => {
   const Rct = require('react') as typeof import('react');
   const RN = require('react-native') as typeof import('react-native');
@@ -77,33 +78,32 @@ import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandin
 function renderScreen() {
   return render(
     <ThemeProvider>
-      <MarriageLandingScreen />
+      <FriendshipProvider>
+        <MarriageLandingScreen />
+      </FriendshipProvider>
     </ThemeProvider>,
   );
 }
 
-// ── (a) Hero renders with first_name "Aisha" ─────────────────────────────────
+// ── (a) Hero renders with first_name "Aisha" (first deck card) ───────────────
 
-describe('(a) hero renders Aisha', () => {
+describe('(a) hero renders Aisha (first deck card)', () => {
   it('renders candidate-hero testID', () => {
     renderScreen();
     expect(screen.getByTestId('candidate-hero')).toBeTruthy();
   });
 
-  it('shows dummyfemale.first_name "Aisha" in the hero name', () => {
+  it('shows first deck card name "Aisha" in the hero name', () => {
     renderScreen();
-    // The name text renders as "Aisha, 27" — the candidate-hero-name testID
-    // targets the specific Text element so we don't hit duplicates from sections.
     const nameEl = screen.getByTestId('candidate-hero-name');
     expect(nameEl).toBeTruthy();
-    // At least one element in the tree contains "Aisha" (hero name + possibly sections).
     expect(screen.getAllByText(/Aisha/).length).toBeGreaterThanOrEqual(1);
   });
 });
 
-// ── (b) 13 sections + 1 CandidateHero mount on female fixture ────────────────
+// ── (b) DeckCard sections — 4 present, 10 absent ─────────────────────────────
 
-describe('(b) 13 ProfileScrollView sections + CandidateHero present', () => {
+describe('(b) DeckCard sections present/absent', () => {
   beforeEach(() => {
     renderScreen();
   });
@@ -112,8 +112,7 @@ describe('(b) 13 ProfileScrollView sections + CandidateHero present', () => {
     expect(screen.getByTestId('candidate-hero')).toBeTruthy();
   });
 
-  // HeroBlock returns null for viewer=other — not present.
-  it('HeroBlock is NOT in the tree (viewer=other)', () => {
+  it('HeroBlock is NOT in the tree (not used in DeckCard)', () => {
     expect(screen.queryByTestId('hero-block')).toBeNull();
   });
 
@@ -125,22 +124,6 @@ describe('(b) 13 ProfileScrollView sections + CandidateHero present', () => {
     expect(screen.getByTestId('marriage-intentions-section')).toBeTruthy();
   });
 
-  it('FaithSection is in the tree', () => {
-    expect(screen.getByTestId('faith-section')).toBeTruthy();
-  });
-
-  it('FuturePlansSection is in the tree', () => {
-    expect(screen.getByTestId('future-plans-section')).toBeTruthy();
-  });
-
-  it('PhotoBlockSection is in the tree (photos.length === 2)', () => {
-    expect(screen.getByTestId('photo-block-section')).toBeTruthy();
-  });
-
-  it('PersonalitySection is in the tree', () => {
-    expect(screen.getByTestId('personality-section')).toBeTruthy();
-  });
-
   it('EducationSection is in the tree', () => {
     expect(screen.getByTestId('education-section')).toBeTruthy();
   });
@@ -149,46 +132,63 @@ describe('(b) 13 ProfileScrollView sections + CandidateHero present', () => {
     expect(screen.getByTestId('professional-career-section')).toBeTruthy();
   });
 
-  it('ParentsSection is in the tree', () => {
-    expect(screen.getByTestId('parents-section')).toBeTruthy();
+  // Sections excluded from DeckCard (condensed view)
+  it('FaithSection is NOT in the tree (deck card shows condensed view)', () => {
+    expect(screen.queryByTestId('faith-section')).toBeNull();
   });
 
-  it('AddressSection is in the tree', () => {
-    expect(screen.getByTestId('address-section')).toBeTruthy();
+  it('FuturePlansSection is NOT in the tree', () => {
+    expect(screen.queryByTestId('future-plans-section')).toBeNull();
   });
 
-  it('SiblingsSection is in the tree (siblings.length === 2)', () => {
-    expect(screen.getByTestId('siblings-section')).toBeTruthy();
+  it('PhotoBlockSection is NOT in the tree', () => {
+    expect(screen.queryByTestId('photo-block-section')).toBeNull();
   });
 
-  it('VerifiedProfileSection is in the tree', () => {
-    expect(screen.getByTestId('verified-profile-section')).toBeTruthy();
+  it('PersonalitySection is NOT in the tree', () => {
+    expect(screen.queryByTestId('personality-section')).toBeNull();
   });
 
-  it('ContactActionsSection is in the tree (viewer=other)', () => {
-    expect(screen.getByTestId('contact-actions-section')).toBeTruthy();
+  it('ParentsSection is NOT in the tree', () => {
+    expect(screen.queryByTestId('parents-section')).toBeNull();
+  });
+
+  it('AddressSection is NOT in the tree', () => {
+    expect(screen.queryByTestId('address-section')).toBeNull();
+  });
+
+  it('SiblingsSection is NOT in the tree', () => {
+    expect(screen.queryByTestId('siblings-section')).toBeNull();
+  });
+
+  it('VerifiedProfileSection is NOT in the tree', () => {
+    expect(screen.queryByTestId('verified-profile-section')).toBeNull();
+  });
+
+  it('ContactActionsSection is NOT in the tree (deck card shows condensed view)', () => {
+    expect(screen.queryByTestId('contact-actions-section')).toBeNull();
   });
 });
 
-// ── (c) Tapping ✓ button shows actionUnavailable toast ───────────────────────
+// ── (c) Action button behaviour ───────────────────────────────────────────────
 
-describe('(c) action button triggers snackbar toast', () => {
-  it('tapping the like (✓) button shows t("landing.actionUnavailable")', () => {
-    renderScreen();
-    const likeButton = screen.getByTestId('action-button-like');
-    fireEvent.press(likeButton);
-    expect(screen.getByText(t('landing.actionUnavailable'))).toBeTruthy();
-  });
-
-  it('snackbar message matches "Available in a later phase"', () => {
+describe('(c) action button behaviour', () => {
+  it('tapping the like (✓) button shows t("landing.likeSent") ("Friend request sent")', () => {
     renderScreen();
     fireEvent.press(screen.getByTestId('action-button-like'));
-    expect(screen.getByText('Available in a later phase')).toBeTruthy();
+    expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
   });
 
-  it('tapping the pass (X) button also shows the toast', () => {
+  it('tapping the pass (X) button does NOT show any snackbar', () => {
     renderScreen();
     fireEvent.press(screen.getByTestId('action-button-pass'));
+    expect(screen.queryByText(t('landing.actionUnavailable'))).toBeNull();
+    expect(screen.queryByText(t('landing.likeSent'))).toBeNull();
+  });
+
+  it('tapping the star (⭐) button shows t("landing.actionUnavailable")', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('action-button-super-like'));
     expect(screen.getByText(t('landing.actionUnavailable'))).toBeTruthy();
   });
 });
@@ -220,8 +220,10 @@ describe('(d) HeaderBar renders filter and bell; no Sort pill or lightning', () 
     expect(screen.queryByTestId('landing-header-lightning-bubble')).toBeNull();
   });
 
-  it('renders the unread notification dot (dummyfemale has_unread_notifications=true)', () => {
-    // dummyfemale.__dummy_display_only.has_unread_notifications === true
-    expect(screen.getByTestId('landing-header-unread-dot')).toBeTruthy();
+  it('does NOT render the unread-dot (dummyprofile has_unread_notifications=false)', () => {
+    // Phase 13: unread-dot is derived from dummyprofile.json (current user),
+    // not from dummyfemale.json (deck candidate). The real dummyprofile.json
+    // has has_unread_notifications: false, so no dot appears.
+    expect(screen.queryByTestId('landing-header-unread-dot')).toBeNull();
   });
 });
