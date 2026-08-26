@@ -76,9 +76,9 @@ phases:
   done: true
 
 - phase: 13
-  title: Discover - deck, other-profile, filters, search
+  title: Discover — deck (landing), friends + requests (Explore), gated full-profile view
   file: implementationplan/phase-13-discover.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 14

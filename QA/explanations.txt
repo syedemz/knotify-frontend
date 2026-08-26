@@ -1,538 +1,510 @@
-================================================================
-PHASE 11 — Face verification + final submit (pages 30, 31)
-Concerns before we can start building
-================================================================
-
-There are 15 concerns below. Concerns #1 through #5 are BLOCKERS — I need
-your answer before I can build. Concerns #6 through #11 are MEDIUM
-questions that shape how the code is written — I'd like your input but
-can make a reasonable call if you defer. Concerns #12 through #15 are
-LOW — heads-up items I will handle myself, listed so nothing surprises
-you.
-
-Please write your answer under each concern on the "ANSWER:" line.
-
-================================================================
-BLOCKERS (need your answer before I can start)
-================================================================
-
-----------------------------------------------------------------
-CONCERN #1 — BLOCKER — The camera library isn't installed yet
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: Page 30 and page 31 both use `expo-camera` to ask for
-camera permission and to show a live camera preview.
-
-THE PROBLEM: `expo-camera` is not listed in package.json. It has never
-been installed in this project. It's a "native module" — meaning it isn't
-just JavaScript, it includes bits of Java/Kotlin code that live inside
-the Android app itself. That has an important side effect:
-
-  Merging this phase will require the SAME full APK reinstall dance you
-  already went through for phase 10 (photos). You cannot just do a
-  Metro reload — the app on your test phone (device 000323572000090)
-  has to be completely uninstalled and reinstalled from scratch with
-  `npx expo run:android`. The first time the new APK runs, Android will
-  see there's a new "CAMERA" permission declared in the manifest and
-  will treat that permission as fresh.
-
-ANALOGY: Adding `expo-camera` is like adding a new power tool to your
-workshop. It doesn't just plug into the wall — it needs its own outlet
-installed. You have to shut down the whole shop, rewire it, and turn it
-back on. You can't hot-swap it while the shop is running.
-
-QUESTION: This is really just a heads-up, not something you decide. I'm
-flagging it so you know phase 11 = another reinstall on the test phone,
-just like phase 10 was. Are you OK with that?
-
-ANSWER: yes please do it
-
-----------------------------------------------------------------
-CONCERN #2 — BLOCKER — Which face-detection library should we use?
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: When the user's face fits inside the oval on page 31
-for ~15 frames in a row, the camera should auto-snap the photo. This
-requires "face detection" — software that looks at each video frame and
-answers "is there a face in this picture? where?"
-
-The plan says to use "expo-camera's face-detection add-on" and links to
-architecture note §17.24.
-
-THE PROBLEM: This add-on DOES NOT EXIST anymore. Expo used to ship a
-face detector called `expo-face-detector`, but they deprecated and
-removed it years ago. In the current Expo SDK 56 (what this project
-runs), there is no first-party face detector. §17.24 in your
-architecture doc even flags this as [Open] — meaning "we haven't picked
-a real solution yet". The PRD talks about it as if it were decided; it
-isn't. You have three real options today:
-
-  OPTION A — `react-native-vision-camera` + `vision-camera-face-detector`
-     - Most accurate. Most popular in the RN community today.
-     - Heavier native module.
-     - Since you're already off "Expo Go" and using dev builds (you
-       switched during phase 5), the "requires prebuild" downside doesn't
-       really cost you anything — you were already doing that.
-     - MY RECOMMENDATION.
-
-  OPTION B — `@react-native-ml-kit/face-detection` (Google ML Kit)
-     - Also accurate, backed by Google.
-     - Requires Google Play Services on the device (fine for Android,
-       breaks on some devices without Play Store like Huawei's newer
-       phones).
-
-  OPTION C — Skip auto-capture entirely
-     - Use plain `expo-camera` with a manual "shutter" button. User
-       lines up their face inside the oval and taps a button to snap.
-     - Simpler, but loses the "hands-free / auto" feel that competitors
-       (Tinder, Muzz, Hinge) use.
-
-ANALOGY: Your original plan said "use the built-in facial recognition
-on your iPhone". When we opened the iPhone, that feature had been
-removed in a system update. Now we need to pick between installing a
-third-party app that does the same thing (option A), using Google's
-version (option B), or just having the user press a shutter button
-themselves (option C).
-
-QUESTION: Which one? If unsure, go with A.
-
-ANSWER: Go with option A, build a solid solution which ensure a face is captured
-
-----------------------------------------------------------------
-CONCERN #3 — BLOCKER — After finishing onboarding, the app won't actually
-                       switch to the main screen (broken plumbing)
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: When the user finishes page 31, the app submits
-their whole profile to the backend, refreshes their login token, and
-the "root navigator" swaps out the onboarding wizard for the main
-tabbed app (Discover / Chat / Bookmarks / Profile).
-
-THE PROBLEM: The wire that makes this happen is not connected.
-
-In detail: the way the app decides "show onboarding" vs "show main app"
-is a boolean flag called `profileComplete`. That flag is computed
-inside `src/state/auth/AuthProvider.tsx`. I read the code — it always
-returns `false`, no matter what. There's a `TODO(phase-2)` comment
-saying "someone needs to wire this up to actually read the login token
-and check the `custom:profile_complete` claim." That TODO was punted
-from phase 2 and has been sitting there for 10 phases.
-
-If we don't fix it, here's what will happen on page 31:
-  1. User finishes verification.
-  2. PATCH succeeds, JWT refreshes.
-  3. `profileComplete` still returns `false` (because it's stubbed).
-  4. `RootNavigator` keeps showing the onboarding wizard.
-  5. User is stuck on page 31 forever, staring at their captured photo,
-     with no way to get to the app they just spent 30 minutes signing
-     up for.
-
-ANALOGY: Imagine you built a beautiful revolving door between the
-lobby and the main hall of a building. Someone walks up, pushes the
-door, and… it doesn't spin. You go check — turns out the motor was
-never plugged in, because the electrician (phase 2) left a sticky note
-saying "someone please plug in the door motor later." Nobody did. Now
-everyone's queued up in the lobby.
-
-THE FIX: Two ways to handle it.
-
-  OPTION A — Fix it as part of story 11.2
-     - Small addition (~20 lines of code) to `AuthProvider.tsx` to
-       decode the JWT and read the claim. Since story 11.2 is where
-       the door actually gets used, the developer working on it will
-       naturally notice if the wiring is broken. Cleanest option.
-
-  OPTION B — Add a new story 11.3 "wire profileComplete claim decode"
-     - Same fix, but done as its own story so the git history is
-       clearer about what changed and why.
-
-  OPTION C — Ignore for now, ship phase 11 broken, do it in phase 12
-     - I do not recommend this. It leaves onboarding functionally
-       broken — the whole point of onboarding is to end up in the app.
-
-RELATED CONCERN: I also need to verify that when the app calls
-`refresh()` on the auth provider, Amazon Cognito actually re-fetches
-a FRESH login token with the updated claim. If Cognito just gives us
-back a cached copy of the token (which some auth libraries do), the
-claim will still say "not complete" even after the backend flipped
-the flag. If that turns out to be the case, we need an extra step —
-either sign out and sign back in, or make a direct call to Cognito's
-token endpoint. I'll test this during story 11.2 and adjust if
-needed. Flagging it so a surprise doesn't derail the story.
-
-QUESTION: A, B, or C?
-
-ANSWER: DO not submit anything for now, we will finish the registration once i have the backend up and running
-for now just create a dummy route or some fake method so that we can complete the registration without submitting anything
-and we will also build the main profile page with dummy data in Phase 12, if possible skip authorization and cognito for now, 
-dont change any existing code, just find a way how we can complete registration and login to profile page without having to submit anything to the backend
-I want to be able to build out the landing page and the profile page before firing up the backend, after that we receive data directly from the backend
-write this in phase 11 PRD and phase 12 PRD
-also write it in the context.md and your own memory so that once we have the backend ready and real authorization and cognito working
-these temporary / dummy routes or any dummy data created and stored in async storage ought to be removed
-
-----------------------------------------------------------------
-CONCERN #4 — BLOCKER — The list of "un-editable fields" is wrong in the plan
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: On the final submit, some profile fields are
-"immutable" — meaning once you save them the first time, the backend
-never lets you change them again. The plan says "currently `sex`" and
-tells the developer to make sure the submit-body-builder skips those
-fields on retry submissions.
-
-THE PROBLEM: The plan says one field (`sex`). The actual code says six
-fields. I read `src/Helper/immutableFieldHelper.ts` — it marks:
-
-    sex, first_name, last_name, birthday, religion, subsect
-
-The runtime behavior is correct (the code is the source of truth, not
-the PRD). But the PRD wording is stale and misleading in two ways:
-
-  (a) When the developer writes the unit test for "retry strips
-      immutable fields", they might only test `sex` because that's
-      what the PRD says. That test won't catch a bug where somebody
-      accidentally removes `birthday` from the immutable list —
-      the test would still pass.
-
-  (b) The developer reading the PRD might think the helper only marks
-      one field, and get confused when the code disagrees.
-
-ANALOGY: The plan is a shopping list that says "buy milk". The
-kitchen inventory system actually needs milk, bread, eggs, butter,
-cheese, and yogurt. The shopper (developer) will make the trip and
-grab whatever's on the list. They come home with milk. Kitchen still
-needs the other 5 things. The list was the problem.
-
-THE FIX: Two ways to handle it.
-
-  OPTION A — Update the PRD wording to "the fields listed in
-     immutableFieldHelper.ts" (no hardcoded count) and require the
-     unit test to check that ALL fields returned by `isImmutable()`
-     are stripped from the retry PATCH body. Any future addition to
-     the helper automatically gets tested. RECOMMENDED.
-
-  OPTION B — Fix just this instance (list all 6 names explicitly in
-     the PRD). Works today, but the PRD will go stale again the next
-     time someone adds a field.
-
-QUESTION: A or B?
-
-ANSWER: Option A
-
-----------------------------------------------------------------
-CONCERN #5 — BLOCKER — Where does the captured selfie live on the phone?
-                       (Needs a small storage upgrade)
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: When the face-capture fires on page 31, the photo
-should be saved to `onboardingDraft.faceSelfieUri`. This is the same
-"draft" that already holds the user's name, birthday, siblings, phone
-number, and photos.
-
-THE PROBLEM: There is no `faceSelfieUri` field in the draft today. I
-opened `src/features/onboarding/draftSchema.ts` and it lists every
-field the draft can hold — this one isn't there.
-
-Adding it means bumping the "schemaVersion" from 3 to 4. This is a
-routine housekeeping thing (phase 10 did the same bump when adding
-`phone_number`, going from v2 to v3). It also means:
-
-  - Any user who has an in-progress draft saved on their phone from an
-    older app version will have their draft DISCARDED on next app open.
-  - This is our documented pre-launch policy — safe because there are
-    no real users yet.
-  - Roughly 20-30 test fixtures across the codebase that construct a
-    fake draft will need `faceSelfieUri: null` added to them.
-
-ANALOGY: You're expanding the built-in filing cabinet in your app.
-Adding a new drawer means printing a new "cabinet layout v4" label,
-throwing away any half-filled cabinets that are still on the old v3
-label, and updating every test that builds a mock cabinet to include
-the new drawer.
-
-QUESTION: This is a mechanical fix and I'll just do it. I'm flagging
-it as a blocker only because it needs to be listed in the story's
-acceptance criteria (right now it isn't, which means a rigorous
-reviewer might reject the PR). Are you OK with me adding this to the
-acceptance criteria for story 11.2?
-
-ANSWER: Yes go ahead
-
-================================================================
-MEDIUM (input helpful, I can pick if you defer)
-================================================================
-
-----------------------------------------------------------------
-CONCERN #6 — MEDIUM — How exactly do we send the siblings to the backend?
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: The final submit sends the profile fields "plus
-siblings embedded" — meaning the array of sibling records goes inside
-the same PATCH request, not as a separate call.
-
-THE PROBLEM: Architecture §17.21 still flags this as [Open]. The mock
-backend accepts anything, so it doesn't matter for now — but we need
-to lock in:
-
-  (a) What KEY do we use? I'd propose `siblings`.
-  (b) What SHAPE does each sibling take? The draft currently uses
-      camelCase (`maritalStatus`, `sibling_age` — wait, actually
-      `age`) while the DB column is snake_case (`marital_status`,
-      `sibling_age`). Do we transform camelCase → snake_case at
-      submit time, or send camelCase and expect the backend to
-      accept it?
-
-I don't have a real backend to check against, so this is a judgement
-call.
-
-RECOMMENDATION: Key `siblings`. Transform to snake_case at submit time
-so the backend just sees column names it recognizes. This keeps the
-frontend draft ergonomic (camelCase is idiomatic JS/TS) while giving
-the backend a shape that matches its schema.
-
-ANSWER: accept recommendation
-
-----------------------------------------------------------------
-CONCERN #7 — MEDIUM — The plan doesn't say which draft fields go in
-                       the final submit and which are private
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: "Derive full PATCH body from `onboardingDraft.fields`
-plus siblings."
-
-THE PROBLEM: The draft holds fields that MUST NOT be sent to the
-backend. If we naively serialize the whole draft, we'll leak or crash.
-The list of things to EXCLUDE:
-
-  - `photoPreviewUris` — actual photo upload is deferred, backend
-    doesn't have a column for these device-local URIs.
-  - `faceSelfieUri` — same story, client-only for v1.
-  - `notificationPermissionStatus`, `locationPermissionStatus` —
-    client telemetry, not profile data.
-  - `phone_number` — needs verification: is this a real profile
-    column, or does it go through a separate SMS-OTP flow?
-  - `lastCheckpoint`, `currentPage`, `timestamps`, `schemaVersion` —
-    draft bookkeeping.
-
-ANALOGY: You're mailing your job application. Your draft folder
-contains the résumé, the cover letter, AND your grocery list, your
-tax return, and a note-to-self about lunch. If you just stuff the
-whole folder in the envelope, HR gets your grocery list. You need a
-checklist that says "put résumé + cover letter in envelope, leave
-everything else in the folder."
-
-RECOMMENDATION: Build a pure function called `buildPatchBody(draft,
-{ isRetry })` that has an explicit allowlist of the fields to
-include. Unit-test that (a) allowed fields are included, (b) client-
-only fields are excluded, (c) immutable fields are stripped on
-retry, (d) siblings array is embedded. Clean and testable.
-
-QUESTION: Accept recommendation? Also — is `phone_number` a profile
-column (goes in PATCH) or a separate flow (excluded)?
-
-ANSWER : go with the recommendation and yes phone_number is also going to be a column in the backend database
-you can see it in C:\Users\syede\Claude-Master\knotify-backend\db-schema.json
-
-----------------------------------------------------------------
-CONCERN #8 — MEDIUM — The "regenerate username on collision" logic
-                       described in the plan doesn't match reality
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: On page 31 submit, if the backend returns 409
-(meaning "someone else took that username"), regenerate "the trailing
-4-digit alphanumeric segment" and retry once.
-
-THE PROBLEM: The word "alphanumeric" is wrong. The existing username
-generator (`src/Helper/usernameHelper.ts`) creates usernames like
-"mariesmith4287" — the trailing bit is 4 DIGITS (0000..9999), not
-letters+numbers. Also, the current helper regenerates the WHOLE
-username (letters + suffix) — there is no "suffix-only" regen.
-
-Since the letters are deterministic (always derived from the first +
-last name the same way), calling `generateUsername(first, last)` a
-second time will produce the exact same letters with a new random
-4-digit suffix. Which is what we want.
-
-ANALOGY: The plan says "swap out the trailing 4-character alphanumeric
-license plate suffix." But actually, our license plates only have
-digits (not letters + digits) in that spot, and our license-plate
-machine only prints whole plates from scratch — there's no swap-just-
-the-suffix machine. Luckily, when we ask the machine to print a new
-plate with the same driver's name, we get the same letter part and
-just a new number, so the outcome is what we wanted anyway.
-
-RECOMMENDATION: Fix the wording in the PRD ("4-digit numeric suffix")
-and use `generateUsername(first, last)` for the retry. Trivial.
-
-ANSWER (accept / different approach): accept
-
-----------------------------------------------------------------
-CONCERN #9 — MEDIUM — Auto-capture logic can't be automatically tested
-                       as currently described
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: When the face has been inside the oval for 15
-frames in a row, auto-snap the photo.
-
-THE PROBLEM: There is no real camera inside the Jest test environment
-(the automated test runner). If the "count consecutive frames" logic
-lives inside the camera React component, we can't test it — the tests
-would need a mock stream of fake camera frames, which is fiddly and
-brittle.
-
-RECOMMENDATION: Split the "count consecutive detections" logic out
-into a pure function or a tiny state machine (like a mini reducer):
-inputs = a stream of true/false "face inside oval" events, output =
-"time to capture: yes/no". That we can test with plain JavaScript,
-no camera needed. The camera component just feeds events into this
-state machine.
-
-ANALOGY: Imagine you're building a coffee vending machine. If you
-put ALL the logic (how many coins, brew temperature, cup detection)
-inside one huge unit, testing means you need real coins, real water,
-and real cups every time. If you separate out the "count coins →
-decide if enough" bit into its own module, you can test THAT part
-with fake coin inputs — no plumbing required.
-
-QUESTION: Accept recommendation?
-
-ANSWER: accept
-
-----------------------------------------------------------------
-CONCERN #10 — MEDIUM — What happens if the user's face never enters the oval?
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: Nothing. The plan describes success. It does not
-describe the failure mode where the auto-detector never fires —
-because of bad lighting, camera angle, user wearing sunglasses,
-detector confused by beard/turban, whatever.
-
-THE PROBLEM: Without an escape hatch, the user is stuck on page 31
-staring at a black screen with an oval overlay, forever. This is a
-"critical path" screen — if they can't get past it, they can't finish
-signing up.
-
-OPTIONS:
-
-  OPTION A — Timeout with manual shutter fallback
-     - After N seconds (say 20-30) with no detection, show a manual
-       "shutter" button. User taps it, we save whatever's in the
-       viewfinder as their selfie.
-
-  OPTION B — Always show a manual shutter alongside auto-capture
-     - User can tap the shutter any time. Auto-capture still fires
-       if the detector likes what it sees, whichever happens first.
-     - More forgiving. Muzz and Bumble both do this.
-
-  OPTION C — Retry button only
-     - After a timeout, show "we couldn't detect your face — try
-       again" with a retry button that resets the frame counter. No
-       manual shutter.
-     - More strict, might frustrate people who just want to finish.
-
-  OPTION D — No timeout at all (current PRD behavior)
-     - User has to stand there until the detector fires. Or force-
-       kill the app. Not recommended.
-
-RECOMMENDATION: Option B. Auto-capture for the smooth path, always-
-available shutter as a safety net. Adds one small button but
-massively reduces "user stuck forever" risk.
-
-ANSWER (A / B / C / D): Option B
-
-----------------------------------------------------------------
-CONCERN #11 — MEDIUM — Camera permanently denied → user is permanently
-                        stuck on page 30
-----------------------------------------------------------------
-
-WHAT THE PLAN SAYS: On page 30, if the user hits "deny" on the
-camera permission dialog, they see "camera required to continue" and
-a retry button. If they hit deny with "don't ask again" (permanent
-deny), the plan says "keep Continue disabled" — i.e., the user is
-stuck.
-
-THE PROBLEM: In phase 10 (photo permission), we solved this exact
-problem differently — the user got a button that opens the phone's
-OS settings so they could turn the permission back on themselves
-(commit 48a13c3). Camera is the same class of problem, but worse:
-without camera permission, the user CAN'T finish signing up, ever.
-If they mis-tap once and hit "don't ask again", their only recovery
-today is to uninstall and reinstall the app.
-
-RECOMMENDATION: Same as phase 10. When permission is permanently
-denied, show "Open Settings" button that deep-links to the phone's
-settings page for our app. Uses `Linking.openSettings()` — trivial
-to add.
-
-ANSWER (mirror phase 10 / keep current strict behavior / other): okay mirror phase 10 but also show the user a message via 
-a modal or a toast message which tells them they need to allow camera permission
-
-================================================================
-LOW — heads-up, I'll handle these unless you object
-================================================================
-
-----------------------------------------------------------------
-CONCERN #12 — LOW — Jest needs to know how to fake the camera and
-                    face-detector packages
-----------------------------------------------------------------
-
-When we install the new native packages (`expo-camera` and whichever
-face-detector you pick), Jest tests will try to load them and crash —
-Jest runs in Node.js, not Android, so native modules don't work
-there. Standard fix: add `__mocks__/expo-camera.ts` and equivalent
-for the face-detector. Same pattern already used for other native
-modules in the project. I'll just do this.
-
-ACKNOWLEDGE (no answer needed, unless you want to comment):
-
-----------------------------------------------------------------
-CONCERN #13 — LOW — Where does the new `requestCameraPermission()`
-                    function live?
-----------------------------------------------------------------
-
-The convention in this project is one file (`src/services/permissions/
-index.ts`) exports one helper per permission — there's already
-`requestNotificationPermission()`, `requestLocationPermission()`, and
-`requestMediaLibraryPermission()`. I'll add `requestCameraPermission()`
-in the same file following the exact same pattern (returns 'granted' |
-'denied' | 'undetermined'). No decision needed.
-
-ACKNOWLEDGE (no answer needed, unless you want to comment):
-
-----------------------------------------------------------------
-CONCERN #14 — LOW — YES/NO backend casing still unvalidated (as before)
-----------------------------------------------------------------
-
-This one's been flagged since phase 7. Some draft fields are stored
-as the strings "YES" / "NO" (uppercase). We don't know if the real
-backend will accept that casing exactly, want "Yes"/"No", or reject
-unless it's "true"/"false". Since the backend is mock-only right now,
-the mock will accept anything, so it doesn't block phase 11. But when
-the real backend comes online, we'll need to verify. I'll add a
-follow-up TODO to the shipping checklist so it doesn't get lost.
-
-ACKNOWLEDGE (no answer needed, unless you want to comment):
-
-----------------------------------------------------------------
-CONCERN #15 — LOW — Add a "before shipping" bullet about tearing down
-                     the mock PATCH handler
-----------------------------------------------------------------
-
-`context.md` already has a "Before shipping" section that lists mock-
-mode teardown steps (removing `env.isMockAuth`, replacing dummy
-Cognito sentinel values, etc). When story 11.2 lands, it adds a mock
-PATCH `/profile/me` handler to `services/api/mocks/handlers.ts`. That
-needs to come out before we ship to real users. I'll add a bullet to
-the teardown list at story 11.2 completion so it's not forgotten.
-
-ACKNOWLEDGE (no answer needed, unless you want to comment):
-
-================================================================
-END OF QUESTIONS
-================================================================
-
-Once you've filled in the ANSWER lines for the blockers (and any
-medium ones you want to weigh in on), I'll update the PRD to reflect
-your decisions, then re-run /implement-phase 11 to proceed to the
-issue-creation step and start dispatching stories.
+================================================================================
+PHASE 12 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
+================================================================================
+
+Before I dispatch anyone to write phase-12 code, I re-read the PRD and cross-
+checked it against the actual codebase. I found 5 real problems (blockers)
+and 4 smaller ones (sharpen). Below is each one, written plainly, with an
+analogy where useful. At the end of each item I list the possible fixes so
+you can pick one — or write your own.
+
+Underlying vocabulary refresher (skip if you already know it):
+
+  - "PRD"        = the phase-12 plan file at
+                   implementationplan/phase-12-landing-profile.md
+  - "story"      = one numbered task inside that plan (12.1, 12.2, ... 12.6)
+  - "AC"         = "acceptance criteria" — the checklist inside each story
+                   that says "this story is done when X and Y and Z are true"
+  - "type"       = a TypeScript declaration that says "an object of this
+                   kind has field A of type string, field B of type
+                   number", etc. It's a contract the code enforces.
+  - "fixture"    = a fake data file we use during development instead of
+                   real backend data
+  - "component"  = a piece of the UI that renders itself (a button, a
+                   section, a card)
+
+
+================================================================================
+BLOCKER 1 — The dummy profiles have a "siblings" field but our profile
+            data structure doesn't allow it.
+================================================================================
+
+WHAT THE PRD ASSUMES
+--------------------
+Story 12.1 says: "create dummyfemale.json with two siblings in it, and
+dummyprofile.json with an empty siblings list". Story 12.2 says: "the
+SiblingsSection component reads `profile.siblings[]` and renders one card
+per sibling."
+
+WHAT THE CODE ACTUALLY SAYS
+---------------------------
+Our master definition of what a user profile IS lives in
+`src/types/api/UserProfile.ts`. Think of it as the official passport
+template for user data — every field the backend can hand us is listed
+there. That file does NOT have a `siblings` field. It has first_name,
+last_name, religion, city, job_title, etc., but no siblings.
+
+Siblings only exist inside the ONBOARDING draft (the temporary scratchpad
+during registration). Once registration is done, siblings currently vanish
+from the user profile shape — the real backend column for siblings does
+not exist yet.
+
+ANALOGY
+-------
+Imagine you're filling out an insurance form. There's a section on the form
+called "spouse". Halfway through you write down your spouse's name, but
+when the clerk copies your form into the official filing cabinet, that
+filing cabinet's folder-template has no "spouse" slot. So it gets lost —
+or worse, the whole form gets rejected because it has an extra field the
+template doesn't allow.
+
+That's what happens here. The dummy JSON has `siblings: [...]` but the
+TypeScript type says "no such thing as siblings on a user profile". The
+compiler will complain, the test will fail, and the SiblingsSection
+component will not compile because `profile.siblings` isn't a legal
+expression.
+
+WHY THIS MATTERS
+----------------
+Story 12.2 requires a SiblingsSection component that reads `siblings[]`
+and a test that asserts "the female fixture has 2 siblings and the own-
+profile fixture has 0 siblings". If we can't legally put siblings on the
+profile object, none of that works.
+
+FIX OPTIONS
+-----------
+  (A) Add an optional `siblings` field to the two "dummy" types the PRD is
+      already creating (DummyFemaleProfile and DummyOwnProfile). This is
+      the smallest change and matches what the PRD is already trying to
+      do — the PRD just forgot to list this field alongside `photos` and
+      `faceSelfieUri`. The fixture files stay as-is; only the type files
+      need one extra line.
+
+      Cost: tiny. Downside: none — we always knew siblings was a
+      client-side concern for now.
+
+  (B) Add `siblings` to the real UserProfile type. Bigger change; assumes
+      the backend WILL add a siblings column. Overreaches into future
+      backend scope.
+
+  (C) Remove siblings from the phase entirely. Drop SiblingsSection. Wait
+      until the backend supports it.
+
+  RECOMMENDATION: (A). It's what the PRD meant to say and forgot.
+  ANSWER: A, but eventually we will add siblings too because in the backend the siblings is another table
+  where the primary key is the user id
+
+
+
+
+================================================================================
+BLOCKER 2 — Story 12.4 calls a function `showSnackbar()` that doesn't
+            exist in our codebase.
+================================================================================
+
+WHAT THE PRD ASSUMES
+--------------------
+Story 12.4 says: "each of the four round action buttons (X / undo / star /
+✓) has an onPress that calls `showSnackbar(t('landing.actionUnavailable'))`."
+And the test says "assert that the showSnackbar mock was called".
+
+WHAT THE CODE ACTUALLY SAYS
+---------------------------
+We have a Snackbar COMPONENT (`src/components/Snackbar.tsx`). But it's not
+a function you can call from anywhere. It's a React component you have to
+render, and you have to give it a `visible` prop (true/false) and a
+`onDismiss` handler.
+
+Look at how the existing code uses it (Page25PersonalityTraitsScreen for
+example): the screen keeps a local piece of state called
+`isSnackbarVisible`. When something happens, it sets that to true.
+Somewhere in the JSX, `<Snackbar visible={isSnackbarVisible} ... />` is
+rendered. When the user dismisses it, the state flips to false.
+
+There is NO global `showSnackbar("hello")` helper anywhere in the codebase.
+There is no SnackbarProvider or context that would let you call it from
+outside a component.
+
+ANALOGY
+-------
+It's like the PRD says "press the buzzer at the front desk." But there is
+no buzzer. There's a bell you have to hold in your hand and ring yourself,
+and there's no central switchboard.
+
+To make `showSnackbar()` work, someone would have to first build the
+buzzer + switchboard (a global provider + hook) — which is a real,
+cross-cutting piece of infrastructure, not something to slip into a
+landing-screen story.
+
+WHY THIS MATTERS
+----------------
+As written, story 12.4 either (a) silently expands scope into "build a
+global Snackbar provider from scratch" without saying so — which is a
+sizeable side-quest and touches every screen going forward — or (b) the
+subagent writes code that references a function that doesn't exist and
+the whole story fails to compile.
+
+FIX OPTIONS
+-----------
+  (A) Use the local-state Snackbar pattern already used elsewhere. Rewrite
+      story 12.4's AC to say: "MarriageLandingScreen holds a local
+      `snackbar: string | null` state. Each action button setter sets it
+      to `t('landing.actionUnavailable')`. A <Snackbar visible={...}> is
+      rendered at the screen root, showing the current message. Test
+      asserts the toast text appears after pressing the ✓ button." No new
+      infrastructure, matches the pattern Page25 and Page30 already use.
+
+      Cost: tiny. Downside: none.
+
+  (B) Split "add global Snackbar provider" into its own story (probably
+      needs a small utility phase later or a story 12.0). Then 12.4 can
+      call `showSnackbar()`. This is the "right" long-term architecture
+      but is more work and drags in a cross-cutting concern this phase
+      shouldn't own.
+
+  (C) Leave story 12.4 as-is and let the subagent invent something.
+      Guaranteed rework — DO NOT PICK THIS.
+
+  RECOMMENDATION: (A). Matches existing convention, zero scope creep.
+
+  ANSWER: Option A
+  
+
+
+================================================================================
+BLOCKER 3 — Story 12.4 references a Jest mock that doesn't exist.
+================================================================================
+
+WHAT THE PRD ASSUMES
+--------------------
+Story 12.4 says: "Animation is NOT tested (Reanimated worklets are mocked
+to no-op per the existing `__mocks__/react-native-reanimated` setup)."
+
+WHAT THE CODE ACTUALLY SAYS
+---------------------------
+The `__mocks__/` folder contains mocks for three libraries:
+react-native-vision-camera, react-native-vision-camera-face-detector, and
+react-native-worklets-core. There is NO
+`__mocks__/react-native-reanimated` file. Nothing anywhere sets up a
+Reanimated mock.
+
+Reanimated is the library that powers the smooth slide-up / slide-down
+animation of the bottom action bar. It runs animations on a separate
+"worklet" thread that Jest (the test runner) can't handle without a mock.
+
+ANALOGY
+-------
+Imagine the PRD says "the crash-test dummy is already sitting in the
+driver's seat, ready for the safety test." But when you open the car
+door, there's no dummy. You can't run the safety test without one, and
+if you press the button anyway, the entire car goes into an error state.
+
+WHY THIS MATTERS
+----------------
+The moment a test imports MarriageLandingScreen (which is required by
+story 12.4's screen wiring test), Jest also loads the CollapsingActionBar
+which imports Reanimated. Without the mock, the test either crashes with
+a cryptic error or floods the terminal with worklet warnings that make
+the CI output unreadable. Either way the phase can't be signed off
+because the test suite goes red.
+
+FIX OPTIONS
+-----------
+  (A) Add a one-liner to jest.setup.ts (or wherever Jest's global setup
+      lives):
+        `jest.mock('react-native-reanimated', () =>
+          require('react-native-reanimated/mock'));`
+      Reanimated ships an official mock. This is the standard idiom.
+      Add this to story 12.4's AC.
+
+      Cost: one line. Downside: none.
+
+  (B) Skip the screen wiring test that mounts MarriageLandingScreen and
+      only test the sub-components (HeaderBar, etc.) directly. Weaker
+      test coverage but works around the mock issue.
+
+  RECOMMENDATION: (A). Standard practice, no downside.
+  ANSWER: Option A
+
+
+================================================================================
+BLOCKER 4 — Story 12.4 creates a `CandidateHero` component that
+            duplicates the `HeroBlock` component from story 12.2.
+================================================================================
+
+WHAT THE PRD ASSUMES
+--------------------
+Story 12.2 creates HeroBlock inside `src/features/profile-sections/`. It
+knows about two variants — 'other' (for viewing a candidate) and 'self'
+(for viewing your own profile). When variant is 'other', it renders the
+big full-bleed photo, the Active-today / Gold overlay bubbles, and the
+name / age / country-flag / job-title chip strip. This is exactly the
+landing page hero.
+
+Story 12.4 THEN creates a SECOND component in a different folder called
+CandidateHero. It's described as "full-bleed hero image (first photo),
+the two overlay bubbles ("Active today" / "Gold" — guarded), and the
+name / age / green-tick / city-and-country / country-flag / profession
+chip strip beneath." That is word-for-word what HeroBlock('other') does.
+The story then says "delegates to HeroBlock in the section catalog for
+the actual chip strip", which reveals the confusion — CandidateHero
+would just wrap HeroBlock and add nothing.
+
+MEANWHILE — MarriageLandingScreen (also in 12.4) uses
+`<ProfileScrollView profile={dummyfemale} viewer="other" />` — and
+ProfileScrollView already renders HeroBlock at the top of its scroll.
+
+So there are two possibilities:
+  (i)  MarriageLandingScreen renders BOTH `<CandidateHero />` AND
+       `<ProfileScrollView>` — the hero image appears twice on the page.
+  (ii) MarriageLandingScreen only uses one of them and the other is dead
+       code no one imports.
+
+ANALOGY
+-------
+It's like a wedding invitation with two identical envelopes stacked
+together. Either the guest sees two invitations (confusing) or one of
+the envelopes was extra material the designer never intended to hand out.
+Neither is what we wanted.
+
+WHY THIS MATTERS
+----------------
+If the subagent picks interpretation (i), the landing page has a visual
+bug (double hero). If (ii), we've paid to build something that ships
+dead-on-arrival. Either way we look sloppy.
+
+FIX OPTIONS
+-----------
+  (A) Delete CandidateHero from story 12.4 entirely. HeroBlock inside
+      ProfileScrollView already handles the landing hero in the 'other'
+      variant. MarriageLandingScreen composes exactly three things:
+      HeaderBar + ProfileScrollView + CollapsingActionBar. Cleaner.
+
+      Cost: shrink story 12.4. Downside: none.
+
+  (B) Keep CandidateHero and remove HeroBlock's 'other' variant. Split
+      the responsibility differently. More work, no real benefit.
+
+  RECOMMENDATION: (A). Delete the duplicate.
+  ANSWER: Option B
+
+
+================================================================================
+BLOCKER 5 — Story 12.4's "row 2 = bottom tab bar navigation" is
+            ambiguous. Two possible implementations, only one is right.
+================================================================================
+
+WHAT THE PRD ASSUMES
+--------------------
+Story 12.4 describes CollapsingActionBar as "bottom overlay with two rows:
+row 1 = four round action buttons (X / undo / star / ✓); row 2 = the
+bottom tab bar navigation. Only row 2 collapses on scroll."
+
+WHAT THE CODE ACTUALLY SAYS
+---------------------------
+React Navigation already provides the bottom tab bar via `AppTabs.tsx`
+(the thing story 12.6 renames to Marriage/Explore/Chat/Menu). It renders
+at the bottom of every tab-hosted screen automatically. It is NOT part of
+any individual screen — it belongs to the navigator.
+
+The PRD says row 2 IS the tab bar. Two ways to read that:
+
+  Interpretation (i) — Hide the native tab bar entirely, then draw a
+  custom lookalike inside the screen as row 2 of CollapsingActionBar.
+  Then when we scroll down, the custom row-2 slides away. Downside: we
+  now maintain two tab-bar implementations, and switching tabs from the
+  landing screen becomes non-trivial (we'd have to wire the custom
+  row-2 buttons to React Navigation manually).
+
+  Interpretation (ii) — The native tab bar STAYS. CollapsingActionBar is
+  just the four action buttons (row 1). When we scroll down, we animate
+  the native tab bar itself (via React Navigation's `tabBarStyle` +
+  Reanimated). This is the standard idiom and doesn't require any
+  custom tab-bar code.
+
+ANALOGY
+-------
+It's like the PRD says "put a second steering wheel in the passenger
+seat". Do you (i) rip out the driver's wheel and put both new wheels in?
+Or (ii) leave the real wheel where it is and treat the "passenger wheel"
+as decoration? The PRD doesn't say, and the two answers lead to very
+different builds.
+
+WHY THIS MATTERS
+----------------
+The subagent could go either way. Interpretation (i) is a much bigger
+job and probably wrong (React Navigation's tab bar is battle-tested; we
+shouldn't reinvent it). Interpretation (ii) is easy and idiomatic.
+
+FIX OPTIONS
+-----------
+  (A) Rewrite the AC to explicitly say: "CollapsingActionBar contains
+      ONLY the four round action buttons (row 1). The bottom tab bar is
+      the native React Navigation tab bar. When MarriageLandingScreen
+      detects a downward scroll (>8px delta), it animates the native
+      tab bar via `screenOptions.tabBarStyle` — translateY = tabBarHeight
+      / opacity = 0. On upward scroll, it animates back. Reanimated
+      shared value + useAnimatedStyle handles this."
+
+      Cost: rewrite one AC. Downside: none — this is the standard idiom.
+
+  (B) Rewrite the AC to say "build a custom bottom tab bar inside
+      CollapsingActionBar, hide the native one via
+      `tabBarStyle: { display: 'none' }`, wire tab switches manually via
+      `useNavigation`". More work, more risk, replaces something proven
+      with something new.
+
+  RECOMMENDATION: (A). Standard idiom, keeps React Navigation in charge.
+  ANSWER: Option A
+
+
+================================================================================
+SHARPEN 6 — Story 12.6 says "update auth-gate.test.tsx" but two test
+            files reference the old labels, not just one.
+================================================================================
+
+The PRD singles out `__tests__/navigation/auth-gate.test.tsx` for update.
+But `__tests__/navigation/AppTabs.test.tsx` also asserts on
+`nav.tabs.discover`. There's a general catch-all AC that says "any test
+referencing the old labels is updated in-place", so it's covered in
+spirit — but naming only one file makes it easy for a subagent to miss
+the other.
+
+FIX OPTIONS
+-----------
+  (A) Add AppTabs.test.tsx to the story's explicit update list.
+  (B) Leave as-is and rely on the grep-verify AC ("Grep confirms zero
+      remaining references after the rename").
+
+  RECOMMENDATION: (A). Naming it explicitly costs nothing and prevents
+  a preventable miss.
+  ANSWER: Option A
+
+
+================================================================================
+SHARPEN 7 — Story 12.1 doesn't pin the literal name / city / age values
+            that later stories' tests assert against.
+================================================================================
+
+Story 12.5's test says "assert `dummyprofile.first_name + " " + last_name`
+is visible" and mentions "Adnan Malik" in the prose. But story 12.1
+nowhere pins first_name = "Adnan" and last_name = "Malik". Same for
+dummyfemale's name / age / city — story 12.4's test references them but
+story 12.1 doesn't set them.
+
+Not a hard failure (the subagent can invent values), but if 12.1's
+subagent and 12.4's / 12.5's subagents don't agree, the tests fail.
+
+FIX OPTIONS
+-----------
+  (A) Add explicit literal values to story 12.1's AC, e.g.
+      "dummyprofile.first_name = 'Adnan', last_name = 'Malik', age = 29,
+      current_residence_city = 'Mannheim', current_residence_country =
+      'Germany', job_title = <TBD>. dummyfemale similarly pinned:
+      first_name = <TBD>, age = <TBD>, city = <TBD>."
+  (B) Leave as-is and let stories 12.4 / 12.5 discover the values via
+      "whatever the fixture has, we assert on that".
+
+  RECOMMENDATION: (A) with your input — please pick names / cities / ages
+  you want. You could also reference specific Muzz screenshots in
+  QA/muzzscreenshots and I can lift literal values from there.
+  ANSWER: Option A
+
+
+================================================================================
+SHARPEN 8 — Story 12.1 leaves `preferences.personalityTraits` as
+            "unknown", which forces every reader to cast.
+================================================================================
+
+Our UserProfile type defines `preferences: Record<string, unknown> | null`
+— which means TypeScript sees it as "some object I know nothing about".
+Every place that reads `preferences.personalityTraits` has to cast it,
+like: `(prefs as { personalityTraits: string[] }).personalityTraits`.
+
+The existing Page25 screen already does this. Story 12.2's
+PersonalitySection would have to do it again. Casts spread bugs — if the
+shape ever changes, only the cast site knows about it.
+
+FIX OPTIONS
+-----------
+  (A) Narrow `preferences` in DummyFemaleProfile / DummyOwnProfile to a
+      typed shape:
+        `preferences: { personalityTraits?: string[] } &
+                       Record<string, unknown> | null;`
+      Then PersonalitySection reads `.personalityTraits` with no cast.
+
+  (B) Leave as-is. Small nuisance, not a blocker.
+
+  RECOMMENDATION: (A). Tiny typing addition, cleaner reads.
+  ANSWER: Option A
+
+
+================================================================================
+SHARPEN 9 — Story 12.5 invents `ProfileThumbnailCircle` when `Avatar`
+            already exists.
+================================================================================
+
+We already have `src/components/Avatar.tsx`. Story 12.5 introduces
+`ProfileThumbnailCircle` as a whole new avatar primitive. The only new
+capability it needs is "optionally show a small edit-pencil dot in the
+corner." Better to compose:
+
+  ProfileThumbnailCircle = <Avatar> + optional <PencilDot />
+
+FIX OPTIONS
+-----------
+  (A) Reword 12.5's AC: "ProfileThumbnailCircle wraps the existing
+      Avatar component and layers an optional edit-pencil dot overlay."
+  (B) Leave as-is. Not a bug, just duplication.
+
+  RECOMMENDATION: (A). Reuse over reinvent.
+  ANSWER: Option A
+
+
+================================================================================
+SHARPEN 10 — Story 12.5 uses contradictory wording.
+================================================================================
+
+Story 12.5 says: "Edit pill — Edit press is a no-op that navigates to
+MyProfileScreen (Edit tab)."
+
+A press that navigates is NOT a no-op. The intended meaning is: "the Edit
+TAB (inside MyProfileScreen) currently does nothing except render a
+'Coming soon' EmptyState. The Edit PILL button, however, does navigate
+to that tab." A subagent could easily misread this as "on press, do
+nothing".
+
+FIX OPTIONS
+-----------
+  (A) Rewrite: "Edit pill — press navigates to MyProfileScreen with
+      { initialTab: 'edit' }. The Edit tab itself renders a 'Coming
+      soon' EmptyState and does not mutate profile state."
+  (B) Leave as-is.
+
+  RECOMMENDATION: (A). Clarity is free.
+  ANSWER: Option A
+
+
+================================================================================
+SUMMARY / DECISION TIME
+================================================================================
+
+Blockers to decide on:
+  1. Siblings type gap        → pick A / B / C
+  2. showSnackbar()            → pick A / B / (not C)
+  3. Reanimated mock           → pick A / B
+  4. CandidateHero duplication → pick A / B
+  5. CollapsingActionBar row-2 → pick A / B
+
+Sharpen items:
+  6. Also list AppTabs.test.tsx in 12.6 → yes / no
+  7. Pin literal fixture values in 12.1 → yes (need your input on values)
+                                          / no
+  8. Narrow preferences.personalityTraits type → yes / no
+  9. Compose Avatar in ProfileThumbnailCircle instead of new primitive
+     → yes / no
+ 10. Fix contradictory Edit-pill wording → yes / no
+
+Once you tell me what to pick for each, I will edit
+implementationplan/phase-12-landing-profile.md directly, then you re-run
+`/implement-phase 12` and we proceed.

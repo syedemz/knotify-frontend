@@ -35,4 +35,6 @@ npm-debug.log*
 # Editor
 .vscode/
 .idea/
+QA/*
+muzzscreenshots/*
 
