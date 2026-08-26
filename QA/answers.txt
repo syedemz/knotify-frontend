@@ -1,361 +1,523 @@
-PHASE 4 — RELIGION + WORK (pages 9-11) — CONCERNS FROM THE BRAINSTORM
-========================================================================
-
-These are the issues the audit found in the Phase 4 plan (PRD). For each
-issue, I explain what the problem actually is in plain language, why it
-matters, and what the choices are for fixing it.
-
-Once you've read through them, tell me your choice for each and I'll
-update the PRD accordingly.
-
-------------------------------------------------------------------------
-ISSUE 1 — Screen name mismatch (BLOCKER)
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  Story 4.1 tells the developer to build a screen called
-  "Page09ReligionScreen".
-
-WHAT THE CODE ALREADY HAS:
-  When Phase 2 built the navigation skeleton, it registered a placeholder
-  called "Page09ReligionSubsectScreen" (note the extra word "Subsect").
-
-WHY THIS MATTERS:
-  Think of the app's navigation like a hotel. Every screen has a room
-  number that the front desk uses to send guests to the right room.
-  Right now, the front desk (navigation) has "Room 9 = Religion+Subsect"
-  written on its map. If the developer builds a room called "Religion"
-  (without "Subsect"), they have essentially built a new, unlisted room.
-  The front desk will keep sending guests to the old, empty placeholder
-  room, and the new room will sit unused. Or worse, the developer will
-  add a second entry to the map, and now you have TWO rooms both trying
-  to be page 9 — a duplicate.
-
-  This is a naming drift bug. It's easy to fix but guarantees a broken
-  wire-up if we don't catch it now.
-
-YOUR CHOICES:
-  A) Change the PRD to say "Page09ReligionSubsectScreen" (matches
-     existing code — recommended).
-  B) Change the code to rename the placeholder to "Page09ReligionScreen"
-     (extra work in the navigator, no upside).
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 2 — Contradiction: "immutable" vs. "can be changed" (story 4.1)
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS (two lines, both in story 4.1):
-  Line A: "If the user picks Islam + subsect, then goes back and picks
-           Christianity, the subsect must reset to 'Not Applicable'
-           before advancing."
-  Line B: "Both religion and subsect are treated as immutable-after-set
-           in the draft."
-
-WHY THESE CONTRADICT:
-  "Immutable" means "cannot be changed once set."
-  "Reset after back-nav" means "can be changed after set."
-
-  You can't have both. It's like saying "this door is permanently locked"
-  in one paragraph, and "when you come back through this door, unlock it
-  first" in the next.
-
-BACKGROUND ON WHY THE CODE CURRENTLY DOES SOMETHING SUBTLE:
-  Phase 3 already added a helper called `isImmutable()`. Right now,
-  religion and subsect are in that helper's "immutable list."
-  BUT — and this is the important part — that list is NOT used to lock
-  the draft. It is only consulted at the very end (Phase 11) when
-  building the PATCH request to the server. At that point, if a field
-  is "immutable," Phase 11 will refuse to send it to the server (because
-  the server itself locks the field after the first save).
-
-  In other words: the DRAFT (the in-memory form the user is filling out)
-  is fully editable. The SERVER is where fields become frozen. The two
-  live in different places.
-
-WHY THIS MATTERS:
-  If we don't clarify the plan, the developer might interpret "immutable
-  in the draft" literally and add a lock that prevents back-navigation
-  from editing religion. That would break the reset-to-Not-Applicable
-  bullet. Or they might do the opposite. Either way, whichever they
-  pick, half the acceptance criteria will fail their own test.
-
-YOUR CHOICES:
-  A) DRAFT-EDITABLE, SERVER-LOCKED (recommended, matches Phase 11 plan).
-     Reword line B to: "religion + subsect participate in isImmutable()
-     metadata used by Phase 11's PATCH-builder — no in-draft enforcement
-     in Phase 4." Draft can be freely edited during onboarding.
-
-  B) DRAFT-LOCKED. Delete the reset-after-back-nav bullet (line A) AND
-     block back-navigation to page 9 once the user has moved past it.
-     This is stricter but breaks the "user can review and edit their
-     answers" pattern the wizard establishes elsewhere.
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 3 — Missing "where does the user go next?"
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  Story 4.1: "auto-advances" (to where? not stated)
-  Story 4.2: "auto-advances" (to where? not stated)
-  Story 4.3: correctly states "advance to Page12EducationLevelScreen"
-
-WHY THIS MATTERS:
-  Imagine giving a taxi driver the instruction "drive forward" without
-  saying to which address. They'll pick a direction, and it might not
-  be the one you meant. The developer will guess, and probably guess
-  right (Page 9 → Page 10 → Page 11 is the obvious flow), but "probably"
-  isn't good enough for acceptance criteria that need to be testable.
-
-  A test needs a concrete expectation: "after tap, navigation.navigate
-  was called with 'Page10ProfessionalCategoryScreen'." Vague acceptance
-  criteria produce vague tests.
-
-YOUR CHOICES:
-  A) Fill in the blanks in the PRD (recommended):
-       Story 4.1 → advances to Page10ProfessionalCategoryScreen
-       Story 4.2 → advances to Page11WorkDetailsScreen
-  B) Leave as-is, trust the developer to infer from context.4
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 4 — Character rules reject real-world names (story 4.3)
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  For job title and employer name, allow only these characters:
-  letters, digits, spaces, hyphen (-), period (.), comma (,).
-
-WHY THIS IS TOO STRICT:
-  A lot of real employers and job titles use characters this rule
-  rejects. Examples of what would be blocked:
-
-    - "P&G"                (rejected — & not allowed)
-    - "Johnson & Johnson"  (rejected — & not allowed)
-    - "Macy's"             (rejected — ' not allowed)
-    - "O'Reilly Media"     (rejected — ' not allowed)
-    - "AT&T"               (rejected — & not allowed)
-
-  These are all legitimate employer names. If a user tries to type any
-  of them, they'll hit a validation error and be unable to proceed.
-
-  Note that Phase 3's `isValidName()` already allows apostrophes
-  (needed for names like "O'Brien"). Being stricter on employer names
-  than on person names doesn't make sense.
-
-YOUR CHOICES:
-  A) Add both & and ' to the allowed set (recommended, matches reality).
-     Final rule: letters, digits, spaces, - . , & '
-  B) Keep the rule as-is (users with those employers will be blocked).
-  C) Loosen further to "any printable character" (fewer bugs, less
-     protection against garbage input).
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 5 — Length limits aren't tied to the database
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  job_title max 40 characters
-  employer_name max 50 characters
-  office_address max 150 characters
-
-WHY THIS MATTERS:
-  These numbers came from somewhere, but the PRD doesn't say where.
-  There's a file in the backend called `db-schema.json` that defines
-  the "real" limits — how many characters each column in the database
-  can actually hold.
-
-  Think of it like a bucket. The database bucket might hold exactly
-  50 characters for `employer_name`. If our form limits to 40, we're
-  under-using the bucket (annoying for users with long employer names
-  but harmless). If our form limits to 60, users will type 60 chars,
-  hit Submit, and the database will reject or silently truncate the
-  extra 10 characters — a bad-data bug.
-
-  We need to confirm the numbers in the PRD (40, 50, 150) actually
-  match the database schema. If they don't, we ship a subtle data
-  corruption bug.
-
-YOUR CHOICES:
-  A) Have the developer verify against `knotify-backend/db-schema.json`
-     during implementation and adjust if there's a mismatch
-     (recommended — trivial to do, catches the bug).
-  B) Trust the PRD numbers as-is (may ship a bug if wrong).
-  C) You look up the db-schema numbers now and tell me what they are;
-     I'll bake them into the PRD.
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 6 — Users won't know WHY the Continue button is disabled (4.3)
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  Page 11 has 5 fields. "Continue is disabled until all five fields
-  validate."
-
-WHY THIS ISN'T ENOUGH:
-  Disabling a button tells the user "you can't proceed yet" but doesn't
-  tell them "here's what's wrong."
-
-  Imagine an ATM that says "TRANSACTION DENIED" without saying why —
-  insufficient funds? Wrong PIN? Card expired? You'd tap around
-  helplessly. Same thing here: user fills 4 fields, 5th field has a
-  typo they can't see, Continue is grey, user is stuck.
-
-  Page 2 (email/password) already established a pattern: each field
-  shows its own inline error message ("password too short", "not a
-  valid email", etc.). Page 11 should follow that pattern for
-  consistency.
-
-YOUR CHOICES:
-  A) Require inline per-field error messages (recommended, matches
-     Page 2 pattern). Each field shows its own error label.
-  B) Just disable Continue and let the user figure it out (bad UX).
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 7 — Test doesn't catch changes to the options list (story 4.2)
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  "Renders all 27 entries." The test checks the count is 27.
-
-WHY THIS IS BRITTLE:
-  The 27 entries come from a JSON file (`professionalCategory.json`).
-  If someone adds a 28th profession later, the file grows to 28 entries
-  BUT the test still expects 27. The test will fail — not because the
-  code is broken, but because the test was hard-coded to yesterday's
-  count.
-
-  It's like writing "there are 50 US states" into every test in your
-  codebase, then having to update all of them when a 51st state is
-  added. Better to write "however many states there are, that's the
-  right count."
-
-  Fix: instead of `expect(items).toHaveLength(27)`, write
-  `expect(items).toHaveLength(options.professionalCategory.length)`.
-  The test now says "however many entries are in the options file,
-  the screen should render exactly that many." Adding a new option
-  doesn't break the test.
-
-YOUR CHOICES:
-  A) Test against `options.professionalCategory.length` (recommended,
-     future-proof).
-  B) Keep hardcoded 27 (works today, breaks the day someone edits
-     the JSON).
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 8 — Two behaviors on Page 9 aren't specified
-------------------------------------------------------------------------
-
-WHAT THE PLAN COVERS:
-  - Islam + subsect happy path
-  - Non-Islam auto-advance
-  - Back-nav from Islam+subsect to Christianity (subsect resets)
-  - Forward re-select same religion
-
-WHAT'S NOT COVERED:
-  1. If the user picks Islam, then picks Islam AGAIN (tapping the same
-     row twice) — what happens? Nothing (no-op)? Reset the subsect?
-     Assume no-op is fine but should be explicit.
-  2. If the user has picked Islam + Sunni, then in the SAME session
-     (no back-nav, just tapping a different religion row on the same
-     screen) picks Christianity — should subsect clear? The plan only
-     covers the back-nav case; this is the forward case.
-
-WHY THIS MATTERS:
-  Undefined behavior means the developer makes a call, and that call
-  might not match what you'd want. Then a QA session finds it and
-  we're back here.
-
-YOUR CHOICES:
-  A) Add both to the plan: same-religion re-tap is a no-op;
-     different-religion-tap-on-same-screen clears subsect and (if
-     non-Islam) triggers auto-advance (recommended, complete spec).
-  B) Leave to developer discretion.
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 9 — Back-navigation on Page 10 (professional category)
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  Nothing about back-nav. Just "tap writes and auto-advances."
-
-WHY THIS MATTERS:
-  `professional_category` is NOT one of the fields the server treats
-  as immutable (checked against `immutableFieldHelper.ts` — only
-  sex, first_name, last_name, birthday, religion, subsect are locked
-  server-side). So the user CAN come back to page 10 and change their
-  answer.
-
-  The behavior should be: tapping a different category on back-nav
-  overwrites the previous choice in the draft, then auto-advances
-  as before. Trivial to implement, but not stated.
-
-YOUR CHOICES:
-  A) Add a bullet: "On back-nav, tapping a different row overwrites
-     professional_category in the draft" (recommended).
-  B) Leave unstated.
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 10 — Localization gap (Urdu display of options)
-------------------------------------------------------------------------
-
-WHAT'S HAPPENING:
-  The options for religion, subsect, professional category, etc. live
-  as raw English strings in JSON files. When the user switches the app
-  to Urdu, the tile labels stay in English.
-
-  This matches the architecture's design (§5.3 says options are the
-  literal DB values). But Phase 4 doesn't call it out — a user on
-  the Urdu locale will see:
-       [ اسلام ]  ← screen title in Urdu
-       [ Islam ]  ← tile label still in English
-       [ Christianity ]
-       [ Hinduism ]
-
-WHY THIS MATTERS:
-  It's not a bug per se — it's a deliberate design choice. But if you
-  weren't aware, you'd flag it as broken later. Better to confirm the
-  stance now.
-
-YOUR CHOICES:
-  A) Intentional — options display in English regardless of locale.
-     Ship as-is (matches architecture).
-  B) Add Urdu translations for each option value (parallel maps like
-     labels.ur.json). More work; deferred to a later phase.
-
-ANSWER: Option A
-
-------------------------------------------------------------------------
-ISSUE 11 — Import path clarity
-------------------------------------------------------------------------
-
-WHAT THE PLAN SAYS:
-  "reads options.religion" — but doesn't say where `options` lives.
-
-WHY THIS MATTERS:
-  A developer new to the codebase might guess `@/labels/options` or
-  `@/state/options`. The actual path is `@/config/options`. It's a
-  tiny detail but saves 5 minutes of grep.
-
-YOUR CHOICES:
-  A) Add the import path to the PRD (recommended).
-  B) Leave — the developer will find it easily enough.
-
-ANSWER: option A
+================================================================================
+PHASE 13 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
+================================================================================
+
+Before I dispatch anyone to write phase-13 code, I re-read the PRD and cross-
+checked it against the actual code we already shipped in phases 11 and 12.
+I found 2 real problems (blockers), 5 medium-sized things worth locking down
+before coding (sharpen), and 4 small notes. Each one below is written plainly,
+with an analogy where useful. At the end of each item I list the possible
+fixes so you can pick one — or write your own.
+
+Underlying vocabulary refresher (skip if you already know it):
+
+  - "PRD"        = the phase-13 plan file at
+                   implementationplan/phase-13-discover.md
+  - "story"      = one numbered task inside that plan (13.1, 13.2, ... 13.5)
+  - "AC"         = "acceptance criteria" — the checklist inside each story
+                   that says "this story is done when X and Y and Z are true"
+  - "type"       = a TypeScript declaration that says "an object of this
+                   kind has field A of type string, field B of type number",
+                   etc. It's a contract the code enforces at compile time.
+  - "fixture"    = a fake data file we use during development instead of
+                   real backend data (e.g. dummyfemale.json)
+  - "component"  = a piece of the UI that renders itself (a button, a
+                   section, a card)
+  - "provider"   = a React context that holds shared state (e.g. who is
+                   logged in). Any screen in the app can "read from" a
+                   provider.
+  - "deck"       = the stack of candidate profile cards a user swipes
+                   through on the Marriage tab. Same idea as Tinder's
+                   card stack.
+  - "friend"     = a user the current user has already accepted into their
+                   circle. Only friends see each other's full profile.
+  - "pending request" = another user has asked to be your friend and you
+                   haven't accepted or declined yet.
+  - "guard"      = a small check at the top of a screen that says "should
+                   this screen be visible right now?" and short-circuits
+                   to an EmptyState if not.
+
+
+================================================================================
+BLOCKER 1 — The Accept button on OtherProfileScreen will paint the wrong
+            screen over its own success toast.
+================================================================================
+
+WHAT THE PRD SAYS (story 13.4)
+
+When the current user is viewing Qurat's profile (because Qurat sent them a
+friend request), there's an Accept button at the top of the screen. Tapping
+Accept does three things, in order:
+
+  (1) Call acceptRequest(qurat_id) on the FriendshipProvider — this
+      immediately (a) removes Qurat from the "pending requests" list
+      and (b) adds her to the "friends" list.
+  (2) Show a snackbar (a small toast at the bottom) that says "Friend
+      added".
+  (3) Wait 1500 ms, then call navigation.goBack().
+
+Separately, at the top of the same screen, there is a "guard" that says:
+
+  "If source='request' AND the current user does NOT have a pending
+   request from this user, hide the profile and show a 'Not authorized'
+   EmptyState instead."
+
+That guard exists to prevent someone from typing a random user ID into a
+deep link and seeing a profile they shouldn't see.
+
+WHY IT'S A PROBLEM
+
+Step (1) *immediately* flips the FriendshipProvider state — Qurat is no
+longer a pending request; she's now a friend. React re-renders the screen.
+The guard runs again. And the guard now says: "you don't have a pending
+request from Qurat — hide the profile." So during the 1500 ms window where
+the user is meant to see the "Friend added" toast, the screen instead flips
+to the ugly "Not authorized" EmptyState. Then goBack() finally fires and
+the user is dropped back to the Requests list.
+
+ANALOGY
+
+Imagine you walk into a member's club and hand your invitation to the
+bouncer. He tears it up (that's how the club knows you're now a member).
+But immediately after tearing it up, he looks at your empty hand, notices
+you don't have an invitation, and throws you out — even though you just
+became a member two seconds ago. The rule is right, but the *ordering*
+of the checks is wrong.
+
+FIX OPTIONS
+
+  (a) Broaden the guard. Say: "source='request' is authorized if the user
+      currently has a pending request from that user OR is already
+      friends with them." This matches the real semantic — once you've
+      accepted, you're still authorized to be looking at that profile.
+      This is my recommendation. Smallest change, clearest meaning.
+
+  (b) Freeze the guard's decision at mount time using a useRef snapshot.
+      The guard runs once when the screen opens and never re-checks.
+      Works, but hides a semantic bug behind a technical trick, and means
+      a future edit could easily reintroduce the problem.
+
+  (c) Call goBack() FIRST and let the snackbar show on the previous
+      screen (Explore Requests). Works but changes the UX contract — the
+      snackbar is meant to appear on top of the profile you just accepted
+      so it's clear WHO you added.
 
+  (d) Do nothing. The user sees a broken screen for 1.5 seconds and we
+      just say "fix later". Not recommended.
+
+    
+  Answer: go with option a
+
+
+================================================================================
+BLOCKER 2 — CandidateHero was typed to only accept the OLD single-female
+            profile. The deck introduces a new type that won't fit.
+================================================================================
+
+WHAT THE PRD SAYS (story 13.3, referencing story 13.1)
+
+Story 13.1 introduces a new TypeScript type called `DummyDeckProfile` for
+the five deck cards. It's a shape designed to mirror the backend's future
+`deck_view` (a lighter, condensed version of a profile) plus a handful of
+extra fields we need to render the About Me / Marriage Intentions / etc.
+sections on each card.
+
+Story 13.3 says "reuse CandidateHero as-is" as the top of every deck card.
+
+WHY IT'S A PROBLEM
+
+CandidateHero was written in phase 12 with this signature:
+
+    readonly profile: DummyFemaleProfile;
+
+It ONLY accepts a `DummyFemaleProfile` (the old, single-candidate type
+used when we shipped Aisha in phase 12). The new deck-card type
+`DummyDeckProfile` is a DIFFERENT shape — even if it happens to contain
+all the same fields CandidateHero actually reads, TypeScript treats them
+as unrelated types and will refuse to compile the code that passes a
+`DummyDeckProfile` into a component expecting a `DummyFemaleProfile`.
+
+The PRD already sanctioned an escape hatch for the OTHER reuse case
+(ProfileScrollView) with a documented cast: `deck as unknown as
+UserProfile & DummyOverlay`. But it forgot to say the same thing about
+CandidateHero. The developer will hit the compile error and have to
+either invent a fix on the fly or pause and ask.
+
+ANALOGY
+
+You bought a universal power adapter last year that says "fits any device
+with a Type-C USB port". This year you buy a laptop that has a Type-C USB
+port. You plug it in — but the adapter has an extra check on the label
+that says "only fits the Model X laptop we bought last year". The shape
+of the plug is the same. The check on the label is what's rejecting you.
+Either widen the label, or explicitly say "yes, we know it's not a Model X
+but plug it in anyway".
+
+FIX OPTIONS
+
+  (a) Cast at the DeckCard boundary — same pattern the PRD already uses
+      for ProfileScrollView. One line: `<CandidateHero profile={deck as
+      unknown as DummyFemaleProfile} />`. Add a code comment explaining
+      the cast is intentional. This is my recommendation. Zero churn
+      and consistent with the sibling case.
+
+  (b) Widen CandidateHero's prop type. Extract a narrower structural
+      interface (a "CandidateHeroProfile" = just the 8-or-so fields it
+      actually reads) and change the prop type. More correct long-term
+      but requires editing a phase-12 component and re-verifying its
+      tests.
+
+  (c) Make DummyDeckProfile extend DummyFemaleProfile (or vice-versa).
+      Couples the two types together permanently — bad, because when the
+      real backend ships and DummyDeckProfile is derived from the
+      backend's response, DummyFemaleProfile would need to change with
+      it, which is a phase-13/phase-12 coupling we don't want.
+
+  ANSWER: go with option b
+
+
+================================================================================
+SHARPEN 1 — What does the unread-notification dot on the bell icon
+            actually mean?
+================================================================================
+
+WHAT THE PRD SAYS (story 13.3)
+
+Keep the phase-12 HeaderBar (filter left, bell right). The little red dot
+on the bell is "derived from the currently visible deck profile's
+`has_unread_notifications`".
+
+WHY IT'S WORTH LOCKING DOWN
+
+Every notification bell in every app in the world means "YOU have unread
+notifications" — the current user's own. Not "the person you're LOOKING at
+has unread notifications". That would be like Instagram showing you the
+unread-DM dot only when you're viewing Cristiano Ronaldo's profile
+(because Ronaldo has a lot of unread DMs). Meaningless from the current
+user's perspective.
+
+Phase 12 already did this cheat because there was only one candidate
+(Aisha) and the bell dot came from her JSON. It "worked" because the
+screen never changed. Phase 13 introduces a deck of 5 cards, so the dot
+will now flicker on/off as the user swipes through the cards. That will
+look like a bug to any tester.
+
+ANALOGY
+
+Imagine your car's fuel-warning light is wired to the fuel gauge of the
+car parked next to you at every red light. Every time you pull up
+alongside a different car, the light comes on or goes off. That's what
+we're building.
+
+FIX OPTIONS
+
+  (a) Read the dot from the current user (dummyprofile.__dummy_display_
+      only?.has_unread_notifications) instead. One-line change. My
+      recommendation.
+
+  (b) Keep as-written and accept the flicker as a mock-only fudge; add a
+      line to the phase-13 teardown list in context.md so nobody debugs
+      it later.
+
+  (c) Hardcode it to `false` for phase 13 and revisit when real
+      notifications ship (phase 19).
+
+  ANSWER: Go with option a
+
+
+================================================================================
+SHARPEN 2 — What does the Like button ACTUALLY do internally? Does
+            it create a real pending request, or is it just theatre?
+================================================================================
+
+WHAT THE PRD SAYS (story 13.3)
+
+Like → advance the deck to the next card + Snackbar "Friend request sent".
+
+That's the entire acceptance criterion for the Like button. No mention
+of writing to the FriendshipProvider, no mention of creating a
+`dummyrequests.json` entry, no mention of any persistent state change.
+
+WHY IT'S WORTH LOCKING DOWN
+
+There are two coherent interpretations and they lead to different code:
+
+  Interpretation A — "Like is theatre". The snackbar says "sent" but
+    nothing is written anywhere. The current user could swipe Like on
+    Aisha and then, one second later, someone from the outside sends
+    Aisha a message on WhatsApp — Aisha has no idea our user liked her.
+    Real backend request-create is a phase-15 story. Phase 13 just
+    displays the message to give the user a satisfying "I did something"
+    feel while all state is still mock.
+
+  Interpretation B — "Like creates a pending request in the
+    OTHER direction". Now the deck user's Like adds a record to the
+    OTHER user's incoming requests. But we don't model that in phase 13
+    (dummyrequests.json only tracks incoming to OUR user, and we don't
+    have a "the deck user's outgoing requests" model).
+
+I believe the PRD intends interpretation A (mock theatre), and phase 15
+is where real request-write lands. But we should say so explicitly on
+the story so the developer doesn't add half-baked provider writes.
+
+
+ANALOGY
+
+You press the "Call for service" button on a train seat. The button
+flashes a green light saying "Attendant notified". Interpretation A:
+the button is not actually wired to anything, but the light makes you
+feel heard. Interpretation B: the button DID actually page an
+attendant. If it's A, no problem. If it's B and the wiring is
+mis-installed, you sit there confused when nobody comes.
+
+FIX OPTIONS
+
+  (a) Confirm interpretation A. Add an AC to story 13.3: "Like does
+      NOT write to FriendshipProvider. Real pending-request creation
+      ships in phase 15." My recommendation.
+
+  (b) Confirm interpretation B. Extend the FriendshipProvider to track
+      an outgoing-request list, extend Story 13.3 with the write, and
+      show the Like's target as a pending request in the Explore
+      Requests tab of a DIFFERENT test user account. Big scope creep;
+      not recommended for phase 13.
+  
+
+  
+ANSWER: Go with option A for now, this is just to mock, later we will change this
+
+
+================================================================================
+SHARPEN 3 — What does the deck-exhausted state look like?
+            Hide the action bar, or grey it out?
+================================================================================
+
+WHAT THE PRD SAYS (story 13.3)
+
+When the user reaches the end of the deck (index >= 5), the scroll
+content is replaced by an EmptyState. The action bar (X / Undo / Star /
+Check) either "hides in the exhausted state (or its buttons become
+disabled — decide at brainstorm)".
+
+WHY IT'S WORTH LOCKING DOWN
+
+Two coherent UX affordances:
+
+  Hide entirely — no buttons at all. Reads as "there's nothing here
+    for you to do". Matches the EmptyState's message.
+
+  Show but disabled — buttons visible but greyed out. Reads as
+    "the buttons are broken right now". Confusing.
+
+ANALOGY
+
+If a shop is closed for the night, do they turn the neon signs off
+entirely, or leave them on but dimmed? "Off entirely" reads as "come
+back later, we're closed". "On but dim" reads as "the electrician needs
+to be called".
+
+FIX OPTIONS
+
+  (a) Hide entirely. My recommendation.
+
+  (b) Show but disabled.
+
+  (c) Hide only the X / Star / Check but keep Undo visible so the user
+      can step BACK into the deck (rewind their last swipe). More
+      complex UX but genuinely useful — you might want to un-Dislike
+      the last card you swiped away.
+
+ANSWER: go with option A
+
+
+================================================================================
+SHARPEN 4 — When the user swipes to the next deck card, does the tab
+            bar and the action bar snap back into view?
+================================================================================
+
+WHAT THE PRD SAYS (story 13.3)
+
+"Scroll position resets to 0 whenever `currentDeckIndex` changes."
+
+WHY IT'S WORTH LOCKING DOWN
+
+In phase 12 we wired the bottom tab bar and the round action bar to
+collapse (translate down and fade out) when the user scrolls DOWN, and
+snap back into view when they scroll up. That collapse is driven by a
+shared Reanimated value called `marriageTabBarHidden`.
+
+When the user has scrolled halfway down Aisha's profile (tab bar
+collapsed) and hits Dislike to advance to the next card, the scroll
+position resets to 0 (good). BUT the `marriageTabBarHidden` shared
+value is still stuck at 1 (fully collapsed). So the new card renders
+at the top of its scroll, but the tab bar is still off-screen.
+
+The user has to manually scroll DOWN a bit and then UP again to make
+the tab bar reappear. Not obvious.
+
+ANALOGY
+
+You're reading a magazine. As you scroll down a page, the header of
+the magazine slides up out of view (nice, gives you more reading room).
+You flip to the next page and start at the top of the page — but the
+header is still hidden. You have to scroll partway down and back up
+just to make the magazine's title reappear. Weird.
+
+FIX OPTIONS
+
+  (a) Add to Story 13.3 AC: "On deck advance/undo, reset
+      marriageTabBarHidden.value to 0 with a smooth withTiming
+      animation, so the tab bar and action bar spring back into view
+      alongside the scroll reset." My recommendation.
+
+  (b) Do nothing and let the user scroll to bring the tab bar back.
+      Consistent-but-jarring.
+
+ANSWER: Go with option a
+================================================================================
+SHARPEN 5 — Does the Requests-tab full-profile view leak the target
+            user's phone number BEFORE the current user accepts them?
+================================================================================
+
+WHAT THE PRD SAYS (story 13.4)
+
+The OtherProfileScreen for source='request' shows the same
+ProfileScrollView as source='friend'. The difference is only the header
+(back-arrow only) and the extra Accept/Decline bar. The ProfileScrollView
+already renders a ContactActionsSection at the bottom that shows the
+target user's phone number and a share button.
+
+WHY IT'S WORTH LOCKING DOWN
+
+Consider Qurat sending our user a friend request. Our user opens Qurat's
+profile from the Requests tab and — without accepting anything — can
+already see Qurat's phone number and copy/share it. In a real matrimonial
+app this is a genuine privacy leak: contact info is generally revealed
+AFTER two users mutually accept. Once you've DECLINED, you've had access
+to her phone number anyway.
+
+For friends (accepted), showing the phone is fine — that's what a friends
+list is for.
+
+ANALOGY
+
+A dating app has a "someone likes you" screen. You can see their profile
+photo and their bio. But their phone number is hidden behind a "match to
+reveal" gate. That gate is what protects users who haven't matched from
+handing out their contact info too early.
+
+The PRD is currently unlocking the gate on both the "match" side AND the
+"pending request" side.
+
+FIX OPTIONS
+
+  (a) Add an optional `contactVisible?: boolean` prop to
+      ProfileScrollView (defaults to true so phase-12 callers don't
+      break). OtherProfileScreen passes `contactVisible={source ===
+      'friend'}`. My recommendation — closes the leak, minimal change.
+
+  (b) Accept the leak as mock-only. Add a note to the phase-13 teardown
+      list in context.md. The real backend will presumably not return
+      Qurat's phone number in the request-view response anyway.
+
+  (c) Split ContactActionsSection into ContactRow (phone) and
+      ContactActions (Share/Favourite/Block/Report), so OtherProfileScreen
+      can hide just the ContactRow while keeping the share button
+      visible. Cleaner but more code.
+
+ANSWER: Go with option A 
+================================================================================
+NOTE 1 — Row-body-vs-buttons touch conflict in Explore Requests list.
+================================================================================
+
+WHAT THE PRD SAYS (story 13.5)
+
+Requests list row: thumbnail + name + subtitle on the left, Accept and
+Decline buttons on the right. "Row-body press (i.e. everything except
+the two buttons) → navigate to OtherProfileScreen. Button press → run
+the button's own action."
+
+WHY IT'S WORTH FLAGGING
+
+React Native's default touch propagation means if the whole row is
+wrapped in a TouchableArea, tapping Accept ALSO fires the row press —
+so the user simultaneously navigates AND accepts. Devs often solve this
+with stopPropagation in the button handler, which works but is easy to
+forget.
+
+The clean structure is: TouchableArea wraps ONLY the left column
+(thumbnail + name/subtitle). The two buttons sit in a SIBLING Row
+outside the touchable. Then there's no conflict at all.
+
+Non-blocking. Just a hint to save the developer half a debugging
+session.
+
+
+================================================================================
+NOTE 2 — Cold-start reset of the FriendshipProvider is EXPECTED behavior,
+         not a bug.
+================================================================================
+
+WHAT THE PRD SAYS (story 13.2)
+
+FriendshipProvider is in-memory only for phase 13. State resets on
+every cold start.
+
+WHY IT'S WORTH FLAGGING
+
+If you Accept Qurat during a QA session and then close the app and
+reopen it, Qurat's request will come back and Mehvish will be the only
+friend again. This is EXPECTED. It's marked TODO(mock-only). Real
+persistence ships in phase 15.
+
+Non-blocking. Just so nobody files it as a bug during QA.
+
+
+================================================================================
+NOTE 3 — The test list for story 13.4 is missing one small symmetric case.
+================================================================================
+
+WHAT THE PRD SAYS (story 13.4)
+
+Access-guard test: "unknown userId with source='friend' → EmptyState".
+
+WHY IT'S WORTH FLAGGING
+
+The symmetric test — unknown userId with source='request' → EmptyState —
+is missing. Trivial to add. Just a completeness sweep.
+
+Non-blocking. Add on the fly during implementation if you want.
+
+
+================================================================================
+NOTE 4 — Story 13.4 leaves the choice of "reusable BackHeaderBar
+         component" vs "inline header" up to the implementer.
+
+================================================================================
+
+WHAT THE PRD SAYS (story 13.4)
+
+"Either a new BackHeaderBar component in features/profile/components/
+OR an inline header rendered directly in the screen. Whichever pattern
+is chosen, the header is visually consistent with the phase-12
+HeaderBar."
+
+WHY IT'S WORTH FLAGGING
+
+If we build a reusable BackHeaderBar now, phases 15 (friend-requests
+standalone), 17 (chat room), and 18 (blocks) can all reuse it. If we
+inline it now, three future phases will each build their own or
+retrofit the inline one out.
+
+Non-blocking. My recommendation is to build the reusable component
+now, but it's a small enough call that "inline is fine" is a valid
+answer too.
+
+
+================================================================================
+END OF PHASE 13 EXPLANATIONS
+================================================================================
+
+Please write your picks / instructions in QA/answers.txt (or reply
+here). Once I have your calls, I'll update the PRD and re-run
+/implement-phase 13.

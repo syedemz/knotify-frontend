@@ -1,510 +1,523 @@
 ================================================================================
-PHASE 12 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
+PHASE 13 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
 ================================================================================
 
-Before I dispatch anyone to write phase-12 code, I re-read the PRD and cross-
-checked it against the actual codebase. I found 5 real problems (blockers)
-and 4 smaller ones (sharpen). Below is each one, written plainly, with an
-analogy where useful. At the end of each item I list the possible fixes so
-you can pick one — or write your own.
+Before I dispatch anyone to write phase-13 code, I re-read the PRD and cross-
+checked it against the actual code we already shipped in phases 11 and 12.
+I found 2 real problems (blockers), 5 medium-sized things worth locking down
+before coding (sharpen), and 4 small notes. Each one below is written plainly,
+with an analogy where useful. At the end of each item I list the possible
+fixes so you can pick one — or write your own.
 
 Underlying vocabulary refresher (skip if you already know it):
 
-  - "PRD"        = the phase-12 plan file at
-                   implementationplan/phase-12-landing-profile.md
-  - "story"      = one numbered task inside that plan (12.1, 12.2, ... 12.6)
+  - "PRD"        = the phase-13 plan file at
+                   implementationplan/phase-13-discover.md
+  - "story"      = one numbered task inside that plan (13.1, 13.2, ... 13.5)
   - "AC"         = "acceptance criteria" — the checklist inside each story
                    that says "this story is done when X and Y and Z are true"
   - "type"       = a TypeScript declaration that says "an object of this
-                   kind has field A of type string, field B of type
-                   number", etc. It's a contract the code enforces.
+                   kind has field A of type string, field B of type number",
+                   etc. It's a contract the code enforces at compile time.
   - "fixture"    = a fake data file we use during development instead of
-                   real backend data
+                   real backend data (e.g. dummyfemale.json)
   - "component"  = a piece of the UI that renders itself (a button, a
                    section, a card)
+  - "provider"   = a React context that holds shared state (e.g. who is
+                   logged in). Any screen in the app can "read from" a
+                   provider.
+  - "deck"       = the stack of candidate profile cards a user swipes
+                   through on the Marriage tab. Same idea as Tinder's
+                   card stack.
+  - "friend"     = a user the current user has already accepted into their
+                   circle. Only friends see each other's full profile.
+  - "pending request" = another user has asked to be your friend and you
+                   haven't accepted or declined yet.
+  - "guard"      = a small check at the top of a screen that says "should
+                   this screen be visible right now?" and short-circuits
+                   to an EmptyState if not.
 
 
 ================================================================================
-BLOCKER 1 — The dummy profiles have a "siblings" field but our profile
-            data structure doesn't allow it.
+BLOCKER 1 — The Accept button on OtherProfileScreen will paint the wrong
+            screen over its own success toast.
 ================================================================================
 
-WHAT THE PRD ASSUMES
---------------------
-Story 12.1 says: "create dummyfemale.json with two siblings in it, and
-dummyprofile.json with an empty siblings list". Story 12.2 says: "the
-SiblingsSection component reads `profile.siblings[]` and renders one card
-per sibling."
+WHAT THE PRD SAYS (story 13.4)
 
-WHAT THE CODE ACTUALLY SAYS
----------------------------
-Our master definition of what a user profile IS lives in
-`src/types/api/UserProfile.ts`. Think of it as the official passport
-template for user data — every field the backend can hand us is listed
-there. That file does NOT have a `siblings` field. It has first_name,
-last_name, religion, city, job_title, etc., but no siblings.
+When the current user is viewing Qurat's profile (because Qurat sent them a
+friend request), there's an Accept button at the top of the screen. Tapping
+Accept does three things, in order:
 
-Siblings only exist inside the ONBOARDING draft (the temporary scratchpad
-during registration). Once registration is done, siblings currently vanish
-from the user profile shape — the real backend column for siblings does
-not exist yet.
+  (1) Call acceptRequest(qurat_id) on the FriendshipProvider — this
+      immediately (a) removes Qurat from the "pending requests" list
+      and (b) adds her to the "friends" list.
+  (2) Show a snackbar (a small toast at the bottom) that says "Friend
+      added".
+  (3) Wait 1500 ms, then call navigation.goBack().
+
+Separately, at the top of the same screen, there is a "guard" that says:
+
+  "If source='request' AND the current user does NOT have a pending
+   request from this user, hide the profile and show a 'Not authorized'
+   EmptyState instead."
+
+That guard exists to prevent someone from typing a random user ID into a
+deep link and seeing a profile they shouldn't see.
+
+WHY IT'S A PROBLEM
+
+Step (1) *immediately* flips the FriendshipProvider state — Qurat is no
+longer a pending request; she's now a friend. React re-renders the screen.
+The guard runs again. And the guard now says: "you don't have a pending
+request from Qurat — hide the profile." So during the 1500 ms window where
+the user is meant to see the "Friend added" toast, the screen instead flips
+to the ugly "Not authorized" EmptyState. Then goBack() finally fires and
+the user is dropped back to the Requests list.
 
 ANALOGY
--------
-Imagine you're filling out an insurance form. There's a section on the form
-called "spouse". Halfway through you write down your spouse's name, but
-when the clerk copies your form into the official filing cabinet, that
-filing cabinet's folder-template has no "spouse" slot. So it gets lost —
-or worse, the whole form gets rejected because it has an extra field the
-template doesn't allow.
 
-That's what happens here. The dummy JSON has `siblings: [...]` but the
-TypeScript type says "no such thing as siblings on a user profile". The
-compiler will complain, the test will fail, and the SiblingsSection
-component will not compile because `profile.siblings` isn't a legal
-expression.
-
-WHY THIS MATTERS
-----------------
-Story 12.2 requires a SiblingsSection component that reads `siblings[]`
-and a test that asserts "the female fixture has 2 siblings and the own-
-profile fixture has 0 siblings". If we can't legally put siblings on the
-profile object, none of that works.
+Imagine you walk into a member's club and hand your invitation to the
+bouncer. He tears it up (that's how the club knows you're now a member).
+But immediately after tearing it up, he looks at your empty hand, notices
+you don't have an invitation, and throws you out — even though you just
+became a member two seconds ago. The rule is right, but the *ordering*
+of the checks is wrong.
 
 FIX OPTIONS
------------
-  (A) Add an optional `siblings` field to the two "dummy" types the PRD is
-      already creating (DummyFemaleProfile and DummyOwnProfile). This is
-      the smallest change and matches what the PRD is already trying to
-      do — the PRD just forgot to list this field alongside `photos` and
-      `faceSelfieUri`. The fixture files stay as-is; only the type files
-      need one extra line.
 
-      Cost: tiny. Downside: none — we always knew siblings was a
-      client-side concern for now.
+  (a) Broaden the guard. Say: "source='request' is authorized if the user
+      currently has a pending request from that user OR is already
+      friends with them." This matches the real semantic — once you've
+      accepted, you're still authorized to be looking at that profile.
+      This is my recommendation. Smallest change, clearest meaning.
 
-  (B) Add `siblings` to the real UserProfile type. Bigger change; assumes
-      the backend WILL add a siblings column. Overreaches into future
-      backend scope.
+  (b) Freeze the guard's decision at mount time using a useRef snapshot.
+      The guard runs once when the screen opens and never re-checks.
+      Works, but hides a semantic bug behind a technical trick, and means
+      a future edit could easily reintroduce the problem.
 
-  (C) Remove siblings from the phase entirely. Drop SiblingsSection. Wait
-      until the backend supports it.
+  (c) Call goBack() FIRST and let the snackbar show on the previous
+      screen (Explore Requests). Works but changes the UX contract — the
+      snackbar is meant to appear on top of the profile you just accepted
+      so it's clear WHO you added.
 
-  RECOMMENDATION: (A). It's what the PRD meant to say and forgot.
-  ANSWER: A, but eventually we will add siblings too because in the backend the siblings is another table
-  where the primary key is the user id
+  (d) Do nothing. The user sees a broken screen for 1.5 seconds and we
+      just say "fix later". Not recommended.
 
-
+    
+  Answer: go with option a
 
 
 ================================================================================
-BLOCKER 2 — Story 12.4 calls a function `showSnackbar()` that doesn't
-            exist in our codebase.
+BLOCKER 2 — CandidateHero was typed to only accept the OLD single-female
+            profile. The deck introduces a new type that won't fit.
 ================================================================================
 
-WHAT THE PRD ASSUMES
---------------------
-Story 12.4 says: "each of the four round action buttons (X / undo / star /
-✓) has an onPress that calls `showSnackbar(t('landing.actionUnavailable'))`."
-And the test says "assert that the showSnackbar mock was called".
+WHAT THE PRD SAYS (story 13.3, referencing story 13.1)
 
-WHAT THE CODE ACTUALLY SAYS
----------------------------
-We have a Snackbar COMPONENT (`src/components/Snackbar.tsx`). But it's not
-a function you can call from anywhere. It's a React component you have to
-render, and you have to give it a `visible` prop (true/false) and a
-`onDismiss` handler.
+Story 13.1 introduces a new TypeScript type called `DummyDeckProfile` for
+the five deck cards. It's a shape designed to mirror the backend's future
+`deck_view` (a lighter, condensed version of a profile) plus a handful of
+extra fields we need to render the About Me / Marriage Intentions / etc.
+sections on each card.
 
-Look at how the existing code uses it (Page25PersonalityTraitsScreen for
-example): the screen keeps a local piece of state called
-`isSnackbarVisible`. When something happens, it sets that to true.
-Somewhere in the JSX, `<Snackbar visible={isSnackbarVisible} ... />` is
-rendered. When the user dismisses it, the state flips to false.
+Story 13.3 says "reuse CandidateHero as-is" as the top of every deck card.
 
-There is NO global `showSnackbar("hello")` helper anywhere in the codebase.
-There is no SnackbarProvider or context that would let you call it from
-outside a component.
+WHY IT'S A PROBLEM
+
+CandidateHero was written in phase 12 with this signature:
+
+    readonly profile: DummyFemaleProfile;
+
+It ONLY accepts a `DummyFemaleProfile` (the old, single-candidate type
+used when we shipped Aisha in phase 12). The new deck-card type
+`DummyDeckProfile` is a DIFFERENT shape — even if it happens to contain
+all the same fields CandidateHero actually reads, TypeScript treats them
+as unrelated types and will refuse to compile the code that passes a
+`DummyDeckProfile` into a component expecting a `DummyFemaleProfile`.
+
+The PRD already sanctioned an escape hatch for the OTHER reuse case
+(ProfileScrollView) with a documented cast: `deck as unknown as
+UserProfile & DummyOverlay`. But it forgot to say the same thing about
+CandidateHero. The developer will hit the compile error and have to
+either invent a fix on the fly or pause and ask.
 
 ANALOGY
--------
-It's like the PRD says "press the buzzer at the front desk." But there is
-no buzzer. There's a bell you have to hold in your hand and ring yourself,
-and there's no central switchboard.
 
-To make `showSnackbar()` work, someone would have to first build the
-buzzer + switchboard (a global provider + hook) — which is a real,
-cross-cutting piece of infrastructure, not something to slip into a
-landing-screen story.
-
-WHY THIS MATTERS
-----------------
-As written, story 12.4 either (a) silently expands scope into "build a
-global Snackbar provider from scratch" without saying so — which is a
-sizeable side-quest and touches every screen going forward — or (b) the
-subagent writes code that references a function that doesn't exist and
-the whole story fails to compile.
+You bought a universal power adapter last year that says "fits any device
+with a Type-C USB port". This year you buy a laptop that has a Type-C USB
+port. You plug it in — but the adapter has an extra check on the label
+that says "only fits the Model X laptop we bought last year". The shape
+of the plug is the same. The check on the label is what's rejecting you.
+Either widen the label, or explicitly say "yes, we know it's not a Model X
+but plug it in anyway".
 
 FIX OPTIONS
------------
-  (A) Use the local-state Snackbar pattern already used elsewhere. Rewrite
-      story 12.4's AC to say: "MarriageLandingScreen holds a local
-      `snackbar: string | null` state. Each action button setter sets it
-      to `t('landing.actionUnavailable')`. A <Snackbar visible={...}> is
-      rendered at the screen root, showing the current message. Test
-      asserts the toast text appears after pressing the ✓ button." No new
-      infrastructure, matches the pattern Page25 and Page30 already use.
 
-      Cost: tiny. Downside: none.
+  (a) Cast at the DeckCard boundary — same pattern the PRD already uses
+      for ProfileScrollView. One line: `<CandidateHero profile={deck as
+      unknown as DummyFemaleProfile} />`. Add a code comment explaining
+      the cast is intentional. This is my recommendation. Zero churn
+      and consistent with the sibling case.
 
-  (B) Split "add global Snackbar provider" into its own story (probably
-      needs a small utility phase later or a story 12.0). Then 12.4 can
-      call `showSnackbar()`. This is the "right" long-term architecture
-      but is more work and drags in a cross-cutting concern this phase
-      shouldn't own.
+  (b) Widen CandidateHero's prop type. Extract a narrower structural
+      interface (a "CandidateHeroProfile" = just the 8-or-so fields it
+      actually reads) and change the prop type. More correct long-term
+      but requires editing a phase-12 component and re-verifying its
+      tests.
 
-  (C) Leave story 12.4 as-is and let the subagent invent something.
-      Guaranteed rework — DO NOT PICK THIS.
+  (c) Make DummyDeckProfile extend DummyFemaleProfile (or vice-versa).
+      Couples the two types together permanently — bad, because when the
+      real backend ships and DummyDeckProfile is derived from the
+      backend's response, DummyFemaleProfile would need to change with
+      it, which is a phase-13/phase-12 coupling we don't want.
 
-  RECOMMENDATION: (A). Matches existing convention, zero scope creep.
+  ANSWER: go with option b
 
-  ANSWER: Option A
+
+================================================================================
+SHARPEN 1 — What does the unread-notification dot on the bell icon
+            actually mean?
+================================================================================
+
+WHAT THE PRD SAYS (story 13.3)
+
+Keep the phase-12 HeaderBar (filter left, bell right). The little red dot
+on the bell is "derived from the currently visible deck profile's
+`has_unread_notifications`".
+
+WHY IT'S WORTH LOCKING DOWN
+
+Every notification bell in every app in the world means "YOU have unread
+notifications" — the current user's own. Not "the person you're LOOKING at
+has unread notifications". That would be like Instagram showing you the
+unread-DM dot only when you're viewing Cristiano Ronaldo's profile
+(because Ronaldo has a lot of unread DMs). Meaningless from the current
+user's perspective.
+
+Phase 12 already did this cheat because there was only one candidate
+(Aisha) and the bell dot came from her JSON. It "worked" because the
+screen never changed. Phase 13 introduces a deck of 5 cards, so the dot
+will now flicker on/off as the user swipes through the cards. That will
+look like a bug to any tester.
+
+ANALOGY
+
+Imagine your car's fuel-warning light is wired to the fuel gauge of the
+car parked next to you at every red light. Every time you pull up
+alongside a different car, the light comes on or goes off. That's what
+we're building.
+
+FIX OPTIONS
+
+  (a) Read the dot from the current user (dummyprofile.__dummy_display_
+      only?.has_unread_notifications) instead. One-line change. My
+      recommendation.
+
+  (b) Keep as-written and accept the flicker as a mock-only fudge; add a
+      line to the phase-13 teardown list in context.md so nobody debugs
+      it later.
+
+  (c) Hardcode it to `false` for phase 13 and revisit when real
+      notifications ship (phase 19).
+
+  ANSWER: Go with option a
+
+
+================================================================================
+SHARPEN 2 — What does the Like button ACTUALLY do internally? Does
+            it create a real pending request, or is it just theatre?
+================================================================================
+
+WHAT THE PRD SAYS (story 13.3)
+
+Like → advance the deck to the next card + Snackbar "Friend request sent".
+
+That's the entire acceptance criterion for the Like button. No mention
+of writing to the FriendshipProvider, no mention of creating a
+`dummyrequests.json` entry, no mention of any persistent state change.
+
+WHY IT'S WORTH LOCKING DOWN
+
+There are two coherent interpretations and they lead to different code:
+
+  Interpretation A — "Like is theatre". The snackbar says "sent" but
+    nothing is written anywhere. The current user could swipe Like on
+    Aisha and then, one second later, someone from the outside sends
+    Aisha a message on WhatsApp — Aisha has no idea our user liked her.
+    Real backend request-create is a phase-15 story. Phase 13 just
+    displays the message to give the user a satisfying "I did something"
+    feel while all state is still mock.
+
+  Interpretation B — "Like creates a pending request in the
+    OTHER direction". Now the deck user's Like adds a record to the
+    OTHER user's incoming requests. But we don't model that in phase 13
+    (dummyrequests.json only tracks incoming to OUR user, and we don't
+    have a "the deck user's outgoing requests" model).
+
+I believe the PRD intends interpretation A (mock theatre), and phase 15
+is where real request-write lands. But we should say so explicitly on
+the story so the developer doesn't add half-baked provider writes.
+
+
+ANALOGY
+
+You press the "Call for service" button on a train seat. The button
+flashes a green light saying "Attendant notified". Interpretation A:
+the button is not actually wired to anything, but the light makes you
+feel heard. Interpretation B: the button DID actually page an
+attendant. If it's A, no problem. If it's B and the wiring is
+mis-installed, you sit there confused when nobody comes.
+
+FIX OPTIONS
+
+  (a) Confirm interpretation A. Add an AC to story 13.3: "Like does
+      NOT write to FriendshipProvider. Real pending-request creation
+      ships in phase 15." My recommendation.
+
+  (b) Confirm interpretation B. Extend the FriendshipProvider to track
+      an outgoing-request list, extend Story 13.3 with the write, and
+      show the Like's target as a pending request in the Explore
+      Requests tab of a DIFFERENT test user account. Big scope creep;
+      not recommended for phase 13.
   
 
+  
+ANSWER: Go with option A for now, this is just to mock, later we will change this
+
 
 ================================================================================
-BLOCKER 3 — Story 12.4 references a Jest mock that doesn't exist.
+SHARPEN 3 — What does the deck-exhausted state look like?
+            Hide the action bar, or grey it out?
 ================================================================================
 
-WHAT THE PRD ASSUMES
---------------------
-Story 12.4 says: "Animation is NOT tested (Reanimated worklets are mocked
-to no-op per the existing `__mocks__/react-native-reanimated` setup)."
+WHAT THE PRD SAYS (story 13.3)
 
-WHAT THE CODE ACTUALLY SAYS
----------------------------
-The `__mocks__/` folder contains mocks for three libraries:
-react-native-vision-camera, react-native-vision-camera-face-detector, and
-react-native-worklets-core. There is NO
-`__mocks__/react-native-reanimated` file. Nothing anywhere sets up a
-Reanimated mock.
+When the user reaches the end of the deck (index >= 5), the scroll
+content is replaced by an EmptyState. The action bar (X / Undo / Star /
+Check) either "hides in the exhausted state (or its buttons become
+disabled — decide at brainstorm)".
 
-Reanimated is the library that powers the smooth slide-up / slide-down
-animation of the bottom action bar. It runs animations on a separate
-"worklet" thread that Jest (the test runner) can't handle without a mock.
+WHY IT'S WORTH LOCKING DOWN
+
+Two coherent UX affordances:
+
+  Hide entirely — no buttons at all. Reads as "there's nothing here
+    for you to do". Matches the EmptyState's message.
+
+  Show but disabled — buttons visible but greyed out. Reads as
+    "the buttons are broken right now". Confusing.
 
 ANALOGY
--------
-Imagine the PRD says "the crash-test dummy is already sitting in the
-driver's seat, ready for the safety test." But when you open the car
-door, there's no dummy. You can't run the safety test without one, and
-if you press the button anyway, the entire car goes into an error state.
 
-WHY THIS MATTERS
-----------------
-The moment a test imports MarriageLandingScreen (which is required by
-story 12.4's screen wiring test), Jest also loads the CollapsingActionBar
-which imports Reanimated. Without the mock, the test either crashes with
-a cryptic error or floods the terminal with worklet warnings that make
-the CI output unreadable. Either way the phase can't be signed off
-because the test suite goes red.
+If a shop is closed for the night, do they turn the neon signs off
+entirely, or leave them on but dimmed? "Off entirely" reads as "come
+back later, we're closed". "On but dim" reads as "the electrician needs
+to be called".
 
 FIX OPTIONS
------------
-  (A) Add a one-liner to jest.setup.ts (or wherever Jest's global setup
-      lives):
-        `jest.mock('react-native-reanimated', () =>
-          require('react-native-reanimated/mock'));`
-      Reanimated ships an official mock. This is the standard idiom.
-      Add this to story 12.4's AC.
 
-      Cost: one line. Downside: none.
+  (a) Hide entirely. My recommendation.
 
-  (B) Skip the screen wiring test that mounts MarriageLandingScreen and
-      only test the sub-components (HeaderBar, etc.) directly. Weaker
-      test coverage but works around the mock issue.
+  (b) Show but disabled.
 
-  RECOMMENDATION: (A). Standard practice, no downside.
-  ANSWER: Option A
+  (c) Hide only the X / Star / Check but keep Undo visible so the user
+      can step BACK into the deck (rewind their last swipe). More
+      complex UX but genuinely useful — you might want to un-Dislike
+      the last card you swiped away.
+
+ANSWER: go with option A
 
 
 ================================================================================
-BLOCKER 4 — Story 12.4 creates a `CandidateHero` component that
-            duplicates the `HeroBlock` component from story 12.2.
+SHARPEN 4 — When the user swipes to the next deck card, does the tab
+            bar and the action bar snap back into view?
 ================================================================================
 
-WHAT THE PRD ASSUMES
---------------------
-Story 12.2 creates HeroBlock inside `src/features/profile-sections/`. It
-knows about two variants — 'other' (for viewing a candidate) and 'self'
-(for viewing your own profile). When variant is 'other', it renders the
-big full-bleed photo, the Active-today / Gold overlay bubbles, and the
-name / age / country-flag / job-title chip strip. This is exactly the
-landing page hero.
+WHAT THE PRD SAYS (story 13.3)
 
-Story 12.4 THEN creates a SECOND component in a different folder called
-CandidateHero. It's described as "full-bleed hero image (first photo),
-the two overlay bubbles ("Active today" / "Gold" — guarded), and the
-name / age / green-tick / city-and-country / country-flag / profession
-chip strip beneath." That is word-for-word what HeroBlock('other') does.
-The story then says "delegates to HeroBlock in the section catalog for
-the actual chip strip", which reveals the confusion — CandidateHero
-would just wrap HeroBlock and add nothing.
+"Scroll position resets to 0 whenever `currentDeckIndex` changes."
 
-MEANWHILE — MarriageLandingScreen (also in 12.4) uses
-`<ProfileScrollView profile={dummyfemale} viewer="other" />` — and
-ProfileScrollView already renders HeroBlock at the top of its scroll.
+WHY IT'S WORTH LOCKING DOWN
 
-So there are two possibilities:
-  (i)  MarriageLandingScreen renders BOTH `<CandidateHero />` AND
-       `<ProfileScrollView>` — the hero image appears twice on the page.
-  (ii) MarriageLandingScreen only uses one of them and the other is dead
-       code no one imports.
+In phase 12 we wired the bottom tab bar and the round action bar to
+collapse (translate down and fade out) when the user scrolls DOWN, and
+snap back into view when they scroll up. That collapse is driven by a
+shared Reanimated value called `marriageTabBarHidden`.
+
+When the user has scrolled halfway down Aisha's profile (tab bar
+collapsed) and hits Dislike to advance to the next card, the scroll
+position resets to 0 (good). BUT the `marriageTabBarHidden` shared
+value is still stuck at 1 (fully collapsed). So the new card renders
+at the top of its scroll, but the tab bar is still off-screen.
+
+The user has to manually scroll DOWN a bit and then UP again to make
+the tab bar reappear. Not obvious.
 
 ANALOGY
--------
-It's like a wedding invitation with two identical envelopes stacked
-together. Either the guest sees two invitations (confusing) or one of
-the envelopes was extra material the designer never intended to hand out.
-Neither is what we wanted.
 
-WHY THIS MATTERS
-----------------
-If the subagent picks interpretation (i), the landing page has a visual
-bug (double hero). If (ii), we've paid to build something that ships
-dead-on-arrival. Either way we look sloppy.
+You're reading a magazine. As you scroll down a page, the header of
+the magazine slides up out of view (nice, gives you more reading room).
+You flip to the next page and start at the top of the page — but the
+header is still hidden. You have to scroll partway down and back up
+just to make the magazine's title reappear. Weird.
 
 FIX OPTIONS
------------
-  (A) Delete CandidateHero from story 12.4 entirely. HeroBlock inside
-      ProfileScrollView already handles the landing hero in the 'other'
-      variant. MarriageLandingScreen composes exactly three things:
-      HeaderBar + ProfileScrollView + CollapsingActionBar. Cleaner.
 
-      Cost: shrink story 12.4. Downside: none.
+  (a) Add to Story 13.3 AC: "On deck advance/undo, reset
+      marriageTabBarHidden.value to 0 with a smooth withTiming
+      animation, so the tab bar and action bar spring back into view
+      alongside the scroll reset." My recommendation.
 
-  (B) Keep CandidateHero and remove HeroBlock's 'other' variant. Split
-      the responsibility differently. More work, no real benefit.
+  (b) Do nothing and let the user scroll to bring the tab bar back.
+      Consistent-but-jarring.
 
-  RECOMMENDATION: (A). Delete the duplicate.
-  ANSWER: Option B
-
-
+ANSWER: Go with option a
 ================================================================================
-BLOCKER 5 — Story 12.4's "row 2 = bottom tab bar navigation" is
-            ambiguous. Two possible implementations, only one is right.
+SHARPEN 5 — Does the Requests-tab full-profile view leak the target
+            user's phone number BEFORE the current user accepts them?
 ================================================================================
 
-WHAT THE PRD ASSUMES
---------------------
-Story 12.4 describes CollapsingActionBar as "bottom overlay with two rows:
-row 1 = four round action buttons (X / undo / star / ✓); row 2 = the
-bottom tab bar navigation. Only row 2 collapses on scroll."
+WHAT THE PRD SAYS (story 13.4)
 
-WHAT THE CODE ACTUALLY SAYS
----------------------------
-React Navigation already provides the bottom tab bar via `AppTabs.tsx`
-(the thing story 12.6 renames to Marriage/Explore/Chat/Menu). It renders
-at the bottom of every tab-hosted screen automatically. It is NOT part of
-any individual screen — it belongs to the navigator.
+The OtherProfileScreen for source='request' shows the same
+ProfileScrollView as source='friend'. The difference is only the header
+(back-arrow only) and the extra Accept/Decline bar. The ProfileScrollView
+already renders a ContactActionsSection at the bottom that shows the
+target user's phone number and a share button.
 
-The PRD says row 2 IS the tab bar. Two ways to read that:
+WHY IT'S WORTH LOCKING DOWN
 
-  Interpretation (i) — Hide the native tab bar entirely, then draw a
-  custom lookalike inside the screen as row 2 of CollapsingActionBar.
-  Then when we scroll down, the custom row-2 slides away. Downside: we
-  now maintain two tab-bar implementations, and switching tabs from the
-  landing screen becomes non-trivial (we'd have to wire the custom
-  row-2 buttons to React Navigation manually).
+Consider Qurat sending our user a friend request. Our user opens Qurat's
+profile from the Requests tab and — without accepting anything — can
+already see Qurat's phone number and copy/share it. In a real matrimonial
+app this is a genuine privacy leak: contact info is generally revealed
+AFTER two users mutually accept. Once you've DECLINED, you've had access
+to her phone number anyway.
 
-  Interpretation (ii) — The native tab bar STAYS. CollapsingActionBar is
-  just the four action buttons (row 1). When we scroll down, we animate
-  the native tab bar itself (via React Navigation's `tabBarStyle` +
-  Reanimated). This is the standard idiom and doesn't require any
-  custom tab-bar code.
+For friends (accepted), showing the phone is fine — that's what a friends
+list is for.
 
 ANALOGY
--------
-It's like the PRD says "put a second steering wheel in the passenger
-seat". Do you (i) rip out the driver's wheel and put both new wheels in?
-Or (ii) leave the real wheel where it is and treat the "passenger wheel"
-as decoration? The PRD doesn't say, and the two answers lead to very
-different builds.
 
-WHY THIS MATTERS
-----------------
-The subagent could go either way. Interpretation (i) is a much bigger
-job and probably wrong (React Navigation's tab bar is battle-tested; we
-shouldn't reinvent it). Interpretation (ii) is easy and idiomatic.
+A dating app has a "someone likes you" screen. You can see their profile
+photo and their bio. But their phone number is hidden behind a "match to
+reveal" gate. That gate is what protects users who haven't matched from
+handing out their contact info too early.
+
+The PRD is currently unlocking the gate on both the "match" side AND the
+"pending request" side.
 
 FIX OPTIONS
------------
-  (A) Rewrite the AC to explicitly say: "CollapsingActionBar contains
-      ONLY the four round action buttons (row 1). The bottom tab bar is
-      the native React Navigation tab bar. When MarriageLandingScreen
-      detects a downward scroll (>8px delta), it animates the native
-      tab bar via `screenOptions.tabBarStyle` — translateY = tabBarHeight
-      / opacity = 0. On upward scroll, it animates back. Reanimated
-      shared value + useAnimatedStyle handles this."
 
-      Cost: rewrite one AC. Downside: none — this is the standard idiom.
+  (a) Add an optional `contactVisible?: boolean` prop to
+      ProfileScrollView (defaults to true so phase-12 callers don't
+      break). OtherProfileScreen passes `contactVisible={source ===
+      'friend'}`. My recommendation — closes the leak, minimal change.
 
-  (B) Rewrite the AC to say "build a custom bottom tab bar inside
-      CollapsingActionBar, hide the native one via
-      `tabBarStyle: { display: 'none' }`, wire tab switches manually via
-      `useNavigation`". More work, more risk, replaces something proven
-      with something new.
+  (b) Accept the leak as mock-only. Add a note to the phase-13 teardown
+      list in context.md. The real backend will presumably not return
+      Qurat's phone number in the request-view response anyway.
 
-  RECOMMENDATION: (A). Standard idiom, keeps React Navigation in charge.
-  ANSWER: Option A
+  (c) Split ContactActionsSection into ContactRow (phone) and
+      ContactActions (Share/Favourite/Block/Report), so OtherProfileScreen
+      can hide just the ContactRow while keeping the share button
+      visible. Cleaner but more code.
+
+ANSWER: Go with option A 
+================================================================================
+NOTE 1 — Row-body-vs-buttons touch conflict in Explore Requests list.
+================================================================================
+
+WHAT THE PRD SAYS (story 13.5)
+
+Requests list row: thumbnail + name + subtitle on the left, Accept and
+Decline buttons on the right. "Row-body press (i.e. everything except
+the two buttons) → navigate to OtherProfileScreen. Button press → run
+the button's own action."
+
+WHY IT'S WORTH FLAGGING
+
+React Native's default touch propagation means if the whole row is
+wrapped in a TouchableArea, tapping Accept ALSO fires the row press —
+so the user simultaneously navigates AND accepts. Devs often solve this
+with stopPropagation in the button handler, which works but is easy to
+forget.
+
+The clean structure is: TouchableArea wraps ONLY the left column
+(thumbnail + name/subtitle). The two buttons sit in a SIBLING Row
+outside the touchable. Then there's no conflict at all.
+
+Non-blocking. Just a hint to save the developer half a debugging
+session.
 
 
 ================================================================================
-SHARPEN 6 — Story 12.6 says "update auth-gate.test.tsx" but two test
-            files reference the old labels, not just one.
+NOTE 2 — Cold-start reset of the FriendshipProvider is EXPECTED behavior,
+         not a bug.
 ================================================================================
 
-The PRD singles out `__tests__/navigation/auth-gate.test.tsx` for update.
-But `__tests__/navigation/AppTabs.test.tsx` also asserts on
-`nav.tabs.discover`. There's a general catch-all AC that says "any test
-referencing the old labels is updated in-place", so it's covered in
-spirit — but naming only one file makes it easy for a subagent to miss
-the other.
+WHAT THE PRD SAYS (story 13.2)
 
-FIX OPTIONS
------------
-  (A) Add AppTabs.test.tsx to the story's explicit update list.
-  (B) Leave as-is and rely on the grep-verify AC ("Grep confirms zero
-      remaining references after the rename").
+FriendshipProvider is in-memory only for phase 13. State resets on
+every cold start.
 
-  RECOMMENDATION: (A). Naming it explicitly costs nothing and prevents
-  a preventable miss.
-  ANSWER: Option A
+WHY IT'S WORTH FLAGGING
+
+If you Accept Qurat during a QA session and then close the app and
+reopen it, Qurat's request will come back and Mehvish will be the only
+friend again. This is EXPECTED. It's marked TODO(mock-only). Real
+persistence ships in phase 15.
+
+Non-blocking. Just so nobody files it as a bug during QA.
 
 
 ================================================================================
-SHARPEN 7 — Story 12.1 doesn't pin the literal name / city / age values
-            that later stories' tests assert against.
+NOTE 3 — The test list for story 13.4 is missing one small symmetric case.
 ================================================================================
 
-Story 12.5's test says "assert `dummyprofile.first_name + " " + last_name`
-is visible" and mentions "Adnan Malik" in the prose. But story 12.1
-nowhere pins first_name = "Adnan" and last_name = "Malik". Same for
-dummyfemale's name / age / city — story 12.4's test references them but
-story 12.1 doesn't set them.
+WHAT THE PRD SAYS (story 13.4)
 
-Not a hard failure (the subagent can invent values), but if 12.1's
-subagent and 12.4's / 12.5's subagents don't agree, the tests fail.
+Access-guard test: "unknown userId with source='friend' → EmptyState".
 
-FIX OPTIONS
------------
-  (A) Add explicit literal values to story 12.1's AC, e.g.
-      "dummyprofile.first_name = 'Adnan', last_name = 'Malik', age = 29,
-      current_residence_city = 'Mannheim', current_residence_country =
-      'Germany', job_title = <TBD>. dummyfemale similarly pinned:
-      first_name = <TBD>, age = <TBD>, city = <TBD>."
-  (B) Leave as-is and let stories 12.4 / 12.5 discover the values via
-      "whatever the fixture has, we assert on that".
+WHY IT'S WORTH FLAGGING
 
-  RECOMMENDATION: (A) with your input — please pick names / cities / ages
-  you want. You could also reference specific Muzz screenshots in
-  QA/muzzscreenshots and I can lift literal values from there.
-  ANSWER: Option A
+The symmetric test — unknown userId with source='request' → EmptyState —
+is missing. Trivial to add. Just a completeness sweep.
+
+Non-blocking. Add on the fly during implementation if you want.
 
 
 ================================================================================
-SHARPEN 8 — Story 12.1 leaves `preferences.personalityTraits` as
-            "unknown", which forces every reader to cast.
+NOTE 4 — Story 13.4 leaves the choice of "reusable BackHeaderBar
+         component" vs "inline header" up to the implementer.
+
 ================================================================================
 
-Our UserProfile type defines `preferences: Record<string, unknown> | null`
-— which means TypeScript sees it as "some object I know nothing about".
-Every place that reads `preferences.personalityTraits` has to cast it,
-like: `(prefs as { personalityTraits: string[] }).personalityTraits`.
+WHAT THE PRD SAYS (story 13.4)
 
-The existing Page25 screen already does this. Story 12.2's
-PersonalitySection would have to do it again. Casts spread bugs — if the
-shape ever changes, only the cast site knows about it.
+"Either a new BackHeaderBar component in features/profile/components/
+OR an inline header rendered directly in the screen. Whichever pattern
+is chosen, the header is visually consistent with the phase-12
+HeaderBar."
 
-FIX OPTIONS
------------
-  (A) Narrow `preferences` in DummyFemaleProfile / DummyOwnProfile to a
-      typed shape:
-        `preferences: { personalityTraits?: string[] } &
-                       Record<string, unknown> | null;`
-      Then PersonalitySection reads `.personalityTraits` with no cast.
+WHY IT'S WORTH FLAGGING
 
-  (B) Leave as-is. Small nuisance, not a blocker.
+If we build a reusable BackHeaderBar now, phases 15 (friend-requests
+standalone), 17 (chat room), and 18 (blocks) can all reuse it. If we
+inline it now, three future phases will each build their own or
+retrofit the inline one out.
 
-  RECOMMENDATION: (A). Tiny typing addition, cleaner reads.
-  ANSWER: Option A
+Non-blocking. My recommendation is to build the reusable component
+now, but it's a small enough call that "inline is fine" is a valid
+answer too.
 
 
 ================================================================================
-SHARPEN 9 — Story 12.5 invents `ProfileThumbnailCircle` when `Avatar`
-            already exists.
+END OF PHASE 13 EXPLANATIONS
 ================================================================================
 
-We already have `src/components/Avatar.tsx`. Story 12.5 introduces
-`ProfileThumbnailCircle` as a whole new avatar primitive. The only new
-capability it needs is "optionally show a small edit-pencil dot in the
-corner." Better to compose:
-
-  ProfileThumbnailCircle = <Avatar> + optional <PencilDot />
-
-FIX OPTIONS
------------
-  (A) Reword 12.5's AC: "ProfileThumbnailCircle wraps the existing
-      Avatar component and layers an optional edit-pencil dot overlay."
-  (B) Leave as-is. Not a bug, just duplication.
-
-  RECOMMENDATION: (A). Reuse over reinvent.
-  ANSWER: Option A
-
-
-================================================================================
-SHARPEN 10 — Story 12.5 uses contradictory wording.
-================================================================================
-
-Story 12.5 says: "Edit pill — Edit press is a no-op that navigates to
-MyProfileScreen (Edit tab)."
-
-A press that navigates is NOT a no-op. The intended meaning is: "the Edit
-TAB (inside MyProfileScreen) currently does nothing except render a
-'Coming soon' EmptyState. The Edit PILL button, however, does navigate
-to that tab." A subagent could easily misread this as "on press, do
-nothing".
-
-FIX OPTIONS
------------
-  (A) Rewrite: "Edit pill — press navigates to MyProfileScreen with
-      { initialTab: 'edit' }. The Edit tab itself renders a 'Coming
-      soon' EmptyState and does not mutate profile state."
-  (B) Leave as-is.
-
-  RECOMMENDATION: (A). Clarity is free.
-  ANSWER: Option A
-
-
-================================================================================
-SUMMARY / DECISION TIME
-================================================================================
-
-Blockers to decide on:
-  1. Siblings type gap        → pick A / B / C
-  2. showSnackbar()            → pick A / B / (not C)
-  3. Reanimated mock           → pick A / B
-  4. CandidateHero duplication → pick A / B
-  5. CollapsingActionBar row-2 → pick A / B
-
-Sharpen items:
-  6. Also list AppTabs.test.tsx in 12.6 → yes / no
-  7. Pin literal fixture values in 12.1 → yes (need your input on values)
-                                          / no
-  8. Narrow preferences.personalityTraits type → yes / no
-  9. Compose Avatar in ProfileThumbnailCircle instead of new primitive
-     → yes / no
- 10. Fix contradictory Edit-pill wording → yes / no
-
-Once you tell me what to pick for each, I will edit
-implementationplan/phase-12-landing-profile.md directly, then you re-run
-`/implement-phase 12` and we proceed.
+Please write your picks / instructions in QA/answers.txt (or reply
+here). Once I have your calls, I'll update the PRD and re-run
+/implement-phase 13.
