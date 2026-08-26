@@ -77,7 +77,7 @@ export function EducationSection({
 
   return (
     <View style={styles.section} testID="education-section">
-      <RNText style={styles.title}>Education</RNText>
+      <RNText style={styles.title}>🎓 Education</RNText>
       <View style={styles.chipRow}>
         {chips.map((c) => (
           <View key={c.testID} style={styles.chip} testID={c.testID}>

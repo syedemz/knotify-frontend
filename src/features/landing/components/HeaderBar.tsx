@@ -119,6 +119,10 @@ function createStyles(theme: Theme) {
       backgroundColor: theme.colors.bg.primary,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border.default,
+      // Subtle elevation so the header stays visually distinct from any
+      // white content immediately below (e.g. the rounded top of the hero).
+      ...theme.shadows.sm,
+      zIndex: 2,
     },
     iconButton: {
       width: 40,

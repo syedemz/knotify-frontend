@@ -48,7 +48,7 @@ export function FuturePlansSection({
 
   return (
     <View style={styles.section} testID="future-plans-section">
-      <RNText style={styles.title}>Future plans</RNText>
+      <RNText style={styles.title}>🌍 Future plans</RNText>
       <View style={styles.chipRow}>
         {hasMoveAbroad && (
           <View style={styles.chip} testID="future-move-abroad-chip">

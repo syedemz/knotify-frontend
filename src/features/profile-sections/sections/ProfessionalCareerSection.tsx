@@ -67,7 +67,7 @@ export function ProfessionalCareerSection({
 
   return (
     <View style={styles.section} testID="professional-career-section">
-      <RNText style={styles.title}>Professional career</RNText>
+      <RNText style={styles.title}>💼 Professional career</RNText>
       <View style={styles.chipRow}>
         {chips.map((c) => (
           <View key={c.testID} style={styles.chip} testID={c.testID}>

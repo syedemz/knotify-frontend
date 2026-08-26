@@ -20,7 +20,7 @@
  */
 
 import React, { useCallback } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings, Bell, ChevronDown, CheckCircle } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -97,9 +97,16 @@ export function MenuHomeScreen(): React.ReactElement {
   };
 
   return (
-    <ScrollView
+    // Apply the safe-area inset on the OUTER container so the "Marriage v"
+    // dropdown never renders under the status bar. Applying paddingTop via
+    // ScrollView's contentContainerStyle proved unreliable on Android edge-
+    // to-edge configurations.
+    <View
       testID="menu-home-screen"
-      contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 120 }}
+      style={{ flex: 1, paddingTop: insets.top }}
+    >
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: 120 }}
     >
       {/* ── Top bar ──────────────────────────────────────────────────── */}
       <Row paddingX="lg" paddingY="md" justify="space-between" align="center">
@@ -137,13 +144,13 @@ export function MenuHomeScreen(): React.ReactElement {
           uri={avatarUri}
           onPress={handleAvatarPress}
           showEditDot={false}
-          size={72}
+          size={64}
           accessibilityLabel={fullName}
           testID="menu-home-avatar"
         />
         <Column gap="sm" flex>
           <Row gap="xs" align="center">
-            <Heading variant="heading.md">
+            <Heading variant="heading.md" numberOfLines={1}>
               {fullName}
             </Heading>
             {isVerified && (
@@ -246,5 +253,6 @@ export function MenuHomeScreen(): React.ReactElement {
         </Row>
       </Box>
     </ScrollView>
+    </View>
   );
 }

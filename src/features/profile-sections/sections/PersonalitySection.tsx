@@ -42,7 +42,7 @@ export function PersonalitySection({
 
   return (
     <View style={styles.section} testID="personality-section">
-      <RNText style={styles.title}>Personality</RNText>
+      <RNText style={styles.title}>✨ Personality</RNText>
       <View style={styles.chipRow}>
         {traits.map((trait) => (
           <View key={trait} style={styles.chip} testID={`personality-trait-chip-${trait}`}>

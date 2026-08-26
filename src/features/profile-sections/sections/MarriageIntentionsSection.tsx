@@ -45,6 +45,10 @@ export function MarriageIntentionsSection({
   }
 
   const marriageLabel = profile.marriage_time;
+  // meet_time comes from the page-20 first pick (client-local during
+  // onboarding). Fall back to a neutral label if the profile does not
+  // carry it yet.
+  const meetLabel = profile.meet_time ?? "Let's chat";
   const firstName = profile.first_name ?? 'Their';
   const intent =
     'Serious relationship that leads to marriage';
@@ -52,7 +56,7 @@ export function MarriageIntentionsSection({
   return (
     <View style={styles.section} testID="marriage-intentions-section">
       <View style={styles.titleRow}>
-        <RNText style={styles.title}>{`${firstName}'s marriage intentions`}</RNText>
+        <RNText style={styles.title}>{`💍 ${firstName}'s marriage intentions`}</RNText>
         <Info size={16} color={theme.colors.text.tertiary} strokeWidth={2} />
       </View>
 
@@ -94,7 +98,9 @@ export function MarriageIntentionsSection({
         {/* Anchor labels aligned to timeline positions */}
         <View style={styles.labelRow}>
           <RNText style={[styles.anchorLabel, styles.matchLabel]}>Match!</RNText>
-          <RNText style={styles.anchorLabel}>Let&apos;s chat</RNText>
+          <RNText style={styles.anchorLabel} testID="intent-meet-label">
+            {meetLabel}
+          </RNText>
           <RNText style={styles.anchorLabel}>Agree together</RNText>
           <RNText style={styles.anchorLabel} testID="intent-marriage-label">
             {marriageLabel}

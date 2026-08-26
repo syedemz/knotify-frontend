@@ -83,7 +83,7 @@ export function FaithSection({ profile }: FaithSectionProps): React.ReactElement
 
   return (
     <View style={styles.section} testID="faith-section">
-      <RNText style={styles.title}>Faith</RNText>
+      <RNText style={styles.title}>🕌 Faith</RNText>
       <View style={styles.chipRow}>
         {chips.map((chip) => (
           <View key={chip.testID} style={styles.chip} testID={chip.testID}>

@@ -52,7 +52,7 @@ export function AddressSection({
 
   return (
     <View style={styles.section} testID="address-section">
-      <RNText style={styles.title}>Address</RNText>
+      <RNText style={styles.title}>📍 Address</RNText>
       <View style={styles.chipRow}>
         {chips.map((c) => (
           <View key={c.testID} style={styles.chip} testID={c.testID}>

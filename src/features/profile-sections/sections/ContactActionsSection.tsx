@@ -51,7 +51,7 @@ export function ContactActionsSection({
 
   return (
     <View style={styles.section} testID="contact-actions-section">
-      <RNText style={styles.title}>Contact & actions</RNText>
+      <RNText style={styles.title}>📞 Contact & actions</RNText>
 
       {/* Phone number row — hidden if null */}
       {profile.phone_number !== null && (

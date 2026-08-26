@@ -40,7 +40,7 @@ export function AboutMeSection({ profile }: AboutMeSectionProps): React.ReactEle
 
   return (
     <View style={styles.section} testID="about-me-section">
-      <RNText style={styles.title}>About me</RNText>
+      <RNText style={styles.title}>🙋 About me</RNText>
       <View style={styles.chipRow}>
         {hasMaritalStatus && (
           <View style={styles.chip} testID="about-marital-chip">

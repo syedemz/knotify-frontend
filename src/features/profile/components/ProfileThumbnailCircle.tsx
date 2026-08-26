@@ -97,12 +97,25 @@ export function ProfileThumbnailCircle({
   testID,
 }: ProfileThumbnailCircleProps): React.ReactElement {
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme, size), [theme, size]);
 
   // Map numeric px size to the nearest Avatar size preset. Avatar accepts
   // 'sm'|'md'|'lg'|'xl' — pick the closest preset by px value.
   const avatarSizePreset: 'sm' | 'md' | 'lg' | 'xl' =
     size <= 32 ? 'sm' : size <= 48 ? 'md' : size <= 64 ? 'lg' : 'xl';
+  // Effective wrapper px must match the actual rendered Avatar preset
+  // so the flex parent reserves the correct amount of horizontal space
+  // (otherwise the Avatar spills beyond the wrapper and collides with
+  // any sibling column laid out via `Row gap="…"`).
+  const effectiveSize: number =
+    avatarSizePreset === 'sm'
+      ? 32
+      : avatarSizePreset === 'md'
+      ? 48
+      : avatarSizePreset === 'lg'
+      ? 64
+      : 96;
+
+  const styles = useMemo(() => createStyles(theme, effectiveSize), [theme, effectiveSize]);
 
   const innerContent = (
     <>

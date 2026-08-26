@@ -42,7 +42,7 @@ export function SiblingsSection({
 
   return (
     <View style={styles.section} testID="siblings-section">
-      <RNText style={styles.title}>Siblings</RNText>
+      <RNText style={styles.title}>👫 Siblings</RNText>
       <View style={styles.cards}>
         {siblings.map((sibling, index) => (
           <SiblingCard

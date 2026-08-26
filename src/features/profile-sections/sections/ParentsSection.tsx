@@ -44,7 +44,7 @@ export function ParentsSection({
 
   return (
     <View style={styles.section} testID="parents-section">
-      <RNText style={styles.title}>Parents</RNText>
+      <RNText style={styles.title}>👨‍👩‍👧 Parents</RNText>
       <View style={styles.cards}>
         {hasFather && (
           <ParentCard
