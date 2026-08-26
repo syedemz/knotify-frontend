@@ -40,7 +40,7 @@ export function AboutMeSection({ profile }: AboutMeSectionProps): React.ReactEle
 
   return (
     <View style={styles.section} testID="about-me-section">
-      <RNText style={styles.title}>About me</RNText>
+      <RNText style={styles.title}>🙋 About me</RNText>
       <View style={styles.chipRow}>
         {hasMaritalStatus && (
           <View style={styles.chip} testID="about-marital-chip">
@@ -70,7 +70,7 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.md,
     },
     title: {
-      ...textStyles.heading.md,
+      ...textStyles.heading.lg,
       color: theme.colors.text.primary,
     },
     chipRow: {
@@ -79,13 +79,13 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.sm,
     },
     chip: {
-      backgroundColor: theme.colors.bg.muted,
-      borderRadius: theme.radii.sm,
-      paddingVertical: theme.spacing.xxs,
-      paddingHorizontal: theme.spacing.sm,
+      backgroundColor: theme.colors.bg.chip,
+      borderRadius: theme.radii.pill,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.md,
     },
     chipLabel: {
-      ...textStyles.label.sm,
+      ...textStyles.label.md,
       color: theme.colors.text.secondary,
     },
   });

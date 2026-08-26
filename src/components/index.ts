@@ -109,6 +109,9 @@ export type { SnackbarProps } from "./Snackbar";
 export { Avatar } from "./Avatar";
 export type { AvatarProps, AvatarSize } from "./Avatar";
 
+export { CountryFlag } from "./CountryFlag";
+export type { CountryFlagProps } from "./CountryFlag";
+
 export { Image } from "./Image";
 export type { ImageProps } from "./Image";
 

@@ -30,6 +30,8 @@ import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
 import type { DummyFemaleProfile } from '@/types/DummyFemaleProfile';
 import { t } from '@/labels';
+import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
+import { CountryFlag } from '@/components/CountryFlag';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,24 +46,6 @@ export interface CandidateHeroProps {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const HERO_HEIGHT = Dimensions.get('window').height * 0.65;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Converts an ISO 3166-1 alpha-2 country code to the corresponding regional
- * indicator emoji flag.
- *
- * Uses Unicode regional indicator symbol codepoints (U+1F1E6 + offset).
- * Supported on all modern iOS and Android versions.
- *
- * @param code - A two-letter ISO country code (e.g. `'DE'`).
- * @returns The emoji flag string (e.g. `'🇩🇪'`).
- */
-function countryCodeToFlag(code: string): string {
-  return [...code.toUpperCase()]
-    .map((ch) => String.fromCodePoint(0x1f1e0 + ch.charCodeAt(0) - 65))
-    .join('');
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -80,7 +64,8 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const photoUri = profile.photos?.[0] ?? profile.photo_url ?? undefined;
+  const photoPath = profile.photos?.[0] ?? profile.photo_url ?? undefined;
+  const photoSource = resolveDummyPhoto(photoPath);
   const hasVerified = profile.faceSelfieUri != null;
 
   const cityCountry =
@@ -100,9 +85,9 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
   return (
     <View style={styles.container} testID="candidate-hero">
       {/* Background image */}
-      {photoUri !== undefined ? (
+      {photoSource !== undefined ? (
         <ExpoImage
-          source={{ uri: photoUri }}
+          source={photoSource}
           style={styles.image}
           contentFit="cover"
           testID="candidate-hero-image"
@@ -112,8 +97,15 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
         <View style={[styles.image, styles.imagePlaceholder]} testID="candidate-hero-image" />
       )}
 
-      {/* Dark gradient overlay at bottom */}
-      <View style={styles.gradient} />
+      {/* Stacked semi-transparent bands fake a bottom-up gradient — the
+          single-block overlay previously covered the bottom half of every
+          hero photo at a uniform 50 % opacity, which read as "the image is
+          darkened", not as a soft fade. */}
+      <View pointerEvents="none" style={styles.gradientStack}>
+        <View style={[styles.gradientBand, styles.gradientBand1]} />
+        <View style={[styles.gradientBand, styles.gradientBand2]} />
+        <View style={[styles.gradientBand, styles.gradientBand3]} />
+      </View>
 
       {/* Top-right overlay bubbles */}
       <View style={styles.topBubbles}>
@@ -161,9 +153,12 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
         {/* Chip strip */}
         <View style={styles.chipRow}>
           {profile.resident_country_code !== null && (
-            <View style={styles.chip} testID="candidate-hero-country-chip">
+            <View
+              style={[styles.chip, styles.countryChip]}
+              testID="candidate-hero-country-chip"
+            >
+              <CountryFlag isoCode={profile.resident_country_code} size={14} />
               <RNText style={styles.chipLabel}>
-                {countryCodeToFlag(profile.resident_country_code)}{' '}
                 {profile.resident_country_code}
               </RNText>
             </View>
@@ -187,6 +182,9 @@ function createStyles(theme: Theme) {
       width: '100%',
       height: HERO_HEIGHT,
       position: 'relative',
+      borderTopLeftRadius: theme.radii.xl,
+      borderTopRightRadius: theme.radii.xl,
+      overflow: 'hidden',
     },
     image: {
       width: '100%',
@@ -195,26 +193,46 @@ function createStyles(theme: Theme) {
     imagePlaceholder: {
       backgroundColor: theme.colors.bg.input,
     },
-    gradient: {
+    gradientStack: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
-      height: HERO_HEIGHT * 0.55,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      height: HERO_HEIGHT * 0.32,
+    },
+    gradientBand: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+    },
+    gradientBand1: {
+      bottom: 0,
+      height: '45%',
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    gradientBand2: {
+      bottom: '45%',
+      height: '30%',
+      backgroundColor: 'rgba(0,0,0,0.3)',
+    },
+    gradientBand3: {
+      bottom: '75%',
+      height: '25%',
+      backgroundColor: 'rgba(0,0,0,0.12)',
     },
     topBubbles: {
       position: 'absolute',
+      // Muzz-style: bubbles sit under the header on the LEFT.
       top: theme.spacing.md,
-      right: theme.spacing.md,
+      left: theme.spacing.md,
       gap: theme.spacing.xs,
-      alignItems: 'flex-end',
+      alignItems: 'flex-start',
     },
     bubble: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.xs,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: 'rgba(0,0,0,0.65)',
       borderRadius: theme.radii.pill,
       paddingVertical: theme.spacing.xxs,
       paddingHorizontal: theme.spacing.sm,
@@ -252,11 +270,17 @@ function createStyles(theme: Theme) {
     name: {
       ...textStyles.display.md,
       color: theme.colors.text.inverse,
+      textShadowColor: 'rgba(0,0,0,0.55)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
     },
     subtitle: {
       ...textStyles.body.sm,
-      color: 'rgba(255,255,255,0.85)',
+      color: 'rgba(255,255,255,0.9)',
       letterSpacing: 0.5,
+      textShadowColor: 'rgba(0,0,0,0.55)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
     chipRow: {
       flexDirection: 'row',
@@ -265,10 +289,19 @@ function createStyles(theme: Theme) {
       marginTop: theme.spacing.xxs,
     },
     chip: {
-      backgroundColor: 'rgba(255,255,255,0.22)',
+      // Slightly darker + border for the muzz-style contrast against
+      // photographic backgrounds.
+      backgroundColor: 'rgba(0,0,0,0.45)',
       borderRadius: theme.radii.pill,
       paddingVertical: theme.spacing.xxs,
       paddingHorizontal: theme.spacing.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.35)',
+    },
+    countryChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xxs,
     },
     chipLabel: {
       ...textStyles.label.sm,

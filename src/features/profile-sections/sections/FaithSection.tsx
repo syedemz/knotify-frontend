@@ -83,7 +83,7 @@ export function FaithSection({ profile }: FaithSectionProps): React.ReactElement
 
   return (
     <View style={styles.section} testID="faith-section">
-      <RNText style={styles.title}>Faith</RNText>
+      <RNText style={styles.title}>🕌 Faith</RNText>
       <View style={styles.chipRow}>
         {chips.map((chip) => (
           <View key={chip.testID} style={styles.chip} testID={chip.testID}>
@@ -106,7 +106,7 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.md,
     },
     title: {
-      ...textStyles.heading.md,
+      ...textStyles.heading.lg,
       color: theme.colors.text.primary,
     },
     chipRow: {
@@ -115,13 +115,13 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.sm,
     },
     chip: {
-      backgroundColor: theme.colors.bg.muted,
-      borderRadius: theme.radii.sm,
-      paddingVertical: theme.spacing.xxs,
-      paddingHorizontal: theme.spacing.sm,
+      backgroundColor: theme.colors.bg.chip,
+      borderRadius: theme.radii.pill,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.md,
     },
     chipLabel: {
-      ...textStyles.label.sm,
+      ...textStyles.label.md,
       color: theme.colors.text.secondary,
     },
   });

@@ -20,33 +20,33 @@ describe('ProfessionalCareerSection', () => {
 
     it('renders category row', () => {
       renderSection(<ProfessionalCareerSection profile={fullProfile} />);
-      expect(screen.getByTestId('career-category-row')).toBeTruthy();
+      expect(screen.getByTestId('career-category-chip')).toBeTruthy();
     });
 
     it('renders job_title row', () => {
       renderSection(<ProfessionalCareerSection profile={fullProfile} />);
-      expect(screen.getByTestId('career-job-title-row')).toBeTruthy();
+      expect(screen.getByTestId('career-job-title-chip')).toBeTruthy();
       expect(screen.getByText('Software Engineer')).toBeTruthy();
     });
 
     it('renders employer row', () => {
       renderSection(<ProfessionalCareerSection profile={fullProfile} />);
-      expect(screen.getByTestId('career-employer-row')).toBeTruthy();
+      expect(screen.getByTestId('career-employer-chip')).toBeTruthy();
     });
 
     it('renders employment_type row', () => {
       renderSection(<ProfessionalCareerSection profile={fullProfile} />);
-      expect(screen.getByTestId('career-employment-type-row')).toBeTruthy();
+      expect(screen.getByTestId('career-employment-type-chip')).toBeTruthy();
     });
 
     it('renders office_address row', () => {
       renderSection(<ProfessionalCareerSection profile={fullProfile} />);
-      expect(screen.getByTestId('career-office-address-row')).toBeTruthy();
+      expect(screen.getByTestId('career-office-address-chip')).toBeTruthy();
     });
 
     it('renders salary_range row', () => {
       renderSection(<ProfessionalCareerSection profile={fullProfile} />);
-      expect(screen.getByTestId('career-salary-row')).toBeTruthy();
+      expect(screen.getByTestId('career-salary-chip')).toBeTruthy();
     });
   });
 
@@ -76,8 +76,8 @@ describe('ProfessionalCareerSection', () => {
         professional_category: null,
       });
       renderSection(<ProfessionalCareerSection profile={profile} />);
-      expect(screen.queryByTestId('career-salary-row')).toBeNull();
-      expect(screen.getByTestId('career-job-title-row')).toBeTruthy();
+      expect(screen.queryByTestId('career-salary-chip')).toBeNull();
+      expect(screen.getByTestId('career-job-title-chip')).toBeTruthy();
     });
   });
 });

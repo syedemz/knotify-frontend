@@ -47,7 +47,7 @@ export function VerifiedProfileSection({
           strokeWidth={2}
         />
         <View style={styles.textBlock}>
-          <RNText style={styles.heading}>Verified profile</RNText>
+          <RNText style={styles.heading}>✅ Verified profile</RNText>
           <RNText style={styles.body}>
             {name}&apos;s photo has been verified by the Knotify team.
           </RNText>

@@ -20,23 +20,23 @@ describe('EducationSection', () => {
 
     it('renders degree row', () => {
       renderSection(<EducationSection profile={fullProfile} />);
-      expect(screen.getByTestId('education-degree-row')).toBeTruthy();
+      expect(screen.getByTestId('education-degree-chip')).toBeTruthy();
     });
 
     it('renders college row', () => {
       renderSection(<EducationSection profile={fullProfile} />);
-      expect(screen.getByTestId('education-college-row')).toBeTruthy();
+      expect(screen.getByTestId('education-college-chip')).toBeTruthy();
       expect(screen.getByText('Test University')).toBeTruthy();
     });
 
     it('renders higher secondary row', () => {
       renderSection(<EducationSection profile={fullProfile} />);
-      expect(screen.getByTestId('education-higher-secondary-row')).toBeTruthy();
+      expect(screen.getByTestId('education-higher-secondary-chip')).toBeTruthy();
     });
 
     it('renders high school row', () => {
       renderSection(<EducationSection profile={fullProfile} />);
-      expect(screen.getByTestId('education-high-school-row')).toBeTruthy();
+      expect(screen.getByTestId('education-high-school-chip')).toBeTruthy();
     });
 
     it('includes graduation year in degree row value', () => {
@@ -66,7 +66,7 @@ describe('EducationSection', () => {
         graduation_year: null,
       });
       renderSection(<EducationSection profile={profile} />);
-      expect(screen.getByTestId('education-degree-row')).toBeTruthy();
+      expect(screen.getByTestId('education-degree-chip')).toBeTruthy();
       // Year should not appear as a suffix
       expect(screen.queryByText(/\(\d{4}\)/)).toBeNull();
     });
@@ -77,7 +77,7 @@ describe('EducationSection', () => {
         high_school_passing_year: null,
       });
       renderSection(<EducationSection profile={profile} />);
-      expect(screen.getByTestId('education-high-school-row')).toBeTruthy();
+      expect(screen.getByTestId('education-high-school-chip')).toBeTruthy();
       expect(screen.queryByText(/\(\d{4}\)/)).toBeNull();
     });
   });

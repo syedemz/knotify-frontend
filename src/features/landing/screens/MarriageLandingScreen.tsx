@@ -111,7 +111,7 @@ export function MarriageLandingScreen(): React.ReactElement {
         testID="marriage-landing-scroll"
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 200 }}
       >
         {/* Hero scrolls with the content */}
         <CandidateHero profile={candidateProfile} />
@@ -126,8 +126,9 @@ export function MarriageLandingScreen(): React.ReactElement {
         />
       </Animated.ScrollView>
 
-      {/* Floating 4-button action bar anchored above the tab bar */}
-      <CollapsingActionBar onAction={handleAction} />
+      {/* Floating 4-button action bar anchored above the tab bar. Collapses
+          in lock-step with the tab bar via the shared value. */}
+      <CollapsingActionBar onAction={handleAction} hidden={marriageTabBarHidden} />
 
       {/* Local snackbar — shown when any action button is pressed */}
       <Snackbar

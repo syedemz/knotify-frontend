@@ -1,6 +1,6 @@
 phase: 12
 title: Landing page + profile page + profile edit shell
-last_updated: 2026-08-04 (story 12.6 complete — phase done)
+last_updated: 2026-08-05 (post-QA PRD reconciliation — bubble/timeline drift patched)
 
 context_summary: |
   Phase 12 builds the FIRST post-onboarding UI: the "Marriage" landing page (the
@@ -89,6 +89,15 @@ context_summary: |
   Section order (top-to-bottom on the scroll), and their real / dummy field
   bindings, is enumerated in the story acceptance criteria below (see 12.2).
   The one-liner rule: no section renders empty, no chip renders on null data.
+
+  **Two-tone chip contrast rule (post-QA 2026-08-05).** A new `bg.chip`
+  semantic token was added to `src/theme/theme.ts` (light: `gray200`; dark:
+  `bgElevatedDark`). The convention is: on a white section background
+  (`bg.surface`), pill chips render on `bg.chip` (slightly darker grey); on a
+  grey card background (`bg.chip`), inner chips render on `bg.surface`
+  (white). Card-and-chip sections (`ParentsSection`, `SiblingsSection`) use
+  the inverted convention. This matches Muzz's chip contrast; see
+  `muzzscreenshots/landingplusprofile/landingpage/*`.
 
 stories:
 
@@ -222,9 +231,16 @@ stories:
         point of the Preview tab).
         (2) **AboutMeSection** — reads `marital_status`, `has_children`. Each
         chip hides on null. Section hides if both null.
-        (3) **MarriageIntentionsSection** — reads `relation`, `marriage_time`.
-        Renders a two-anchor rail: `Match! ─── <relation> (<marriage_time>)`.
-        Hides if `marriage_time` null.
+        (3) **MarriageIntentionsSection** — reads `marriage_time` (only). Renders a
+        Muzz-style intent timeline (see `muzzscreenshots/landingplusprofile/landingpage/landing2.jpeg`):
+        a section title with an info icon, a quoted intent line ("Serious
+        relationship that leads to marriage"), a row of three stage chips
+        (Chatting / Family / Marriage), and a horizontal timeline with four
+        anchors underneath — Match! (filled heart in `accent.primary`) / Let's
+        chat / Agree together / Agree together, where the final anchor label
+        is `marriage_time` verbatim (e.g. "Within 2 years"). `profile.relation`
+        is NOT rendered (post-QA rework 2026-08-05 — the Muzz layout has no
+        equivalent). Section hides if `marriage_time` is null.
         (4) **FaithSection** — reads `religion`, `subsect`, `religious_level`
         (3 real chips) and `__dummy_display_only.{dress_code, eats_halal, smokes,
         drinks, fasts}` (5 dummy chips). Each of the 8 chips hides independently
@@ -237,29 +253,49 @@ stories:
         `photos[1]` if `photos.length >= 2`; hides otherwise.
         (7) **PersonalitySection** — reads `preferences.personalityTraits[]`.
         Renders one chip per trait. Hides if array missing or empty.
-        (8) **EducationSection** — reads `education_level`, `college_name`,
-        `graduation_year`, `highest_degree`, `higher_secondary`,
-        `higher_secondary_passing_year`, `high_school`,
-        `high_school_passing_year`. Each row (Degree / College / Higher
-        secondary / High school) hides if its primary field null; year suffix
-        hides if year null. Section hides if all 4 rows would hide.
+        (8) **EducationSection** — reads `highest_degree` (fallback
+        `education_level`), `college_name`, `higher_secondary`, `high_school`
+        as primary values, and `graduation_year`, `higher_secondary_passing_year`,
+        `high_school_passing_year` as optional year suffixes on the matching
+        chip. Renders as a Muzz-style bubble grid (no uppercase row labels like
+        "DEGREE" / "HIGHER SECONDARY") — each of the four values becomes an
+        independent pill chip that flex-wraps into multiple lines depending on
+        available width. Chip testIDs: `education-degree-chip`,
+        `education-college-chip`, `education-higher-secondary-chip`,
+        `education-high-school-chip`. Year suffix renders as
+        `<value> (<year>)` and is dropped if the year is null. Each chip hides
+        if its primary field is null. Section hides if all 4 chips would hide.
         (9) **ProfessionalCareerSection** — reads `professional_category`,
         `job_title`, `employer_name`, `employment_type`, `office_address`,
-        `salary_range`. Each chip / row guarded independently. Section hides if
-        all fields null.
+        `salary_range`. Renders as a Muzz-style bubble grid (no labelled row
+        stack) — each non-null field becomes an independent pill chip that
+        flex-wraps. Chip testIDs: `career-category-chip`,
+        `career-job-title-chip`, `career-employer-chip`,
+        `career-employment-type-chip`, `career-office-address-chip`,
+        `career-salary-chip`. Each chip hides on null; section hides if all
+        fields are null.
         (10) **ParentsSection** — reads `fathers_name`, `fathers_job`,
         `father_retired`, `mothers_name`, `mothers_job`, `mother_retired`.
-        Father block hides if `fathers_name` null (job / retired chips inside
-        the father block also each hide independently); mother block
-        symmetric. Section hides if both parent blocks hidden.
+        Renders as one card per parent, mirroring `SiblingsSection`'s
+        card-and-chip layout: each card uses `bg.chip` as its background with
+        the parent's name at the top and a flex-wrapping row of white chips
+        (`bg.surface`) beneath for job / retired status (two-tone contrast —
+        chips inside grey cards are white). Card testIDs: `parents-father-block`,
+        `parents-mother-block`. Father card hides if `fathers_name` is null (inner
+        job / retired chips hide independently); mother card symmetric. Section
+        hides if both parent cards would hide.
         (11) **AddressSection** — reads `current_residence_city`, `district`,
-        `family_residence_address`. Labels: "Current residence", "Home
-        district", "Home address". Each row guarded. Section hides if all
-        three null.
+        `family_residence_address`. Renders as a Muzz-style bubble grid — each
+        non-null field becomes an independent pill chip containing the value
+        directly (no uppercase field label). Chip testIDs: `address-city-chip`,
+        `address-district-chip`, `address-family-chip`. Each chip hides on
+        null; section hides if all three are null.
         (12) **SiblingsSection** — reads `siblings[]`. Renders one card per
-        sibling; inside a card, `name` / `age` / `marital_status` / `gender` /
-        `profession` each hide on null. Section hides if
-        `siblings.length === 0`.
+        sibling using the same two-tone card-and-chip layout as
+        `ParentsSection` (grey `bg.chip` card, white `bg.surface` pill chips
+        inside with `radii.pill`). Inside a card, `name` / `age` /
+        `marital_status` / `gender` / `profession` each hide on null. Section
+        hides if `siblings.length === 0`.
         (13) **VerifiedProfileSection** — reads `faceSelfieUri`, `first_name`.
         Hides if `faceSelfieUri` null.
         (14) **ContactActionsSection** — reads `phone_number`, `first_name`.

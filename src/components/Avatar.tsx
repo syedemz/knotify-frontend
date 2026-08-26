@@ -4,6 +4,7 @@ import { Image as ExpoImage } from "expo-image";
 import { useTheme } from "@/theme";
 import { textStyles } from "@/theme/typography";
 import type { Theme } from "@/theme/theme";
+import { resolveDummyPhoto } from "@/assets/dummyPhotoRegistry";
 
 /**
  * Size preset for the avatar.
@@ -77,15 +78,20 @@ export function Avatar({
     [theme, px],
   );
 
+  // Dummy-profile JSON stores photos as project-relative asset paths that
+  // must be resolved to Metro require handles; real remote URIs pass
+  // straight through as `{ uri }`. `undefined` means we render initials.
+  const source = resolveDummyPhoto(uri);
+
   return (
     <View
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="image"
     >
-      {uri !== undefined ? (
+      {source !== undefined ? (
         <ExpoImage
-          source={{ uri }}
+          source={source}
           style={styles.image}
           contentFit="cover"
           accessibilityLabel={accessibilityLabel}

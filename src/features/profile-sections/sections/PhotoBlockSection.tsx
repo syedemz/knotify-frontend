@@ -13,6 +13,7 @@ import { Image as ExpoImage } from 'expo-image';
 
 import type { UserProfile } from '@/types/api/UserProfile';
 import type { DummyOverlay } from '@/types/DummyOverlay';
+import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,10 +34,15 @@ export function PhotoBlockSection({
     return null;
   }
 
+  const photoSource = resolveDummyPhoto(photos[1]);
+  if (photoSource === undefined) {
+    return null;
+  }
+
   return (
     <View style={styles.container} testID="photo-block-section">
       <ExpoImage
-        source={{ uri: photos[1] }}
+        source={photoSource}
         style={styles.image}
         contentFit="cover"
         accessibilityLabel="Profile photo"

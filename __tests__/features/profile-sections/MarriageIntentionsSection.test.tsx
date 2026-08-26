@@ -1,9 +1,10 @@
 /**
  * Tests for MarriageIntentionsSection (story 12.2).
  *
- * (a) Full-data render.
+ * (a) Full-data render — Muzz-style timeline: match anchor + stage chips +
+ *     four anchor labels (Match! / Let's chat / Agree together / marriage_time).
  * (b) Section-level hide — hides when marriage_time is null.
- * (c) Chip-level hide — relation is optional (section still renders without it).
+ * (c) Renders marriage_time in the final anchor label.
  */
 
 import React from 'react';
@@ -18,19 +19,33 @@ describe('MarriageIntentionsSection', () => {
       expect(screen.getByTestId('marriage-intentions-section')).toBeTruthy();
     });
 
-    it('renders Match! anchor', () => {
+    it('renders the Match! anchor label', () => {
       renderSection(<MarriageIntentionsSection profile={fullProfile} />);
       expect(screen.getByText('Match!')).toBeTruthy();
     });
 
-    it('renders marriage_time in the right anchor', () => {
+    it('renders the match heart anchor', () => {
       renderSection(<MarriageIntentionsSection profile={fullProfile} />);
-      expect(screen.getByText(/Within 2 years/)).toBeTruthy();
+      expect(screen.getByTestId('intent-match-anchor')).toBeTruthy();
     });
 
-    it('renders relation alongside marriage_time when relation is set', () => {
+    it('renders the stage chips (Chatting, Family, Marriage)', () => {
       renderSection(<MarriageIntentionsSection profile={fullProfile} />);
-      expect(screen.getByText(/Myself.*Within 2 years|Within 2 years.*Myself/)).toBeTruthy();
+      expect(screen.getByText('Chatting')).toBeTruthy();
+      expect(screen.getByText('Family')).toBeTruthy();
+      expect(screen.getByText('Marriage')).toBeTruthy();
+    });
+
+    it("renders the Let's chat and Agree together anchor labels", () => {
+      renderSection(<MarriageIntentionsSection profile={fullProfile} />);
+      expect(screen.getByText("Let's chat")).toBeTruthy();
+      expect(screen.getAllByText('Agree together').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('renders marriage_time in the final anchor label', () => {
+      renderSection(<MarriageIntentionsSection profile={fullProfile} />);
+      expect(screen.getByTestId('intent-marriage-label')).toBeTruthy();
+      expect(screen.getByText(/Within 2 years/)).toBeTruthy();
     });
   });
 
@@ -42,12 +57,11 @@ describe('MarriageIntentionsSection', () => {
     });
   });
 
-  describe('(c) chip-level hide — relation is optional', () => {
-    it('renders section without relation label when relation is null', () => {
-      const profile = buildProfile({ marriage_time: 'Within 1 year', relation: null });
+  describe('(c) marriage_time drives the final anchor label', () => {
+    it('renders the passed-in marriage_time verbatim', () => {
+      const profile = buildProfile({ marriage_time: 'Within 1 year' });
       renderSection(<MarriageIntentionsSection profile={profile} />);
       expect(screen.getByTestId('marriage-intentions-section')).toBeTruthy();
-      // Should still show just marriage_time without "null (...)"
       expect(screen.getByText('Within 1 year')).toBeTruthy();
     });
   });

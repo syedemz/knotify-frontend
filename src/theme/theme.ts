@@ -65,6 +65,11 @@ export const lightColors = {
     elevated: palette.white,
     input: palette.gray100,
     muted: palette.gray50,
+    // Chip surface — muzz-style: noticeably darker than white so
+    // "Never Married" / "No children" pills remain readable on white
+    // section backgrounds. Also used for parent/sibling card backgrounds
+    // (where inner chips flip to `bg.surface` white per the two-tone rule).
+    chip: palette.gray300,
     premium: palette.brandGoldBg,
     overlay: palette.overlay,
   },
@@ -105,6 +110,7 @@ export const darkColors = {
     elevated: palette.bgElevatedDark,
     input: palette.inputBgDark,
     muted: palette.bgSurfaceDark,
+    chip: palette.bgElevatedDark,
     premium: palette.brandGoldBgDark,
     overlay: palette.overlay,
   },

@@ -16,6 +16,7 @@
 
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SlidersHorizontal, Bell } from 'lucide-react-native';
 
 import { useTheme } from '@/theme';
@@ -48,10 +49,14 @@ export function HeaderBar({
   hasUnreadNotifications = false,
 }: HeaderBarProps): React.ReactElement {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={styles.container} testID="landing-header-bar">
+    <View
+      style={[styles.container, { paddingTop: insets.top + theme.spacing.sm }]}
+      testID="landing-header-bar"
+    >
       {/* Left: filter icon */}
       <Pressable
         onPress={() => {
@@ -108,10 +113,16 @@ function createStyles(theme: Theme) {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.sm,
+      // paddingTop is applied inline from safe-area insets; keep bottom
+      // padding here so touch targets stay comfortably tall.
+      paddingBottom: theme.spacing.sm,
       backgroundColor: theme.colors.bg.primary,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border.default,
+      // Subtle elevation so the header stays visually distinct from any
+      // white content immediately below (e.g. the rounded top of the hero).
+      ...theme.shadows.sm,
+      zIndex: 2,
     },
     iconButton: {
       width: 40,

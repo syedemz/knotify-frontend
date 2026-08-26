@@ -50,6 +50,14 @@ export interface DummyOverlay {
    */
   preferences?: ({ personalityTraits?: string[] } & Record<string, unknown>) | null;
 
+  /**
+   * How soon the user wants to meet on Knotify. Sourced from the
+   * page-20 "meet timeline" pick (currently client-local during onboarding,
+   * mirrored here for landing-page display until the real backend column
+   * ships). Used as the second anchor on the Marriage Intentions timeline.
+   */
+  meet_time?: string | null;
+
   /** Display-only extras with no corresponding backend column. */
   __dummy_display_only?: DummyDisplayOnly;
 }
