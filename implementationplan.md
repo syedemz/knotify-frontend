@@ -84,7 +84,7 @@ phases:
 - phase: 14
   title: Bookmarks
   file: implementationplan/phase-14-bookmarks.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 15
