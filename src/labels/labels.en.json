@@ -505,6 +505,10 @@
       "yes": "YES",
       "no": "NO",
       "sending": "Sending Request"
+    },
+    "bookmark": {
+      "added": "Added to bookmarks",
+      "removed": "Removed from bookmarks"
     }
   },
   "menu": {

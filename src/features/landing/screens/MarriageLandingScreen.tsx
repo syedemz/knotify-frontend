@@ -65,6 +65,7 @@ import Animated, {
 import { EmptyState, Snackbar } from '@/components';
 import { t } from '@/labels';
 import { DECK_FIXTURES } from '@/features/discover/data/deckFixtures';
+import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
 
 import { HeaderBar } from '../components/HeaderBar';
 import { DeckCard } from '../components/DeckCard';
@@ -138,6 +139,9 @@ const CURRENT_USER_HAS_UNREAD =
  * Marriage-tab landing screen — deck of condensed candidate cards.
  */
 export function MarriageLandingScreen(): React.ReactElement {
+  // ── Bookmarks state ─────────────────────────────────────────────────────────
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+
   // ── Deck index state ────────────────────────────────────────────────────────
   const [currentDeckIndex, setCurrentDeckIndex] = useState(0);
 
@@ -310,8 +314,20 @@ export function MarriageLandingScreen(): React.ReactElement {
   }, [animateDeckTransition]);
 
   const handleSuperLike = useCallback(() => {
-    setSnackbarMsg(t('landing.actionUnavailable'));
-  }, []);
+    // Defensive guard: if the deck is exhausted the Star button is hidden
+    // (CollapsingActionBar returns null), but guard here as well.
+    const currentDeck = DECK_FIXTURES[currentDeckIndex];
+    if (!currentDeck) return;
+
+    if (!isBookmarked(currentDeck.user_id)) {
+      addBookmark(currentDeck).catch(console.warn);
+      setSnackbarMsg(t('landing.bookmark.added'));
+    } else {
+      removeBookmark(currentDeck.user_id).catch(console.warn);
+      setSnackbarMsg(t('landing.bookmark.removed'));
+    }
+    // Deck index does NOT change. tabBarHidden.value does NOT reset.
+  }, [currentDeckIndex, isBookmarked, addBookmark, removeBookmark]);
 
   const handleSnackbarDismiss = useCallback(() => {
     setSnackbarMsg(null);
@@ -358,6 +374,7 @@ export function MarriageLandingScreen(): React.ReactElement {
           onUndo={handleUndo}
           onSuperLike={handleSuperLike}
           hidden={tabBarHidden}
+          isSuperLikeActive={isBookmarked(DECK_FIXTURES[currentDeckIndex]?.user_id ?? '')}
         />
       )}
 
