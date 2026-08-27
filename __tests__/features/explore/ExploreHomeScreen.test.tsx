@@ -1,7 +1,7 @@
 /**
- * Tests for ExploreHomeScreen (story 13.5).
+ * Tests for ExploreHomeScreen (stories 13.5 + 14.3).
  *
- * AC coverage:
+ * AC coverage (story 13.5 — existing):
  * (a) Friends tab renders Mehvish in the seed state.
  * (b) Requests tab renders Qurat in the seed state.
  * (c) Tapping Mehvish row → navigates to OtherProfileScreen with { userId, source: 'friend' }.
@@ -11,6 +11,13 @@
  * (g) pendingToast consume on focus: if FriendshipProvider.pendingToast is set,
  *     ExploreHomeScreen renders that string in the Snackbar exactly once on focus
  *     (and calls consumePendingToast).
+ *
+ * AC coverage (story 14.3 — new Bookmarks tab):
+ * (h) Bookmarks tab appears alongside Friends and Requests in the correct left→right order.
+ * (i) Bookmarks tab with seed [Aisha] renders one BookmarkCard in the grid.
+ * (j) Empty bookmarks seed renders EmptyState with explore.bookmarks.emptyTitle.
+ * (k) Tapping a BookmarkCard calls navigation.navigate('BookmarkDeckViewScreen', { userId }).
+ * (l) Tab order left→right is Friends | Requests | Bookmarks.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -55,9 +62,33 @@ import {
   useFriendship,
 } from '@/state/friendship/FriendshipProvider';
 import { ExploreHomeScreen } from '@/features/explore/screens/ExploreHomeScreen';
+import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
 
 import dummyMehvish from '../../../assets/dummymehvish.json';
 import dummyQurat from '../../../assets/dummyqurat.json';
+import dummyFemale from '../../../assets/dummyfemale.json';
+
+// ── BookmarksProvider mock ─────────────────────────────────────────────────────
+// ExploreHomeScreen calls useBookmarks(). We mock the provider module so tests
+// can control the bookmarks array without spinning up AsyncStorage.
+
+const mockBookmarks: DummyDeckProfile[] = [];
+
+jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
+  useBookmarks: () => ({
+    bookmarks: mockBookmarks,
+    loading: false,
+    addBookmark: jest.fn(),
+    removeBookmark: jest.fn(),
+    isBookmarked: jest.fn(() => false),
+    getBookmark: jest.fn(() => undefined),
+  }),
+}));
+
+// resolveDummyPhoto mock — needed by BookmarkCard rendered inside the grid.
+jest.mock('@/assets/dummyPhotoRegistry', () => ({
+  resolveDummyPhoto: () => 42,
+}));
 
 // ── Navigation mock ────────────────────────────────────────────────────────────
 
@@ -85,6 +116,7 @@ jest.mock('@react-navigation/native', () => ({
 /**
  * Renders ExploreHomeScreen wrapped in the real FriendshipProvider.
  * The seed state has Mehvish as a friend and a pending request from Qurat.
+ * `useBookmarks` is mocked above; `mockBookmarks` array controls bookmark content.
  */
 function renderScreen() {
   return render(
@@ -100,6 +132,9 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Reset mock bookmarks to empty before each test.
+  // Tests that need bookmarks push items in via splice/push before rendering.
+  mockBookmarks.splice(0, mockBookmarks.length);
 });
 
 // ── AC (a): Friends tab renders Mehvish ────────────────────────────────────────
@@ -359,4 +394,113 @@ describe('ExploreHomeScreen — AC (g): pendingToast consumed on focus', () => {
       expect(screen.queryByTestId('explore-snackbar')).toBeNull();
     },
   );
+});
+
+// ── Story 14.3: Bookmarks tab ─────────────────────────────────────────────────
+
+// ── AC (h): Bookmarks tab label appears in the tab bar ────────────────────────
+
+describe('ExploreHomeScreen — AC (h): Bookmarks tab label appears alongside Friends and Requests', () => {
+  it('given the screen mounts, then the Bookmarks tab is visible in the tab bar', () => {
+    renderScreen();
+    expect(screen.getByTestId('explore-tab-bookmarks')).toBeTruthy();
+  });
+
+  it('given the screen mounts, then all three tabs are present: Friends, Requests, and Bookmarks', () => {
+    renderScreen();
+    expect(screen.getByTestId('explore-tab-friends')).toBeTruthy();
+    expect(screen.getByTestId('explore-tab-requests')).toBeTruthy();
+    expect(screen.getByTestId('explore-tab-bookmarks')).toBeTruthy();
+  });
+});
+
+// ── AC (i): Bookmarks tab with seed [Aisha] renders one BookmarkCard ──────────
+
+describe('ExploreHomeScreen — AC (i): Bookmarks grid renders seeded bookmarks', () => {
+  it('given Bookmarks tab is selected and one bookmark is seeded, then the BookmarkCard is visible', () => {
+    // Seed one bookmark before rendering.
+    mockBookmarks.push(dummyFemale as unknown as DummyDeckProfile);
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('explore-tab-bookmarks'));
+
+    // BookmarkCard renders with testID bookmark-card-<user_id>
+    expect(screen.getByTestId(`bookmark-card-${dummyFemale.user_id}`)).toBeTruthy();
+  });
+
+  it('given Bookmarks tab is selected with one bookmark, then the FlatList is rendered', () => {
+    mockBookmarks.push(dummyFemale as unknown as DummyDeckProfile);
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('explore-tab-bookmarks'));
+
+    expect(screen.getByTestId('explore-bookmarks-list')).toBeTruthy();
+  });
+});
+
+// ── AC (j): Empty bookmarks renders EmptyState ────────────────────────────────
+
+describe('ExploreHomeScreen — AC (j): empty bookmarks shows EmptyState', () => {
+  it('given Bookmarks tab is selected with no bookmarks, then EmptyState is shown', () => {
+    // mockBookmarks is empty (reset in beforeEach).
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('explore-tab-bookmarks'));
+
+    // EmptyState renders the title as an accessibilityLabel on its container.
+    expect(screen.getByText('No bookmarks yet')).toBeTruthy();
+  });
+});
+
+// ── AC (k): tapping BookmarkCard navigates to BookmarkDeckViewScreen ──────────
+
+describe('ExploreHomeScreen — AC (k): tapping BookmarkCard navigates to BookmarkDeckViewScreen', () => {
+  it(
+    'given Bookmarks tab, when a BookmarkCard is pressed, then navigation.navigate is called with BookmarkDeckViewScreen and userId',
+    () => {
+      mockBookmarks.push(dummyFemale as unknown as DummyDeckProfile);
+      renderScreen();
+
+      fireEvent.press(screen.getByTestId('explore-tab-bookmarks'));
+      fireEvent.press(screen.getByTestId(`bookmark-card-${dummyFemale.user_id}`));
+
+      expect(mockNavigate).toHaveBeenCalledWith('BookmarkDeckViewScreen', {
+        userId: dummyFemale.user_id,
+      });
+    },
+  );
+});
+
+// ── AC (l): tab order is Friends | Requests | Bookmarks ──────────────────────
+
+describe('ExploreHomeScreen — AC (l): tab order is Friends | Requests | Bookmarks', () => {
+  it('given the screen renders, then Friends tab appears before Requests and Bookmarks', () => {
+    renderScreen();
+
+    // getAllByTestId only returns elements in DOM order, not by label.
+    // We use the fact that RNTL returns elements in render order.
+    const friends = screen.getByTestId('explore-tab-friends');
+    const requests = screen.getByTestId('explore-tab-requests');
+    const bookmarks = screen.getByTestId('explore-tab-bookmarks');
+
+    // All three must exist.
+    expect(friends).toBeTruthy();
+    expect(requests).toBeTruthy();
+    expect(bookmarks).toBeTruthy();
+
+    // Verify by asserting the text labels appear in the correct left-to-right
+    // order by querying all tab label texts and checking relative positions.
+    // RNTL's getAllByText returns in render order.
+    const allTexts = screen.UNSAFE_queryAllByType(require('react-native').Text);
+    const tabLabels = allTexts
+      .map((el: any) => el.props.children as string)
+      .filter(
+        (label: any) =>
+          label === 'Friends' || label === 'Requests' || label === 'Bookmarks',
+      );
+
+    expect(tabLabels[0]).toBe('Friends');
+    expect(tabLabels[1]).toBe('Requests');
+    expect(tabLabels[2]).toBe('Bookmarks');
+  });
 });

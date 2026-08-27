@@ -28,6 +28,19 @@ jest.mock('../../../assets/dummyprofile.json', () => ({
   },
 }));
 
+// MarriageLandingScreen now calls useBookmarks() — mock so tests do not
+// require a real BookmarksProvider in the render tree.
+jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
+  useBookmarks: () => ({
+    bookmarks: [],
+    loading: false,
+    addBookmark: jest.fn().mockResolvedValue(undefined),
+    removeBookmark: jest.fn().mockResolvedValue(undefined),
+    isBookmarked: jest.fn().mockReturnValue(false),
+    getBookmark: () => undefined,
+  }),
+}));
+
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';

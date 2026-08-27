@@ -6,6 +6,11 @@
  * toast via the `onAction` callback passed from `MarriageLandingScreen` — the
  * real swipe handlers ship in phase 13 (discover deck).
  *
+ * **Star filled state (phase 14).** When `isSuperLikeActive` is `true` the
+ * Star icon renders with `fill={theme.colors.status.info}` in addition to
+ * its current stroke, indicating that the current deck card is bookmarked.
+ * When `false` (default) the stroke-only rendering from phase 13 is preserved.
+ *
  * **Scroll-coupled motion.** The bar animates in lock-step with the native
  * tab bar via the shared `hidden` value (`0` visible → `1` hidden). It sits
  * `TAB_BAR_HEIGHT` above the bottom of the screen so that when the tab bar
@@ -61,6 +66,12 @@ export interface CollapsingActionBarProps {
   /** Called when the ✓ (like) button is pressed. */
   readonly onLike?: () => void;
   /**
+   * When `true`, the Star icon renders with a filled `status.info` colour to
+   * indicate the current deck card is bookmarked. Defaults to `false` (stroke
+   * only — the phase-13 appearance).
+   */
+  readonly isSuperLikeActive?: boolean;
+  /**
    * Shared value in the range [0, 1] driving the collapse animation:
    * `0` = fully visible (bar sits above the tab bar), `1` = fully collapsed
    * (bar has translated down by `TAB_BAR_HEIGHT`). Wired to the same
@@ -89,6 +100,7 @@ export function CollapsingActionBar({
   onSuperLike,
   onLike,
   hidden,
+  isSuperLikeActive = false,
 }: CollapsingActionBarProps): React.ReactElement {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -140,7 +152,7 @@ export function CollapsingActionBar({
           <Undo2 size={22} color={theme.colors.accent.tertiary} strokeWidth={2} />
         </Pressable>
 
-        {/* Super-like (Star) */}
+        {/* Super-like (Star) — filled when current card is bookmarked */}
         <Pressable
           onPress={handleSuperLike}
           style={({ pressed }) => [styles.button, styles.buttonSuperLike, pressed && styles.buttonPressed]}
@@ -148,7 +160,12 @@ export function CollapsingActionBar({
           accessibilityLabel={t('landing.actions.superLike')}
           testID="action-button-super-like"
         >
-          <Star size={22} color={theme.colors.status.info} strokeWidth={2} />
+          <Star
+            size={22}
+            color={theme.colors.status.info}
+            strokeWidth={2}
+            fill={isSuperLikeActive ? theme.colors.status.info : 'none'}
+          />
         </Pressable>
 
         {/* Like (✓) */}

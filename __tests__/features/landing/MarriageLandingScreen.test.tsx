@@ -8,7 +8,7 @@
  * (a) Renders hero with the first deck card's first_name "Aisha" visible.
  * (b) DeckCard sections: 4 sections rendered, 10 sections NOT rendered.
  * (c) Action buttons: Like → "Friend request sent"; Pass → no toast;
- *     Star → "Available in a later phase".
+ *     Star → "Added to bookmarks" (phase-14 behavior; old actionUnavailable retired).
  * (d) HeaderBar: filter + bell present; NO Sort pill / lightning bubble;
  *     unread-dot derived from dummyprofile (defaults to false → dot absent).
  *
@@ -68,6 +68,21 @@ jest.mock('expo-image', () => {
     },
   };
 });
+
+// ── useBookmarks mock ─────────────────────────────────────────────────────────
+// MarriageLandingScreen now calls useBookmarks() — mock it so tests do not
+// require a real BookmarksProvider in the render tree.
+
+jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
+  useBookmarks: () => ({
+    bookmarks: [],
+    loading: false,
+    addBookmark: jest.fn().mockResolvedValue(undefined),
+    removeBookmark: jest.fn().mockResolvedValue(undefined),
+    isBookmarked: jest.fn().mockReturnValue(false),
+    getBookmark: () => undefined,
+  }),
+}));
 
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
@@ -216,10 +231,13 @@ describe('(c) action button behaviour', () => {
     expect(screen.queryByText(t('landing.likeSent'))).toBeNull();
   });
 
-  it('tapping the star (⭐) button shows t("landing.actionUnavailable")', () => {
+  it('tapping the star (⭐) button shows t("landing.bookmark.added") snackbar (phase-14 behavior)', async () => {
+    // isBookmarked returns false by default (mock above), so Star adds a bookmark.
     renderScreen();
-    fireEvent.press(screen.getByTestId('action-button-super-like'));
-    expect(screen.getByText(t('landing.actionUnavailable'))).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('action-button-super-like'));
+    });
+    expect(screen.getByText(t('landing.bookmark.added'))).toBeTruthy();
   });
 });
 

@@ -1,15 +1,16 @@
 /**
- * MarriageLandingScreen.deck.test.tsx (story 13.3 AC7b, AC7c, AC7d)
+ * MarriageLandingScreen.deck.test.tsx (story 13.3 AC7b, AC7c, AC7d; story 14.2 AC)
  *
  * Tests:
  * (b) Index behaviour: starts at 0; Dislike advances; Like advances + snackbar;
- *     Undo decrements (bounded at 0); Star fires snackbar; empty state after
- *     last card; CollapsingActionBar NOT in tree when index >= DECK_FIXTURES.length.
+ *     Undo decrements (bounded at 0); Star toggle bookmark (added / removed);
+ *     empty state after last card; CollapsingActionBar NOT in tree when exhausted.
  * (c) Bell-dot mirror — see MarriageLandingScreen.bellDot.test.tsx for the
  *     has_unread_notifications=true variant (requires module-scope jest.mock).
  *     This file covers the default case (has_unread_notifications=false from
  *     the real dummyprofile.json, dot absent).
  * (d) Like does NOT call FriendshipProvider mutators.
+ * (e) Star bookmark toggle — added / removed snackbar; deck index does NOT advance.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -20,6 +21,33 @@ import { t } from '@/labels';
 import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { DECK_FIXTURES } from '@/features/discover/data/deckFixtures';
+
+// ── useBookmarks mock ─────────────────────────────────────────────────────────
+// Default: nothing bookmarked. Per-test overrides via mockReturnValue / mockImplementation.
+
+const mockAddBookmark = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
+const mockRemoveBookmark = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
+const mockIsBookmarked = jest.fn<boolean, [string]>().mockReturnValue(false);
+
+jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
+  useBookmarks: () => ({
+    bookmarks: [],
+    loading: false,
+    addBookmark: mockAddBookmark,
+    removeBookmark: mockRemoveBookmark,
+    isBookmarked: mockIsBookmarked,
+    getBookmark: () => undefined,
+  }),
+}));
+
+// Reset mock call counts between tests so assertions in later tests
+// are not contaminated by earlier test runs.
+beforeEach(() => {
+  mockAddBookmark.mockClear();
+  mockRemoveBookmark.mockClear();
+  mockIsBookmarked.mockClear();
+  mockIsBookmarked.mockReturnValue(false);
+});
 
 // ── Native-module mocks ───────────────────────────────────────────────────────
 
@@ -129,12 +157,6 @@ describe('(b) deck index behaviour', () => {
     expect(screen.getByTestId('collapsing-action-bar')).toBeTruthy();
   });
 
-  it('Star (⭐) fires t("landing.actionUnavailable") snackbar', () => {
-    renderScreen();
-    fireEvent.press(screen.getByTestId('action-button-super-like'));
-    expect(screen.getByText(t('landing.actionUnavailable'))).toBeTruthy();
-  });
-
   it('renders EmptyState after advancing past all cards', () => {
     renderScreen();
 
@@ -157,6 +179,59 @@ describe('(b) deck index behaviour', () => {
 
     // CollapsingActionBar must be absent — screen returns null for the bar
     expect(screen.queryByTestId('collapsing-action-bar')).toBeNull();
+  });
+});
+
+// ── (e) Star bookmark toggle (story 14.2) ────────────────────────────────────
+
+describe('(e) Star bookmark toggle', () => {
+  it('Star tap on unbookmarked card calls addBookmark with DECK_FIXTURES[0] and shows bookmark.added snackbar; deck index stays at 0', async () => {
+    // Default: isBookmarked returns false (set in beforeEach).
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('action-button-super-like'));
+    });
+
+    // addBookmark was called with the first fixture
+    expect(mockAddBookmark).toHaveBeenCalledTimes(1);
+    expect(mockAddBookmark).toHaveBeenCalledWith(DECK_FIXTURES[0]);
+
+    // bookmark.added snackbar is visible
+    expect(screen.getByText(t('landing.bookmark.added'))).toBeTruthy();
+
+    // removeBookmark was NOT called
+    expect(mockRemoveBookmark).not.toHaveBeenCalled();
+
+    // Deck index has NOT advanced — CandidateHero is still the first card
+    // (CollapsingActionBar still in tree confirms index < DECK_FIXTURES.length)
+    expect(screen.getByTestId('candidate-hero')).toBeTruthy();
+    expect(screen.getByTestId('collapsing-action-bar')).toBeTruthy();
+  });
+
+  it('Star tap on already-bookmarked card calls removeBookmark with current user_id and shows bookmark.removed snackbar; deck index stays at 0', async () => {
+    // Override: isBookmarked returns true for this test.
+    mockIsBookmarked.mockReturnValue(true);
+
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('action-button-super-like'));
+    });
+
+    // removeBookmark was called with the first fixture's user_id
+    expect(mockRemoveBookmark).toHaveBeenCalledTimes(1);
+    expect(mockRemoveBookmark).toHaveBeenCalledWith(DECK_FIXTURES[0]!.user_id);
+
+    // bookmark.removed snackbar is visible
+    expect(screen.getByText(t('landing.bookmark.removed'))).toBeTruthy();
+
+    // addBookmark was NOT called
+    expect(mockAddBookmark).not.toHaveBeenCalled();
+
+    // Deck index has NOT advanced
+    expect(screen.getByTestId('candidate-hero')).toBeTruthy();
+    expect(screen.getByTestId('collapsing-action-bar')).toBeTruthy();
   });
 });
 

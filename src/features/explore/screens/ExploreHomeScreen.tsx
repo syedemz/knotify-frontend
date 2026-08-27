@@ -1,13 +1,20 @@
 /**
- * ExploreHomeScreen — Friends + Requests subtabs for the Explore tab.
+ * ExploreHomeScreen — Friends + Requests + Bookmarks subtabs for the Explore tab.
  *
- * Phase 13 (story 13.5). Renders two in-screen subtabs:
+ * Phase 13 (story 13.5) shipped Friends + Requests. Phase 14 story 14.3 adds
+ * a third **Bookmarks** subtab showing the user's saved deck profiles as a
+ * 2-column grid of `BookmarkCard` components.
+ *
+ * Subtab order: Friends | Requests | Bookmarks.
+ *
  * - **Friends**: flat list of current friends. Row press → `OtherProfileScreen`
  *   with `source='friend'`.
  * - **Requests**: flat list of pending incoming friend requests. Each row has a
  *   sibling-structure (see Note 1) with a left `TouchableArea` (row body → profile
  *   navigate with `source='request'`) and a right sibling `Row` with Accept /
  *   Decline buttons.
+ * - **Bookmarks**: 2-column `FlatList` of `BookmarkCard` components read from
+ *   `useBookmarks()`. Card press → `BookmarkDeckViewScreen` with `{ userId }`.
  *
  * **Note 1 — touch-scoping:** The requests row uses a sibling structure rather than
  * a single outer `TouchableArea`. This avoids RN's default touch propagation firing
@@ -45,9 +52,12 @@ import {
 } from '@/components';
 import { t } from '@/labels';
 import { useFriendship } from '@/state/friendship/FriendshipProvider';
+import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
 import type { DummyFullProfile } from '@/types/DummyFullProfile';
+import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
 import type { PendingRequest } from '@/state/friendship/FriendshipProvider';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
+import { BookmarkCard } from '@/features/bookmarks/components/BookmarkCard';
 import type { ExploreStackParamList } from '@/navigation/types';
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -56,17 +66,19 @@ type ExploreNav = NativeStackNavigationProp<ExploreStackParamList, 'ExploreHomeS
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-/** The two in-screen subtabs. */
-type TabKey = 'friends' | 'requests';
+/** The three in-screen subtabs. Order: Friends | Requests | Bookmarks. */
+type TabKey = 'friends' | 'requests' | 'bookmarks';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 /**
- * Explore tab home screen with Friends and Requests subtabs.
+ * Explore tab home screen with Friends, Requests, and Bookmarks subtabs.
  *
  * - Friends tab: tap row → `OtherProfileScreen` with `source='friend'`.
  * - Requests tab: tap row body → `OtherProfileScreen` with `source='request'`;
  *   tap Accept → `acceptRequest` + snackbar; tap Decline → `declineRequest` + snackbar.
+ * - Bookmarks tab: 2-column grid of saved deck profiles; tap card →
+ *   `BookmarkDeckViewScreen` with `{ userId }`.
  * - Snackbar surface: also consumes `FriendshipProvider.pendingToast` on every
  *   screen-focus event (cross-screen Decline handoff from `OtherProfileScreen`).
  */
@@ -82,6 +94,7 @@ export function ExploreHomeScreen(): React.ReactElement {
     consumePendingToast,
     pendingToast,
   } = useFriendship();
+  const { bookmarks } = useBookmarks();
 
   const [activeTab, setActiveTab] = useState<TabKey>('friends');
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
@@ -107,6 +120,10 @@ export function ExploreHomeScreen(): React.ReactElement {
 
   const handleSelectRequests = useCallback(() => {
     setActiveTab('requests');
+  }, []);
+
+  const handleSelectBookmarks = useCallback(() => {
+    setActiveTab('bookmarks');
   }, []);
 
   // ── Friends list handlers ──────────────────────────────────────────────────
@@ -146,6 +163,15 @@ export function ExploreHomeScreen(): React.ReactElement {
   const handleSnackbarDismiss = useCallback(() => {
     setSnackbarMsg(null);
   }, []);
+
+  // ── Bookmarks handler ──────────────────────────────────────────────────────
+
+  const handleBookmarkCardPress = useCallback(
+    (userId: string) => {
+      navigation.navigate('BookmarkDeckViewScreen', { userId });
+    },
+    [navigation],
+  );
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
@@ -242,6 +268,19 @@ export function ExploreHomeScreen(): React.ReactElement {
     [getFullProfile, handleRequestRowBodyPress, handleAcceptRequest, handleDeclineRequest],
   );
 
+  // ── Bookmarks render helper ────────────────────────────────────────────────
+
+  const renderBookmarkCard = useCallback(
+    ({ item }: { item: DummyDeckProfile }) => (
+      <BookmarkCard
+        bookmark={item}
+        onPress={() => handleBookmarkCardPress(item.user_id)}
+        testID={`bookmark-card-${item.user_id}`}
+      />
+    ),
+    [handleBookmarkCardPress],
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -251,7 +290,7 @@ export function ExploreHomeScreen(): React.ReactElement {
         <Heading variant="heading.md">{t('explore.title')}</Heading>
       </View>
 
-      {/* ── In-screen tab bar ─────────────────────────────────────────── */}
+      {/* ── In-screen tab bar — Friends | Requests | Bookmarks ───────── */}
       <Row paddingX="lg" justify="center" gap="huge">
         <TouchableArea
           onPress={handleSelectFriends}
@@ -282,6 +321,21 @@ export function ExploreHomeScreen(): React.ReactElement {
             </Text>
           </Column>
         </TouchableArea>
+
+        <TouchableArea
+          onPress={handleSelectBookmarks}
+          accessibilityLabel={t('explore.bookmarks.tab')}
+          testID="explore-tab-bookmarks"
+        >
+          <Column align="center" gap="xs">
+            <Text
+              variant="label.md"
+              color={activeTab === 'bookmarks' ? 'brand' : 'secondary'}
+            >
+              {t('explore.bookmarks.tab')}
+            </Text>
+          </Column>
+        </TouchableArea>
       </Row>
 
       {/* ── Tab content ───────────────────────────────────────────────── */}
@@ -294,6 +348,7 @@ export function ExploreHomeScreen(): React.ReactElement {
           />
         ) : (
           <FlatList
+            key="friends-list"
             testID="explore-friends-list"
             data={friends}
             keyExtractor={(item) => item.user_id}
@@ -301,8 +356,7 @@ export function ExploreHomeScreen(): React.ReactElement {
             contentContainerStyle={styles.listContent}
           />
         )
-      ) : (
-        /* activeTab === 'requests' */
+      ) : activeTab === 'requests' ? (
         requests.length === 0 ? (
           <EmptyState
             title={t('explore.requests.emptyTitle')}
@@ -311,11 +365,32 @@ export function ExploreHomeScreen(): React.ReactElement {
           />
         ) : (
           <FlatList
+            key="requests-list"
             testID="explore-requests-list"
             data={requests}
             keyExtractor={(item) => item.request_id}
             renderItem={renderRequestRow}
             contentContainerStyle={styles.listContent}
+          />
+        )
+      ) : (
+        /* activeTab === 'bookmarks' */
+        bookmarks.length === 0 ? (
+          <EmptyState
+            title={t('explore.bookmarks.emptyTitle')}
+            description={t('explore.bookmarks.emptyDescription')}
+            accessibilityLabel={t('explore.bookmarks.emptyTitle')}
+          />
+        ) : (
+          <FlatList
+            key="bookmarks-list"
+            testID="explore-bookmarks-list"
+            data={bookmarks}
+            keyExtractor={(item) => item.user_id}
+            renderItem={renderBookmarkCard}
+            numColumns={2}
+            columnWrapperStyle={styles.bookmarksColumnWrapper}
+            contentContainerStyle={styles.bookmarksContent}
           />
         )
       )}
@@ -346,5 +421,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 120,
+  },
+  // Bookmarks 2-column grid
+  bookmarksContent: {
+    // Horizontal padding matches theme.spacing.md (12). The grid gap is
+    // handled via columnWrapperStyle below; row gap via BookmarkCard.marginBottom.
+    paddingHorizontal: 12,
+    paddingBottom: 120,
+  },
+  bookmarksColumnWrapper: {
+    // Column gap between the two cards per row.
+    gap: 12,
   },
 });

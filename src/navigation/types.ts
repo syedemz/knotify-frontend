@@ -76,16 +76,22 @@ export type MenuStackParamList = {
  * Route params for the `ExploreStack` nested navigator (story 13.5).
  *
  * Screens:
- * - `ExploreHomeScreen` (initial) — Friends + Requests subtabs.
+ * - `ExploreHomeScreen` (initial) — Friends + Requests + Bookmarks subtabs.
  * - `OtherProfileScreen` — full profile view, pushed from list rows.
+ * - `BookmarkDeckViewScreen` — full deck view for a bookmarked profile (story 14.3
+ *   registers the type + placeholder; story 14.4 ships the real screen).
  *
  * `OtherProfileScreen` receives a `userId` to look up via the friendship
  * registry and a `source` discriminant controlling the access guard and
  * ContactActionsSection visibility.
+ *
+ * `BookmarkDeckViewScreen` receives the `userId` of the bookmarked profile,
+ * resolved via `useBookmarks().getBookmark(userId)`.
  */
 export type ExploreStackParamList = {
   ExploreHomeScreen: undefined;
   OtherProfileScreen: { userId: string; source: 'friend' | 'request' };
+  BookmarkDeckViewScreen: { userId: string };
 };
 
 // ---------------------------------------------------------------------------

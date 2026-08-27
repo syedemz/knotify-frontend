@@ -14,6 +14,8 @@ import { AuthProvider } from "@/state/auth/AuthProvider";
 import { OnboardingCompletionProvider } from "@/state/onboardingCompletion/OnboardingCompletionProvider";
 // TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship
 import { FriendshipProvider } from "@/state/friendship/FriendshipProvider";
+// TODO(mock-only): remove BookmarksProvider when real bookmark backend ships
+import { BookmarksProvider } from "@/state/bookmarks/BookmarksProvider";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { linking } from "@/navigation/linking";
 
@@ -118,9 +120,12 @@ export default function App() {
                 <OnboardingCompletionProvider>
                   {/* TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship */}
                   <FriendshipProvider>
-                    <NavigationContainer linking={linking}>
-                      <RootNavigator />
-                    </NavigationContainer>
+                    {/* TODO(mock-only): remove BookmarksProvider when real bookmark backend ships */}
+                    <BookmarksProvider>
+                      <NavigationContainer linking={linking}>
+                        <RootNavigator />
+                      </NavigationContainer>
+                    </BookmarksProvider>
                   </FriendshipProvider>
                 </OnboardingCompletionProvider>
               </AuthProvider>
