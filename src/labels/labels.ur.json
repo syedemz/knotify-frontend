@@ -610,6 +610,16 @@
       "emptyTitle": "ابھی کوئی گفتگو نہیں",
       "emptyDescription": "جب آپ کسی سے منسلک ہو جائیں گے تو آپ کی چیٹس یہاں نظر آئیں گی۔",
       "rowAccessibility": "{firstName} {lastName} سے چیٹ کریں"
+    },
+    "room": {
+      "composerPlaceholder": "پیغام لکھیں…",
+      "sendAccessibility": "پیغام بھیجیں",
+      "micAccessibility": "آواز کا پیغام ریکارڈ کریں",
+      "menuAccessibility": "چیٹ کے اختیارات",
+      "backAccessibility": "واپس جائیں",
+      "missingTitle": "گفتگو دستیاب نہیں",
+      "missingDescription": "ہم آپ کے کنکشنز میں اس شخص کو نہیں ڈھونڈ سکے۔",
+      "editedSuffix": "· ترمیم شدہ"
     }
   }
 }

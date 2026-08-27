@@ -1,6 +1,6 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (story 15.4 complete — ChatStack + ChatListScreen + ChatListRow + formatChatTimestamp)
+last_updated: 2026-08-27 (story 15.5 complete — ChatRoomScreen + MessageBubble + cross-tab nav test)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -209,7 +209,7 @@ stories:
   - id: 15.5
     title: ChatRoomScreen (WhatsApp-style thread + composer)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [15.4]
     acceptance_criteria:
       - Replace the `ChatRoomScreen` placeholder in `ChatStack` with the real screen at `src/features/chat/screens/ChatRoomScreen.tsx`.

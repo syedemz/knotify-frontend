@@ -610,6 +610,16 @@
       "emptyTitle": "No conversations yet",
       "emptyDescription": "Once you are connected with someone, your chats will appear here.",
       "rowAccessibility": "Chat with {firstName} {lastName}"
+    },
+    "room": {
+      "composerPlaceholder": "Type a message…",
+      "sendAccessibility": "Send message",
+      "micAccessibility": "Record voice message",
+      "menuAccessibility": "Chat options",
+      "backAccessibility": "Go back",
+      "missingTitle": "Conversation unavailable",
+      "missingDescription": "We could not find this person in your connections.",
+      "editedSuffix": "· edited"
     }
   }
 }
