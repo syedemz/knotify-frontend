@@ -16,7 +16,15 @@
       "Bash(curl -s -o /dev/null -w \"status_http: %{http_code}\\\\n\" http://localhost:8081/status)",
       "Bash(netstat -ano)",
       "Bash(curl -4 -s -o /dev/null -w \"ipv4: %{http_code}\\\\n\" http://127.0.0.1:8081/status)",
-      "Bash(curl -6 -s -o /dev/null -w \"ipv6: %{http_code}\\\\n\" http://[::1]:8081/status)"
+      "Bash(curl -6 -s -o /dev/null -w \"ipv6: %{http_code}\\\\n\" http://[::1]:8081/status)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k\\) for k in d.keys\\(\\) if k.startswith\\('explore'\\)]\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in ['user_id','first_name','last_name','age','job_title','photos','photo_url']}, indent=2\\)\\)\")",
+      "Bash(git mv *)"
     ]
   }
 }

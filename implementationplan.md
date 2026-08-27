@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-27 (phase 14 complete)
+last_updated: 2026-08-27 (phase 14 complete; phase 15 + 17 PRDs rewritten)
 
 phases:
 
@@ -88,8 +88,8 @@ phases:
   done: true
 
 - phase: 15
-  title: Friend requests
-  file: implementationplan/phase-15-friend-requests.md
+  title: Friend requests + chat UI shell
+  file: implementationplan/phase-15-friend-requests-and-chat-shell.md
   ready: false
   done: false
 
@@ -100,7 +100,7 @@ phases:
   done: false
 
 - phase: 17
-  title: Chat - rooms, room, AppSync subscriptions
+  title: Chat - AppSync backend wiring (rooms + realtime messages)
   file: implementationplan/phase-17-chat.md
   ready: false
   done: false
