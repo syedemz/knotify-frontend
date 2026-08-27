@@ -1,523 +1,432 @@
 ================================================================================
-PHASE 13 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
+PHASE 14 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
 ================================================================================
 
-Before I dispatch anyone to write phase-13 code, I re-read the PRD and cross-
-checked it against the actual code we already shipped in phases 11 and 12.
-I found 2 real problems (blockers), 5 medium-sized things worth locking down
-before coding (sharpen), and 4 small notes. Each one below is written plainly,
-with an analogy where useful. At the end of each item I list the possible
-fixes so you can pick one — or write your own.
+Before I dispatch anyone to write phase-14 code, I re-read the PRD and
+cross-checked every claim in it against the code that already shipped in
+phases 12 and 13. I found 3 blockers (things that will trip the developer
+on day one), 2 medium sharpens, and 3 small notes. Each item below is
+written plainly with an analogy where useful. At the end of each item are
+the fix options so you can pick one — or write your own.
 
-Underlying vocabulary refresher (skip if you already know it):
+Vocabulary refresher (skip if you already know it):
 
-  - "PRD"        = the phase-13 plan file at
-                   implementationplan/phase-13-discover.md
-  - "story"      = one numbered task inside that plan (13.1, 13.2, ... 13.5)
+  - "PRD"        = the phase-14 plan file at
+                   implementationplan/phase-14-bookmarks.md
+  - "story"      = one numbered task inside that plan (14.1, 14.2, 14.3, 14.4)
   - "AC"         = "acceptance criteria" — the checklist inside each story
                    that says "this story is done when X and Y and Z are true"
-  - "type"       = a TypeScript declaration that says "an object of this
-                   kind has field A of type string, field B of type number",
-                   etc. It's a contract the code enforces at compile time.
-  - "fixture"    = a fake data file we use during development instead of
-                   real backend data (e.g. dummyfemale.json)
-  - "component"  = a piece of the UI that renders itself (a button, a
-                   section, a card)
-  - "provider"   = a React context that holds shared state (e.g. who is
-                   logged in). Any screen in the app can "read from" a
-                   provider.
-  - "deck"       = the stack of candidate profile cards a user swipes
-                   through on the Marriage tab. Same idea as Tinder's
-                   card stack.
-  - "friend"     = a user the current user has already accepted into their
-                   circle. Only friends see each other's full profile.
-  - "pending request" = another user has asked to be your friend and you
-                   haven't accepted or declined yet.
-  - "guard"      = a small check at the top of a screen that says "should
-                   this screen be visible right now?" and short-circuits
-                   to an EmptyState if not.
+  - "shared value" = a Reanimated primitive (imagine a single variable that
+                   both React and the animation runtime can read/write at
+                   60 fps). We use it to animate the bottom tab bar down
+                   when the user scrolls.
+  - "route type" = a TypeScript declaration saying "the ExploreStack has
+                   these screens, and each takes these params". If a screen
+                   is missing from the type, TS refuses to compile any call
+                   that navigates to it.
+  - "provider"   = a React context holding shared state. We already have
+                   AuthProvider, FriendshipProvider, etc. Phase 14 adds
+                   BookmarksProvider.
+  - "AsyncStorage" = React Native's plain key/value disk store (like
+                   localStorage in a browser). Bookmarks live here so
+                   they survive app restarts.
+  - "expo module" = a native library that ships with Expo. Adding one
+                   requires `npx expo install <name>` (which patches
+                   package.json AND regenerates the native side of the
+                   dev-client). A plain `npm install` is NOT enough.
 
 
 ================================================================================
-BLOCKER 1 — The Accept button on OtherProfileScreen will paint the wrong
-            screen over its own success toast.
+BLOCKER 1 — The PRD tells the developer to import a file that doesn't
+            exist under that name anymore.
 ================================================================================
 
-WHAT THE PRD SAYS (story 13.4)
+WHAT THE PRD SAYS (story 14.4)
 
-When the current user is viewing Qurat's profile (because Qurat sent them a
-friend request), there's an Accept button at the top of the screen. Tapping
-Accept does three things, in order:
+The new BookmarkDeckViewScreen needs a "floating add-request button" (a
+round button that sits above the bottom tab bar). When the user scrolls
+down the deck card, the tab bar slides off-screen and the button rides
+with it. The animation is driven by a single Reanimated shared value —
+one variable everyone reads/writes to keep every screen's collapse in
+sync.
 
-  (1) Call acceptRequest(qurat_id) on the FriendshipProvider — this
-      immediately (a) removes Qurat from the "pending requests" list
-      and (b) adds her to the "friends" list.
-  (2) Show a snackbar (a small toast at the bottom) that says "Friend
-      added".
-  (3) Wait 1500 ms, then call navigation.goBack().
-
-Separately, at the top of the same screen, there is a "guard" that says:
-
-  "If source='request' AND the current user does NOT have a pending
-   request from this user, hide the profile and show a 'Not authorized'
-   EmptyState instead."
-
-That guard exists to prevent someone from typing a random user ID into a
-deep link and seeing a profile they shouldn't see.
+Story 14.4 AC says: "pass `marriageTabBarHidden` from
+`src/features/landing/shared/marriageTabBarHidden.ts`".
 
 WHY IT'S A PROBLEM
 
-Step (1) *immediately* flips the FriendshipProvider state — Qurat is no
-longer a pending request; she's now a friend. React re-renders the screen.
-The guard runs again. And the guard now says: "you don't have a pending
-request from Qurat — hide the profile." So during the 1500 ms window where
-the user is meant to see the "Friend added" toast, the screen instead flips
-to the ugly "Not authorized" EmptyState. Then goBack() finally fires and
-the user is dropped back to the Requests list.
+That file has been renamed and moved since the PRD was written.
+
+  - Old name:  marriageTabBarHidden
+  - New name:  tabBarHidden
+  - Old path:  src/features/landing/shared/marriageTabBarHidden.ts
+  - New path:  src/state/ui/tabBarHidden.ts
+
+The rename happened during phase 13 — once the Explore tab (not just
+Marriage) started writing to the same shared value, the "marriage" prefix
+stopped describing the reality. The JSDoc at the top of tabBarHidden.ts
+explains the rename in its own words.
+
+If the developer copy-pastes the AC verbatim, they will chase down a file
+that no longer exists, and either invent a new one (worst outcome — two
+shared values, out of sync) or pause to ask.
 
 ANALOGY
 
-Imagine you walk into a member's club and hand your invitation to the
-bouncer. He tears it up (that's how the club knows you're now a member).
-But immediately after tearing it up, he looks at your empty hand, notices
-you don't have an invitation, and throws you out — even though you just
-became a member two seconds ago. The rule is right, but the *ordering*
-of the checks is wrong.
+Imagine your PRD says "call Mrs. Robertson at extension 4501". But
+Mrs. Robertson got married last year and changed her surname to Nakamura
+and got transferred to extension 5610. The instructions LOOK right, but
+if you dial the number in the PRD you either get a dead line or —
+worse — you get a totally unrelated person named Robertson who now
+answers on that line.
 
 FIX OPTIONS
 
-  (a) Broaden the guard. Say: "source='request' is authorized if the user
-      currently has a pending request from that user OR is already
-      friends with them." This matches the real semantic — once you've
-      accepted, you're still authorized to be looking at that profile.
-      This is my recommendation. Smallest change, clearest meaning.
+  (a) Update the PRD in three places:
+      - Story 14.4 AC: change to "pass `tabBarHidden` from
+        `src/state/ui/tabBarHidden.ts`".
+      - Story 14.4 notes block: swap `marriageTabBarHidden` for
+        `tabBarHidden`.
+      - context_summary: same swap.
+      My recommendation. Zero code impact, keeps the PRD accurate.
 
-  (b) Freeze the guard's decision at mount time using a useRef snapshot.
-      The guard runs once when the screen opens and never re-checks.
-      Works, but hides a semantic bug behind a technical trick, and means
-      a future edit could easily reintroduce the problem.
+  (b) Leave the PRD as-is and trust the subagent to figure it out. The
+      grep will succeed on the file's own JSDoc which explains the
+      rename, so a smart subagent can bridge it. But this trades
+      certainty for cleverness and creates a risk of a bad guess.
 
-  (c) Call goBack() FIRST and let the snackbar show on the previous
-      screen (Explore Requests). Works but changes the UX contract — the
-      snackbar is meant to appear on top of the profile you just accepted
-      so it's clear WHO you added.
+  (c) Rename `tabBarHidden` BACK to `marriageTabBarHidden`. Nonsensical
+      — the rename was correct, the PRD is out of date.
 
-  (d) Do nothing. The user sees a broken screen for 1.5 seconds and we
-      just say "fix later". Not recommended.
-
-    
-  Answer: go with option a
+ANSWER: yes go with option a
 
 
 ================================================================================
-BLOCKER 2 — CandidateHero was typed to only accept the OLD single-female
-            profile. The deck introduces a new type that won't fit.
+BLOCKER 2 — The PRD invents a label-key namespace that the codebase
+            doesn't use.
 ================================================================================
 
-WHAT THE PRD SAYS (story 13.3, referencing story 13.1)
+WHAT THE PRD SAYS (story 14.3)
 
-Story 13.1 introduces a new TypeScript type called `DummyDeckProfile` for
-the five deck cards. It's a shape designed to mirror the backend's future
-`deck_view` (a lighter, condensed version of a profile) plus a handful of
-extra fields we need to render the About Me / Marriage Intentions / etc.
-sections on each card.
+The Explore screen already has two tabs (Friends and Requests) with
+label keys. Story 14.3 adds a third tab (Bookmarks). The AC says:
 
-Story 13.3 says "reuse CandidateHero as-is" as the top of every deck card.
+  New label: `explore.tabs.bookmarks`
+  Sits alongside existing keys `explore.tabs.friends` and
+  `explore.tabs.requests`.
 
 WHY IT'S A PROBLEM
 
-CandidateHero was written in phase 12 with this signature:
-
-    readonly profile: DummyFemaleProfile;
-
-It ONLY accepts a `DummyFemaleProfile` (the old, single-candidate type
-used when we shipped Aisha in phase 12). The new deck-card type
-`DummyDeckProfile` is a DIFFERENT shape — even if it happens to contain
-all the same fields CandidateHero actually reads, TypeScript treats them
-as unrelated types and will refuse to compile the code that passes a
-`DummyDeckProfile` into a component expecting a `DummyFemaleProfile`.
-
-The PRD already sanctioned an escape hatch for the OTHER reuse case
-(ProfileScrollView) with a documented cast: `deck as unknown as
-UserProfile & DummyOverlay`. But it forgot to say the same thing about
-CandidateHero. The developer will hit the compile error and have to
-either invent a fix on the fly or pause and ask.
+Those two "existing" keys don't exist. The actual keys today are
+`explore.friends` and `explore.requests` — no `.tabs.` in the middle.
+If we add `explore.tabs.bookmarks`, we end up with a Frankenstein
+namespace where two tabs live under `explore.*` and the third one lives
+under `explore.tabs.*`. Anyone opening `labels.en.json` later will
+assume the pattern is inconsistent and either try to "fix" it (touching
+phase-13 code we said not to touch) or copy the wrong prefix in phase 15
+and beyond.
 
 ANALOGY
 
-You bought a universal power adapter last year that says "fits any device
-with a Type-C USB port". This year you buy a laptop that has a Type-C USB
-port. You plug it in — but the adapter has an extra check on the label
-that says "only fits the Model X laptop we bought last year". The shape
-of the plug is the same. The check on the label is what's rejecting you.
-Either widen the label, or explicitly say "yes, we know it's not a Model X
-but plug it in anyway".
+Every apartment on your floor is numbered "4-A", "4-B", "4-C". You buy
+the empty apartment next door and the landlord tells you it's "4-Wing-D".
+Now every delivery driver, every friend, every emergency responder has
+to be told "yes, we're on floor 4 but the addressing scheme changes
+just at our door". It works. It's ugly.
 
 FIX OPTIONS
 
-  (a) Cast at the DeckCard boundary — same pattern the PRD already uses
-      for ProfileScrollView. One line: `<CandidateHero profile={deck as
-      unknown as DummyFemaleProfile} />`. Add a code comment explaining
-      the cast is intentional. This is my recommendation. Zero churn
-      and consistent with the sibling case.
+  (a) Use `explore.bookmarks` for the new key. Matches the existing
+      convention exactly. Also fix the PRD's false claim about
+      `.tabs.friends` / `.tabs.requests` existing. My recommendation.
 
-  (b) Widen CandidateHero's prop type. Extract a narrower structural
-      interface (a "CandidateHeroProfile" = just the 8-or-so fields it
-      actually reads) and change the prop type. More correct long-term
-      but requires editing a phase-12 component and re-verifying its
-      tests.
+  (b) Rename `explore.friends` → `explore.tabs.friends` and
+      `explore.requests` → `explore.tabs.requests` too, so all three
+      match the PRD's proposed namespace. Correct if you think `.tabs.`
+      is a better structure long-term, but it touches phase-13 code
+      (the PRD said not to). Larger churn.
 
-  (c) Make DummyDeckProfile extend DummyFemaleProfile (or vice-versa).
-      Couples the two types together permanently — bad, because when the
-      real backend ships and DummyDeckProfile is derived from the
-      backend's response, DummyFemaleProfile would need to change with
-      it, which is a phase-13/phase-12 coupling we don't want.
+  (c) Ship as-is with the inconsistent naming and add a cleanup story
+      to a future refactor phase. Delays the mess, doesn't avoid it.
 
-  ANSWER: go with option b
+ANSWER: okay sounds right, use option a
 
 
 ================================================================================
-SHARPEN 1 — What does the unread-notification dot on the bell icon
-            actually mean?
+BLOCKER 3 — Story 14.3 uses a library we haven't installed yet, and
+            the install command is different from a normal npm install.
 ================================================================================
 
-WHAT THE PRD SAYS (story 13.3)
+WHAT THE PRD SAYS (story 14.3)
 
-Keep the phase-12 HeaderBar (filter left, bell right). The little red dot
-on the bell is "derived from the currently visible deck profile's
-`has_unread_notifications`".
+Each BookmarkCard shows a photo with the user's name and details
+overlaid at the bottom. To keep the text readable no matter what the
+photo looks like, we add a dark-to-transparent gradient across the
+bottom of the card. The PRD says use `expo-linear-gradient` for that.
+
+The PRD notes acknowledge this: "If it is not currently in package.json,
+it is an Expo module and can be installed via `npx expo install
+expo-linear-gradient`."
+
+WHY IT'S A PROBLEM
+
+The library is NOT currently in package.json. And this is an expo module,
+which means `npm install` is not the right command — you need
+`npx expo install` because it also patches the native side of the
+dev-client, then a Metro restart. If a subagent does a plain
+`npm install expo-linear-gradient` (a very common mistake), the JS side
+works but the native module isn't linked and you get a red-screen
+runtime error the first time a BookmarkCard renders.
+
+The PRD flags this in the notes block, but not as a hard AC. Notes get
+skimmed. ACs get followed.
+
+ANALOGY
+
+The recipe says "add a pinch of saffron", and mentions in the margin
+"we don't currently stock saffron — pick some up on the way to work".
+The chef gets busy, skims the margin note, and starts cooking without
+saffron. The dish comes out wrong at the last step.
+
+FIX OPTIONS
+
+  (a) Promote the install line to a first-class AC on story 14.3:
+      "Run `npx expo install expo-linear-gradient` and verify it appears
+      in package.json before writing the LinearGradient import."
+      My recommendation. Zero-cost sharpen.
+
+  (b) Leave in the notes and trust the subagent. Cheaper on PRD editing,
+      more risk on execution.
+
+  (c) Swap out the gradient scrim for a plain semi-opaque
+      `View style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}` and skip
+      the dependency entirely. Loses the gradient (which is what makes
+      text over an arbitrary photo look polished) but avoids the
+      install step altogether.
+
+ANSWER: let us try option c, if i dont like it then we can use the gradient later
+
+
+================================================================================
+SHARPEN 1 — Story 14.3 tries to navigate to a screen that only exists
+            after story 14.4 lands. TypeScript will refuse to compile it.
+================================================================================
+
+WHAT THE PRD SAYS (stories 14.3 and 14.4)
+
+Story 14.3 builds the Bookmarks grid on ExploreHomeScreen. Each card in
+the grid, when tapped, is supposed to navigate to a new screen called
+BookmarkDeckViewScreen using
+`navigation.navigate('BookmarkDeckViewScreen', { userId })`.
+
+Story 14.4 is the story that ACTUALLY adds BookmarkDeckViewScreen to
+the ExploreStack — both the TypeScript type for the route AND the screen
+component itself.
+
+The stories are ordered so that 14.3 runs before 14.4 (which is correct
+if you go by dependencies — 14.4 depends on 14.3 for the entry point).
 
 WHY IT'S WORTH LOCKING DOWN
 
-Every notification bell in every app in the world means "YOU have unread
-notifications" — the current user's own. Not "the person you're LOOKING at
-has unread notifications". That would be like Instagram showing you the
-unread-DM dot only when you're viewing Cristiano Ronaldo's profile
-(because Ronaldo has a lot of unread DMs). Meaningless from the current
-user's perspective.
+TypeScript enforces navigation types strictly. The moment story 14.3 tries
+to call `navigation.navigate('BookmarkDeckViewScreen', ...)`, TS will say:
+"there's no such screen in this stack". The build breaks. Tests won't
+run because the file won't compile.
 
-Phase 12 already did this cheat because there was only one candidate
-(Aisha) and the bell dot came from her JSON. It "worked" because the
-screen never changed. Phase 13 introduces a deck of 5 cards, so the dot
-will now flicker on/off as the user swipes through the cards. That will
-look like a bug to any tester.
+There are three ways out:
+
+  (1) Do 14.4 before 14.3. But then 14.4 has nowhere to point its own
+      "back button" entry point from (the Bookmarks tab), and TS on 14.4
+      probably works but the acceptance criteria don't (you can't test
+      "tapping a BookmarkCard opens BookmarkDeckViewScreen" until 14.3
+      exists).
+
+  (2) In story 14.3, register the route type AND stub in an empty
+      placeholder screen (a component that just returns `null` or a "TODO
+      14.4" text). Then story 14.4 replaces the placeholder with the
+      real screen. Clean split — each story does one full thing.
+
+  (3) Use a `// @ts-ignore` or cast the navigation call to `any` in
+      story 14.3, and unmask it in 14.4. Cheap but ugly — the whole
+      point of typed navigation is that you can't do this.
 
 ANALOGY
 
-Imagine your car's fuel-warning light is wired to the fuel gauge of the
-car parked next to you at every red light. Every time you pull up
-alongside a different car, the light comes on or goes off. That's what
-we're building.
+You're building a house. The blueprints say "electrician wires up the
+kitchen outlets first, then the plumber installs the sink". But the
+kitchen outlets need to connect to the panel breaker that the plumber's
+box actually houses. So the electrician has to either wait for the
+plumber, install a temporary jumper wire, or fix the ordering. Doing
+nothing means the electrician stops halfway through with a hot wire in
+their hand.
 
 FIX OPTIONS
 
-  (a) Read the dot from the current user (dummyprofile.__dummy_display_
-      only?.has_unread_notifications) instead. One-line change. My
-      recommendation.
+  (a) Update story 14.3 AC to include: "Register
+      `BookmarkDeckViewScreen: { userId: string }` on
+      `ExploreStackParamList` in `src/navigation/types.ts`, and add a
+      placeholder screen in `ExploreStack.tsx` that renders `null`.
+      Story 14.4 replaces the placeholder with the real screen." My
+      recommendation. Cleanest split, no TS suppressions, both stories
+      remain testable.
 
-  (b) Keep as-written and accept the flicker as a mock-only fudge; add a
-      line to the phase-13 teardown list in context.md so nobody debugs
-      it later.
+  (b) Reorder: run 14.4 before 14.3. Awkward because 14.4's own tests
+      ("tapping a bookmark card opens the screen") can't run until 14.3
+      exists.
 
-  (c) Hardcode it to `false` for phase 13 and revisit when real
-      notifications ship (phase 19).
+  (c) Allow a temporary `as any` cast in 14.3 with a `TODO(14.4)`
+      comment. Works but every subagent-driven pattern like this
+      eventually leaks into review.
 
-  ANSWER: Go with option a
-
+ANSWER: okay go with option a
 
 ================================================================================
-SHARPEN 2 — What does the Like button ACTUALLY do internally? Does
-            it create a real pending request, or is it just theatre?
+SHARPEN 2 — Story 14.1's description of "where to put the new provider
+            in the tree" is wrong (harmless, but confusing to the
+            subagent).
 ================================================================================
 
-WHAT THE PRD SAYS (story 13.3)
+WHAT THE PRD SAYS (story 14.1)
 
-Like → advance the deck to the next card + Snackbar "Friend request sent".
+The BookmarksProvider needs to sit in the React tree somewhere in App.tsx.
+The PRD says:
 
-That's the entire acceptance criterion for the Like button. No mention
-of writing to the FriendshipProvider, no mention of creating a
-`dummyrequests.json` entry, no mention of any persistent state change.
+  "Order: AuthProvider > OnboardingCompletionProvider > FriendshipProvider
+   > BookmarksProvider > NavigationContainer."
 
 WHY IT'S WORTH LOCKING DOWN
 
-There are two coherent interpretations and they lead to different code:
+The insertion point (between FriendshipProvider and NavigationContainer)
+is correct. But the described "order" is missing 5 outer providers that
+already wrap those four:
 
-  Interpretation A — "Like is theatre". The snackbar says "sent" but
-    nothing is written anywhere. The current user could swipe Like on
-    Aisha and then, one second later, someone from the outside sends
-    Aisha a message on WhatsApp — Aisha has no idea our user liked her.
-    Real backend request-create is a phase-15 story. Phase 13 just
-    displays the message to give the user a satisfying "I did something"
-    feel while all state is still mock.
+  Actual tree:
+    GestureHandlerRootView > SafeAreaProvider > ThemeProvider >
+    LanguageProvider > QueryProvider > AuthProvider >
+    OnboardingCompletionProvider > FriendshipProvider > NavigationContainer
 
-  Interpretation B — "Like creates a pending request in the
-    OTHER direction". Now the deck user's Like adds a record to the
-    OTHER user's incoming requests. But we don't model that in phase 13
-    (dummyrequests.json only tracks incoming to OUR user, and we don't
-    have a "the deck user's outgoing requests" model).
+The subagent will open App.tsx, see a much bigger tree than the PRD
+described, and either (a) trust the PRD and try to delete the outer
+providers ("the PRD says the top of the tree is AuthProvider — is the
+tree wrong?") which would be a disaster, or (b) trust the file, insert
+correctly, but pause to flag the mismatch.
 
-I believe the PRD intends interpretation A (mock theatre), and phase 15
-is where real request-write lands. But we should say so explicitly on
-the story so the developer doesn't add half-baked provider writes.
-
+Neither outcome is a code disaster — but option (a) is a real risk if
+the subagent is over-eager.
 
 ANALOGY
 
-You press the "Call for service" button on a train seat. The button
-flashes a green light saying "Attendant notified". Interpretation A:
-the button is not actually wired to anything, but the light makes you
-feel heard. Interpretation B: the button DID actually page an
-attendant. If it's A, no problem. If it's B and the wiring is
-mis-installed, you sit there confused when nobody comes.
+You tell a movers crew: "put the couch between the coffee table and
+the TV stand". They arrive at the house and there's also a bookshelf,
+a rug, three lamps, and a piano in that room. The instruction is still
+followable — the couch's target position is unambiguous — but the movers
+now have to decide whether YOU forgot the other furniture or the tenant
+just added it after you wrote the note. If they take the note as
+authoritative, they might move the piano out on their own initiative.
 
 FIX OPTIONS
 
-  (a) Confirm interpretation A. Add an AC to story 13.3: "Like does
-      NOT write to FriendshipProvider. Real pending-request creation
-      ships in phase 15." My recommendation.
+  (a) Trim story 14.1's AC to just: "insert BookmarksProvider between
+      FriendshipProvider and NavigationContainer in App.tsx, keeping
+      all existing outer providers untouched." My recommendation.
+      Removes the misleading full-tree list, keeps the actionable
+      instruction.
 
-  (b) Confirm interpretation B. Extend the FriendshipProvider to track
-      an outgoing-request list, extend Story 13.3 with the write, and
-      show the Like's target as a pending request in the Explore
-      Requests tab of a DIFFERENT test user account. Big scope creep;
-      not recommended for phase 13.
-  
+  (b) Rewrite the AC with the correct full 9-provider list. Accurate
+      but verbose, and will go stale again the next time we add a
+      provider.
 
-  
-ANSWER: Go with option A for now, this is just to mock, later we will change this
+  (c) Leave as-is. The subagent will probably read the code first
+      anyway; only downside is a minor "wait, is this right?" pause.
 
-
-================================================================================
-SHARPEN 3 — What does the deck-exhausted state look like?
-            Hide the action bar, or grey it out?
-================================================================================
-
-WHAT THE PRD SAYS (story 13.3)
-
-When the user reaches the end of the deck (index >= 5), the scroll
-content is replaced by an EmptyState. The action bar (X / Undo / Star /
-Check) either "hides in the exhausted state (or its buttons become
-disabled — decide at brainstorm)".
-
-WHY IT'S WORTH LOCKING DOWN
-
-Two coherent UX affordances:
-
-  Hide entirely — no buttons at all. Reads as "there's nothing here
-    for you to do". Matches the EmptyState's message.
-
-  Show but disabled — buttons visible but greyed out. Reads as
-    "the buttons are broken right now". Confusing.
-
-ANALOGY
-
-If a shop is closed for the night, do they turn the neon signs off
-entirely, or leave them on but dimmed? "Off entirely" reads as "come
-back later, we're closed". "On but dim" reads as "the electrician needs
-to be called".
-
-FIX OPTIONS
-
-  (a) Hide entirely. My recommendation.
-
-  (b) Show but disabled.
-
-  (c) Hide only the X / Star / Check but keep Undo visible so the user
-      can step BACK into the deck (rewind their last swipe). More
-      complex UX but genuinely useful — you might want to un-Dislike
-      the last card you swiped away.
-
-ANSWER: go with option A
+ANSWER: okay go with option a
 
 
 ================================================================================
-SHARPEN 4 — When the user swipes to the next deck card, does the tab
-            bar and the action bar snap back into view?
+NOTE 1 — resolveDummyPhoto() can return undefined; the BookmarkCard AC
+         doesn't say what to render in that case.
 ================================================================================
 
-WHAT THE PRD SAYS (story 13.3)
+WHAT THE PRD SAYS (story 14.3)
 
-"Scroll position resets to 0 whenever `currentDeckIndex` changes."
-
-WHY IT'S WORTH LOCKING DOWN
-
-In phase 12 we wired the bottom tab bar and the round action bar to
-collapse (translate down and fade out) when the user scrolls DOWN, and
-snap back into view when they scroll up. That collapse is driven by a
-shared Reanimated value called `marriageTabBarHidden`.
-
-When the user has scrolled halfway down Aisha's profile (tab bar
-collapsed) and hits Dislike to advance to the next card, the scroll
-position resets to 0 (good). BUT the `marriageTabBarHidden` shared
-value is still stuck at 1 (fully collapsed). So the new card renders
-at the top of its scroll, but the tab bar is still off-screen.
-
-The user has to manually scroll DOWN a bit and then UP again to make
-the tab bar reappear. Not obvious.
-
-ANALOGY
-
-You're reading a magazine. As you scroll down a page, the header of
-the magazine slides up out of view (nice, gives you more reading room).
-You flip to the next page and start at the top of the page — but the
-header is still hidden. You have to scroll partway down and back up
-just to make the magazine's title reappear. Weird.
-
-FIX OPTIONS
-
-  (a) Add to Story 13.3 AC: "On deck advance/undo, reset
-      marriageTabBarHidden.value to 0 with a smooth withTiming
-      animation, so the tab bar and action bar spring back into view
-      alongside the scroll reset." My recommendation.
-
-  (b) Do nothing and let the user scroll to bring the tab bar back.
-      Consistent-but-jarring.
-
-ANSWER: Go with option a
-================================================================================
-SHARPEN 5 — Does the Requests-tab full-profile view leak the target
-            user's phone number BEFORE the current user accepts them?
-================================================================================
-
-WHAT THE PRD SAYS (story 13.4)
-
-The OtherProfileScreen for source='request' shows the same
-ProfileScrollView as source='friend'. The difference is only the header
-(back-arrow only) and the extra Accept/Decline bar. The ProfileScrollView
-already renders a ContactActionsSection at the bottom that shows the
-target user's phone number and a share button.
-
-WHY IT'S WORTH LOCKING DOWN
-
-Consider Qurat sending our user a friend request. Our user opens Qurat's
-profile from the Requests tab and — without accepting anything — can
-already see Qurat's phone number and copy/share it. In a real matrimonial
-app this is a genuine privacy leak: contact info is generally revealed
-AFTER two users mutually accept. Once you've DECLINED, you've had access
-to her phone number anyway.
-
-For friends (accepted), showing the phone is fine — that's what a friends
-list is for.
-
-ANALOGY
-
-A dating app has a "someone likes you" screen. You can see their profile
-photo and their bio. But their phone number is hidden behind a "match to
-reveal" gate. That gate is what protects users who haven't matched from
-handing out their contact info too early.
-
-The PRD is currently unlocking the gate on both the "match" side AND the
-"pending request" side.
-
-FIX OPTIONS
-
-  (a) Add an optional `contactVisible?: boolean` prop to
-      ProfileScrollView (defaults to true so phase-12 callers don't
-      break). OtherProfileScreen passes `contactVisible={source ===
-      'friend'}`. My recommendation — closes the leak, minimal change.
-
-  (b) Accept the leak as mock-only. Add a note to the phase-13 teardown
-      list in context.md. The real backend will presumably not return
-      Qurat's phone number in the request-view response anyway.
-
-  (c) Split ContactActionsSection into ContactRow (phone) and
-      ContactActions (Share/Favourite/Block/Report), so OtherProfileScreen
-      can hide just the ContactRow while keeping the share button
-      visible. Cleaner but more code.
-
-ANSWER: Go with option A 
-================================================================================
-NOTE 1 — Row-body-vs-buttons touch conflict in Explore Requests list.
-================================================================================
-
-WHAT THE PRD SAYS (story 13.5)
-
-Requests list row: thumbnail + name + subtitle on the left, Accept and
-Decline buttons on the right. "Row-body press (i.e. everything except
-the two buttons) → navigate to OtherProfileScreen. Button press → run
-the button's own action."
+Each BookmarkCard shows a background image via `resolveDummyPhoto()`.
+The AC says use `photos[0]` if present, else `photo_url`. The overlay
+text (name, age, job) sits on top of the image.
 
 WHY IT'S WORTH FLAGGING
 
-React Native's default touch propagation means if the whole row is
-wrapped in a TouchableArea, tapping Accept ALSO fires the row press —
-so the user simultaneously navigates AND accepts. Devs often solve this
-with stopPropagation in the button handler, which works but is easy to
-forget.
+`resolveDummyPhoto()` returns `undefined` when the input is null or the
+asset isn't registered. If a fixture ever has neither `photos[0]` nor
+`photo_url` (in mock world this shouldn't happen, but the type allows
+it), the card renders as: no background, dark scrim on nothing, white
+text floating in mid-air with black scrim above it. Ugly but not broken.
 
-The clean structure is: TouchableArea wraps ONLY the left column
-(thumbnail + name/subtitle). The two buttons sit in a SIBLING Row
-outside the touchable. Then there's no conflict at all.
+Not a blocker. Just needs one line: "if `resolveDummyPhoto()` returns
+`undefined`, render a solid `theme.colors.bg.surface` background under
+the overlay". The subagent will likely add this on their own — but
+making it explicit removes any lingering ambiguity.
 
-Non-blocking. Just a hint to save the developer half a debugging
-session.
+ANSWER do the recommendation
 
 
 ================================================================================
-NOTE 2 — Cold-start reset of the FriendshipProvider is EXPECTED behavior,
-         not a bug.
+NOTE 2 — SendRequestModal's testIDs were not confirmed by the audit;
+         story 14.4's tests query by them.
 ================================================================================
 
-WHAT THE PRD SAYS (story 13.2)
+WHAT THE PRD SAYS (story 14.4)
 
-FriendshipProvider is in-memory only for phase 13. State resets on
-every cold start.
+The tests for BookmarkDeckViewScreen use `getByTestId('send-request-card')`
+and press `send-request-no-ask` to simulate the cancel flow. These IDs
+come from the phase-13 SendRequestModal component.
 
 WHY IT'S WORTH FLAGGING
 
-If you Accept Qurat during a QA session and then close the app and
-reopen it, Qurat's request will come back and Mehvish will be the only
-friend again. This is EXPECTED. It's marked TODO(mock-only). Real
-persistence ships in phase 15.
+The audit confirmed the modal's behavior (the `onCancel` after `onConfirmed`
+timing, `SENDING_HOLD_MS = 1000`) but did not directly confirm the specific
+testID strings. If the modal uses different strings — or no testIDs at
+all — story 14.4's tests will fail on the wrong thing (querySelector,
+not on any behavior).
 
-Non-blocking. Just so nobody files it as a bug during QA.
+Non-blocking. Just a heads-up for the 14.4 subagent: verify the testIDs
+BEFORE writing the assertions. If they don't exist, either add them
+(a passive change to SendRequestModal that changes no behavior) or query
+by role/text instead.
+
+ANSWER okay do it
 
 
 ================================================================================
-NOTE 3 — The test list for story 13.4 is missing one small symmetric case.
+NOTE 3 — AsyncStorage's jest mock is not currently registered anywhere.
 ================================================================================
 
-WHAT THE PRD SAYS (story 13.4)
+WHAT THE PRD SAYS (story 14.1)
 
-Access-guard test: "unknown userId with source='friend' → EmptyState".
+The AC says "use the standard `@react-native-async-storage/async-storage/
+jest/async-storage-mock` preset. If not registered, add it — do NOT roll
+a bespoke mock."
 
 WHY IT'S WORTH FLAGGING
 
-The symmetric test — unknown userId with source='request' → EmptyState —
-is missing. Trivial to add. Just a completeness sweep.
+`jest.setup.ts` is currently empty (just a comment saying "no setup steps
+required"). So the AC's second half ("if not registered, add it") is
+what actually runs. The subagent will add one line
+`jest.setup.ts`:
 
-Non-blocking. Add on the fly during implementation if you want.
+  jest.mock('@react-native-async-storage/async-storage', () =>
+    require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+  );
 
+Non-blocking. The AC already handles this. Flagging so you know that
+"the mock is not currently registered" is a fact, not a surprise.
 
-================================================================================
-NOTE 4 — Story 13.4 leaves the choice of "reusable BackHeaderBar
-         component" vs "inline header" up to the implementer.
-
-================================================================================
-
-WHAT THE PRD SAYS (story 13.4)
-
-"Either a new BackHeaderBar component in features/profile/components/
-OR an inline header rendered directly in the screen. Whichever pattern
-is chosen, the header is visually consistent with the phase-12
-HeaderBar."
-
-WHY IT'S WORTH FLAGGING
-
-If we build a reusable BackHeaderBar now, phases 15 (friend-requests
-standalone), 17 (chat room), and 18 (blocks) can all reuse it. If we
-inline it now, three future phases will each build their own or
-retrofit the inline one out.
-
-Non-blocking. My recommendation is to build the reusable component
-now, but it's a small enough call that "inline is fine" is a valid
-answer too.
+ANSWER (optional — say "skip"):
 
 
 ================================================================================
-END OF PHASE 13 EXPLANATIONS
+END OF PHASE 14 EXPLANATIONS
 ================================================================================
 
 Please write your picks / instructions in QA/answers.txt (or reply
-here). Once I have your calls, I'll update the PRD and re-run
-/implement-phase 13.
+here). Once I have your calls, I'll update the PRD and either re-run
+/implement-phase 14 or proceed directly, per your preference.

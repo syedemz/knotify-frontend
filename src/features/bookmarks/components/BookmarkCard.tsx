@@ -162,9 +162,17 @@ export function BookmarkCard({ bookmark, onPress, testID }: BookmarkCardProps): 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
     card: {
-      // Portrait 3:4 aspect ratio — two-across on a ~390dp screen gives ~180dp
-      // wide each (after spacing), so height ≈ 240dp.
-      aspectRatio: 3 / 4,
+      // flexBasis 48% pins each cell to half the row regardless of item count.
+      // Without an explicit width, the card would collapse to 0×0 (its contents
+      // are absoluteFill) — only the 3px pink border would render as a dot.
+      // Using flexBasis (not flex:1) means a lone card in an odd-count row
+      // still occupies half the width instead of stretching to full-width.
+      flexBasis: '48%',
+      flexGrow: 0,
+      // 4:5 portrait — a softer portrait than 3:4 that pairs better with the
+      // fixture photos (all 1024×1024 square). At 3:4 `resizeMode="cover"` on a
+      // square source crops ~33% of the image; 4:5 drops that to ~20%.
+      aspectRatio: 4 / 5,
       borderRadius: theme.radii.lg,
       borderWidth: 3,
       borderColor: theme.colors.accent.primary,
@@ -177,9 +185,15 @@ function createStyles(theme: Theme) {
       opacity: 0.85,
     },
     backgroundImage: {
-      // Fills the entire card. StyleSheet.absoluteFill is the idiomatic
-      // pattern for a background layer inside a relatively-positioned parent.
-      ...StyleSheet.absoluteFill,
+      // Explicit width/height are required here — StyleSheet.absoluteFill
+      // (top/left/right/bottom: 0) does not reliably stretch <Image> inside
+      // an aspectRatio-sized parent. The image falls back to its intrinsic
+      // dimensions (1024×1024) anchored top-left, showing only the corner
+      // of the photo super-zoomed. width/height percentages are computed
+      // against the parent's already-known dimensions and work correctly
+      // with resizeMode="cover".
+      width: '100%',
+      height: '100%',
     },
     imageFallback: {
       // Solid bg.surface background when no registered asset is available.
