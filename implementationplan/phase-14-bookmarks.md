@@ -72,19 +72,38 @@ context_summary: |
   app after Star-tapping Aisha and Nadia will still show them on the Bookmarks tab.
 
 open_decisions_locked_by_user:
-  # Filled in during /implement-phase 14 brainstorm. Left empty for now — the user's
-  # initial description locks the shape but not the finer UX details; brainstorm will
-  # surface anything that requires user input (e.g. Star pressed-state colour, empty-state
-  # copy, card border thickness/shadow tuning, whether to show an unbookmark affordance
-  # from inside BookmarkDeckView itself).
+  # Resolved during /implement-phase 14 brainstorm on 2026-08-27. See
+  # phasebrainstorms/phase-14-bookmarks-brainstorm.md and QA/explanations.txt.
+  - Q1 (Blocker 1): `marriageTabBarHidden` was renamed to `tabBarHidden` and moved
+    to `src/state/ui/tabBarHidden.ts` during phase 13. All references in this PRD
+    have been swapped. Story 14.4 AC + notes now use `tabBarHidden`.
+  - Q2 (Blocker 2): New tab label key is `explore.bookmarks` (NOT `explore.tabs.bookmarks`)
+    to match the existing `explore.friends` / `explore.requests` convention. Story 14.3
+    AC + labels list updated.
+  - Q3 (Blocker 3): DO NOT install `expo-linear-gradient`. `BookmarkCard` uses a plain
+    `View` with a flat `rgba(0, 0, 0, 0.55)` scrim at the bottom band. Revisit with a
+    real gradient in a follow-up if the flat scrim reads harshly on device.
+  - Q4 (Sharpen 1): Story 14.3 owns the route-type registration for
+    `BookmarkDeckViewScreen` + a placeholder screen; story 14.4 replaces the
+    placeholder with the real component and deletes the placeholder file. This
+    splits the type/screen ownership cleanly and lets 14.3's tests compile.
+  - Q5 (Sharpen 2): Story 14.1's provider-tree AC now says "insert between
+    FriendshipProvider and NavigationContainer" without listing the outer providers
+    (which have grown to 9 total). Read App.tsx as authoritative.
+  - Q6 (Note 1): BookmarkCard falls back to a `theme.colors.bg.surface` solid
+    background if `resolveDummyPhoto()` returns `undefined`.
+  - Q7 (Note 2): Story 14.4 tests verify the exact SendRequestModal testID strings
+    before writing assertions; if missing from the phase-13 modal, add them as a
+    passive change.
 
 stories:
 
   - id: 14.1
     title: BookmarksStorage helper + BookmarksProvider + useBookmarks hook
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
+    tracking_issue: 122
     acceptance_criteria:
       - New helper module `src/features/bookmarks/storage/bookmarksStorage.ts` exposing a
         thin, side-effect-free API around `@react-native-async-storage/async-storage`
@@ -118,12 +137,14 @@ stories:
         import time.
 
       - New provider + hook `src/state/bookmarks/BookmarksProvider.tsx`:
-          - `BookmarksProvider` React component, mounted in `App.tsx` at the same tree
-            level as `FriendshipProvider` (inside `OnboardingCompletionProvider`, wrapping
-            `NavigationContainer`). Order: `AuthProvider` > `OnboardingCompletionProvider`
-            > `FriendshipProvider` > `BookmarksProvider` > `NavigationContainer`. If the
-            existing tree is `... > FriendshipProvider > NavigationContainer`, insert
-            `BookmarksProvider` between the two.
+          - `BookmarksProvider` React component, mounted in `App.tsx`. Insert
+            `BookmarksProvider` between `FriendshipProvider` and `NavigationContainer`,
+            keeping all existing outer providers untouched (do NOT delete or reorder
+            `GestureHandlerRootView`, `SafeAreaProvider`, `ThemeProvider`,
+            `LanguageProvider`, `QueryProvider`, `AuthProvider`,
+            `OnboardingCompletionProvider`, or `FriendshipProvider`). The full current
+            tree is longer than any prior phase's PRD lists — read App.tsx as
+            authoritative.
           - On mount, calls `getBookmarks()` once and populates internal `useState<
             DummyDeckProfile[]>` seed. Exposes a `loading: boolean` flag that starts
             `true` and flips to `false` after the initial hydration resolves. Consumers
@@ -205,6 +226,7 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [14.1]
+    tracking_issue: 123
     acceptance_criteria:
       - `MarriageLandingScreen.handleSuperLike` (currently `setSnackbarMsg(t('landing.actionUnavailable'))`
         + `setSnackbarVisible(true)`) is replaced with a bookmark toggle:
@@ -221,8 +243,9 @@ stories:
           - Else (already bookmarked):
             - `await removeBookmark(currentDeck.user_id)`.
             - `setSnackbarMsg(t('landing.bookmark.removed'))` + `setSnackbarVisible(true)`.
-          - Deck index does NOT change. `marriageTabBarHidden.value` does NOT reset.
-            The card stays on-screen after Star-tap; only the snackbar surfaces.
+          - Deck index does NOT change. `tabBarHidden.value` (the shared collapse
+            driver at `src/state/ui/tabBarHidden.ts`) does NOT reset. The card stays
+            on-screen after Star-tap; only the snackbar surfaces.
 
       - **Star icon visual state (optional but recommended).** In
         `CollapsingActionBar.tsx`, accept an optional `isSuperLikeActive?: boolean` prop
@@ -275,12 +298,15 @@ stories:
     agent: frontenddeveloper
     done: false
     depends_on: [14.1]
+    tracking_issue: 124
     acceptance_criteria:
-      - `ExploreHomeScreen` gains a **third subtab** labelled `t('explore.tabs.bookmarks')`
-        alongside the existing Friends and Requests segments. Segment control style
-        (brand colour on active, secondary on inactive, same padding/spacing) is preserved
-        unchanged from the phase-13 two-segment implementation. The tab order left→right
-        is: **Friends | Requests | Bookmarks**.
+      - `ExploreHomeScreen` gains a **third subtab** labelled `t('explore.bookmarks')`
+        alongside the existing Friends and Requests segments (whose current label keys
+        are `explore.friends` and `explore.requests` — no `.tabs.` middle segment;
+        the new key follows the same convention). Segment control style (brand colour
+        on active, secondary on inactive, same padding/spacing) is preserved unchanged
+        from the phase-13 two-segment implementation. The tab order left→right is:
+        **Friends | Requests | Bookmarks**.
 
       - When `activeTab === 'bookmarks'`:
           - Reads `bookmarks` from `useBookmarks()`.
@@ -300,12 +326,19 @@ stories:
             `resolveDummyPhoto()` from `src/assets/dummyPhotoRegistry.ts` to get a
             React Native `ImageSourcePropType`. Wrap in `Image` with `resizeMode="cover"`.
             **Do NOT** use `Avatar` — Avatar is circle-cropped and constrains the aspect.
-          - Overlay text at the bottom of the card, inside a `LinearGradient`
-            (`expo-linear-gradient`, already installed) fading from `transparent` at the
-            top of the overlay band to a semi-opaque dark scrim
-            (`rgba(0, 0, 0, 0.68)`) at the bottom, so light text remains legible over
-            arbitrary photos. Overlay contents (stacked in a `Column` with `theme.spacing.xs`
-            gap):
+            **Fallback:** if `resolveDummyPhoto()` returns `undefined` (fixture has
+            neither `photos[0]` nor `photo_url`, or the asset isn't registered), render
+            a solid `theme.colors.bg.surface` background under the overlay so text still
+            has contrast rather than floating over a transparent void.
+          - Overlay text at the bottom of the card, inside a plain `View` with a
+            semi-opaque dark scrim (`backgroundColor: 'rgba(0, 0, 0, 0.55)'`) that
+            spans the bottom band of the card (subagent picks a height that fits the
+            two overlay lines with `theme.spacing.md` internal padding — roughly
+            `~28%` of the card's height is a reasonable starting point). No
+            `LinearGradient` and no `expo-linear-gradient` dependency for phase 14 —
+            the flat scrim is the intentional MVP. If, on-device, the flat scrim reads
+            harshly over some photos, we revisit with a real gradient in a follow-up.
+            Overlay contents (stacked in a `Column` with `theme.spacing.xs` gap):
               - Line 1: `Heading variant="heading.sm"` — full name in the form
                 `${first_name} ${last_name}` (both truncated with `numberOfLines={1}`).
               - Line 2: `Text variant="label.sm"` — `${age} · ${job_title}` (single line,
@@ -333,7 +366,18 @@ stories:
 
       - `BookmarkCard`'s `onPress` in `ExploreHomeScreen` navigates:
         `navigation.navigate('BookmarkDeckViewScreen', { userId: bookmark.user_id })`.
-        (`BookmarkDeckViewScreen` is added to the ExploreStack in story 14.4.)
+
+      - **Route type registration + placeholder screen** (this story owns the type so
+        14.3's `navigation.navigate` compiles):
+          - In `src/navigation/types.ts`, add
+            `BookmarkDeckViewScreen: { userId: string }` to `ExploreStackParamList`.
+          - In `src/navigation/ExploreStack.tsx`, register the route with a temporary
+            placeholder component that renders `null` (or a small centered `Text` with
+            `TODO(14.4): real screen ships next`), `headerShown: false`. Story 14.4
+            replaces this placeholder with the real `BookmarkDeckViewScreen` component
+            and drops the placeholder file. Keep the placeholder in a co-located file
+            (e.g. `src/features/bookmarks/screens/BookmarkDeckViewScreenPlaceholder.tsx`)
+            so 14.4's delete step is a clean removal.
 
       - Grid layout details:
           - Use the standard `FlatList numColumns={2}` two-column pattern. Do NOT use
@@ -348,7 +392,8 @@ stories:
             behaves oddly with `numColumns`.
 
       - New labels added to `labels.en.json` + `labels.ur.json` (full parity):
-          - `explore.tabs.bookmarks`
+          - `explore.bookmarks` — tab label (matches existing `explore.friends` /
+            `explore.requests` convention)
           - `explore.bookmarks.emptyTitle`
           - `explore.bookmarks.emptyDescription`
 
@@ -381,22 +426,25 @@ stories:
       **Do NOT introduce a new theme token for the border.** Use `theme.colors.border.default`
       or `theme.colors.accent.primary` — both exist today.
 
-      **`expo-linear-gradient` sanity check.** If it is not currently in `package.json`,
-      it is an Expo module and can be installed via `npx expo install expo-linear-gradient`
-      — a Metro reload picks it up, no APK reinstall required. Verify presence before
-      writing the import.
+      **Flat scrim, not a gradient — deliberate.** The user picked the flat
+      `rgba(0, 0, 0, 0.55)` scrim over installing `expo-linear-gradient`. Do NOT
+      install `expo-linear-gradient` in this phase; do NOT import it; do NOT add it
+      to `package.json`. If the flat scrim reads harsh over some fixture photos on
+      device, we revisit with a real gradient in a follow-up — but that decision is
+      out of scope for phase 14.
 
   - id: 14.4
     title: BookmarkDeckViewScreen + FloatingAddRequestButton + SendRequestModal wiring
     agent: frontenddeveloper
     done: false
     depends_on: [14.1, 14.3]
+    tracking_issue: 125
     acceptance_criteria:
-      - **New route** `BookmarkDeckViewScreen` added to `ExploreStackParamList` in
-        `src/navigation/types.ts`:
-          - `BookmarkDeckViewScreen: { userId: string }`.
-          - Registered in `src/navigation/ExploreStack.tsx` alongside `ExploreHomeScreen`
-            and `OtherProfileScreen`. `headerShown: false`.
+      - **Route registration was completed in story 14.3** — `ExploreStackParamList`
+        already has `BookmarkDeckViewScreen: { userId: string }` and `ExploreStack.tsx`
+        already registers a placeholder (`headerShown: false`). This story replaces the
+        placeholder component with the real screen defined below and deletes the
+        placeholder file (`src/features/bookmarks/screens/BookmarkDeckViewScreenPlaceholder.tsx`).
 
       - New screen `src/features/bookmarks/screens/BookmarkDeckViewScreen.tsx`:
           - Route param resolved via `useRoute<RouteProp<ExploreStackParamList,
@@ -432,13 +480,14 @@ stories:
               `modalVisible: boolean` state.
             - `accessibilityLabel`: `t('bookmarks.deckView.sendRequestAccessibility')`
               (name interpolated if the label calls for it — subagent tunes).
-            - `hidden`: pass `marriageTabBarHidden` from
-              `src/features/landing/shared/marriageTabBarHidden.ts` (reused across the
-              Marriage / other-profile / bookmark screens as the one shared collapse
-              driver). Wire the same `scrollHandler` pattern used on `OtherProfileScreen`
-              so scrolling on this screen ALSO drives the tab bar down (feature parity
-              across all stack-detail screens — the tab bar's collapse behaviour should
-              feel continuous regardless of which screen the user is on).
+            - `hidden`: pass `tabBarHidden` from `src/state/ui/tabBarHidden.ts` (the
+              shared collapse driver — renamed from `marriageTabBarHidden` in phase 13
+              when Explore also started writing to it; JSDoc at the top of the file
+              explains the rename). Wire the same `scrollHandler` pattern used on
+              `OtherProfileScreen` so scrolling on this screen ALSO drives the tab bar
+              down (feature parity across all stack-detail screens — the tab bar's
+              collapse behaviour should feel continuous regardless of which screen the
+              user is on).
 
       - **SendRequestModal reuse** — no code changes to `SendRequestModal.tsx`. The screen:
           - Renders `<SendRequestModal visible={modalVisible} targetName={`${profile.first_name}
@@ -496,13 +545,21 @@ stories:
               assertion via `getByTestId('floating-add-request-button-container')` and
               inspect the animated style).
           - `__tests__/features/bookmarks/screens/BookmarkDeckViewScreen.test.tsx`:
+            - **Verify SendRequestModal testIDs BEFORE writing assertions.** Open
+              `src/features/landing/components/SendRequestModal.tsx` and confirm the
+              exact testID strings for (a) the modal card container and (b) the "No"
+              button on the ask step. The PRD assumes `send-request-card` and
+              `send-request-no-ask` but they were not directly verified in the pre-flight
+              audit — if the real IDs differ, use the real ones. If SendRequestModal
+              has NO testIDs, add them as a passive change (no behavior change) rather
+              than querying by role/text (which is fragile against label edits).
             - Renders `BackHeaderBar` + `DeckCard` for a bookmarked profile.
-            - Tapping the FAB opens `SendRequestModal` (assert modal visible via
-              `getByTestId('send-request-card')` from the phase-13 modal testIDs).
+            - Tapping the FAB opens `SendRequestModal` (assert modal visible via the
+              verified testID).
             - Full ask → confirm → sending flow calls `navigation.goBack()` after the
               modal's `SENDING_HOLD_MS` (use `jest.useFakeTimers()` + `advanceTimersByTime(1000)`).
-            - Cancelling on the ask step (`send-request-no-ask` press) closes the modal
-              WITHOUT calling `navigation.goBack()`.
+            - Cancelling on the ask step (press the verified "No" testID) closes the
+              modal WITHOUT calling `navigation.goBack()`.
             - Missing bookmark (`getBookmark` returns `undefined`) → EmptyState is
               rendered, DeckCard is NOT.
             - The bookmark is NOT removed after confirming (assert `removeBookmark` mock
@@ -531,7 +588,7 @@ stories:
       that the refactor is a few lines.
 
       **On `hidden` propagation to the FAB.** Phase-13 `OtherProfileScreen` uses the
-      same `marriageTabBarHidden` shared value for its `FloatingChatButton`. Reusing
+      same `tabBarHidden` shared value for its `FloatingChatButton`. Reusing
       the same shared value here means the tab bar's collapse state feels continuous
       across screens — the user sees no "reset" jump on push. This is the deliberate
       pattern; do not introduce a per-screen shared value.
