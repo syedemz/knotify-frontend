@@ -1,0 +1,42 @@
+{
+  "user_id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+  "username": "layla_rahman",
+  "first_name": "Layla",
+  "last_name": "Rahman",
+  "sex": "Female",
+  "age": 25,
+  "religion": "Islam",
+  "chosen_profile_avatar": null,
+  "photo_url": "assets/female/Female4.png",
+  "job_title": "Dentist",
+  "current_residence_city": "Toronto",
+  "current_residence_country": "Canada",
+  "resident_country_code": "CA",
+  "profile_complete_verified": true,
+  "photos": [
+    "assets/female/Female4.png"
+  ],
+  "faceSelfieUri": "assets/female/Female4.png",
+  "marital_status": "Never Married",
+  "has_children": false,
+  "marriage_time": "Within 6 months",
+  "meet_time": "Within 1 month",
+  "professional_category": "Healthcare & Medicine",
+  "employer_name": "Maple Dental Clinic",
+  "employment_type": "Full-time",
+  "office_address": "200 Bay St, Toronto, ON M5J 2J3",
+  "salary_range": "90000–120000 CAD",
+  "highest_degree": "Doctor of Dental Surgery (DDS)",
+  "education_level": "Doctorate",
+  "college_name": "University of Toronto Faculty of Dentistry",
+  "graduation_year": 2023,
+  "higher_secondary": "North Toronto Collegiate Institute",
+  "higher_secondary_passing_year": 2018,
+  "high_school": "Earl Haig Secondary School",
+  "high_school_passing_year": 2016,
+  "__dummy_display_only": {
+    "is_active_today": true,
+    "membership_tier": null,
+    "has_unread_notifications": false
+  }
+}

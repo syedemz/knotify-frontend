@@ -28,19 +28,54 @@ import { CheckCircle } from 'lucide-react-native';
 import { useTheme } from '@/theme';
 import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
-import type { DummyFemaleProfile } from '@/types/DummyFemaleProfile';
 import { t } from '@/labels';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import { CountryFlag } from '@/components/CountryFlag';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Narrower structural interface for `CandidateHero`'s `profile` prop.
+ *
+ * Includes exactly the fields CandidateHero reads. Both `DummyFemaleProfile`
+ * and `DummyDeckProfile` are assignable to this type structurally without any
+ * cast, satisfying the B2 widening requirement (story 13.3 AC1).
+ *
+ * @see {@link CandidateHeroProps}
+ */
+export interface CandidateHeroProfile {
+  // All nullable fields accept `null | undefined` so both JSON-derived types
+  // (DummyFemaleProfile, DummyDeckProfile — `T | null`) and UserProfile-derived
+  // types (DummyFullProfile — `T | null | undefined`) satisfy this interface
+  // without a cast. All guards below use `!= null` (loose) to catch both.
+  readonly first_name: string | null | undefined;
+  readonly age: number | null | undefined;
+  readonly current_residence_city: string | null | undefined;
+  readonly current_residence_country: string | null | undefined;
+  readonly resident_country_code: string | null | undefined;
+  readonly job_title: string | null | undefined;
+  readonly photos?: string[] | null;
+  readonly photo_url: string | null | undefined;
+  readonly faceSelfieUri?: string | null;
+  /**
+   * Optional display-only field bag for overlay bubbles (active-today dot,
+   * membership-tier badge). Optional so callers without this block compile
+   * without supplying it.
+   */
+  readonly __dummy_display_only?: {
+    readonly is_active_today?: boolean;
+    readonly membership_tier?: 'gold' | 'silver' | null;
+  };
+}
+
 export interface CandidateHeroProps {
   /**
-   * The candidate female profile to display. The hero reads `photos[0]`
-   * (fallback `photo_url`) for the background image.
+   * The candidate profile to display. Accepts any type assignable to
+   * {@link CandidateHeroProfile} — both `DummyFemaleProfile` and
+   * `DummyDeckProfile` satisfy this structurally without a cast (AC1 of
+   * story 13.3).
    */
-  readonly profile: DummyFemaleProfile;
+  readonly profile: CandidateHeroProfile;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -69,12 +104,12 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
   const hasVerified = profile.faceSelfieUri != null;
 
   const cityCountry =
-    profile.current_residence_city !== null &&
-    profile.current_residence_country !== null
+    profile.current_residence_city != null &&
+    profile.current_residence_country != null
       ? `${profile.current_residence_city.toUpperCase()}, ${profile.current_residence_country.toUpperCase()}`
-      : profile.current_residence_city !== null
+      : profile.current_residence_city != null
       ? profile.current_residence_city.toUpperCase()
-      : profile.current_residence_country !== null
+      : profile.current_residence_country != null
       ? profile.current_residence_country.toUpperCase()
       : null;
 
@@ -130,7 +165,7 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
         <View style={styles.nameRow}>
           <RNText style={styles.name} testID="candidate-hero-name">
             {profile.first_name ?? ''}
-            {profile.age !== null ? `, ${profile.age}` : ''}
+            {profile.age != null ? `, ${profile.age}` : ''}
           </RNText>
           {hasVerified && (
             <View testID="candidate-hero-verified-tick">
@@ -152,7 +187,7 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
 
         {/* Chip strip */}
         <View style={styles.chipRow}>
-          {profile.resident_country_code !== null && (
+          {profile.resident_country_code != null && (
             <View
               style={[styles.chip, styles.countryChip]}
               testID="candidate-hero-country-chip"
@@ -163,7 +198,7 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
               </RNText>
             </View>
           )}
-          {profile.job_title !== null && (
+          {profile.job_title != null && (
             <View style={styles.chip} testID="candidate-hero-job-chip">
               <RNText style={styles.chipLabel}>{profile.job_title}</RNText>
             </View>

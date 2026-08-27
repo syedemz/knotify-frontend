@@ -1,0 +1,42 @@
+{
+  "user_id": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+  "username": "zainab_ali",
+  "first_name": "Zainab",
+  "last_name": "Ali",
+  "sex": "Female",
+  "age": 30,
+  "religion": "Islam",
+  "chosen_profile_avatar": null,
+  "photo_url": "assets/female/Female3.png",
+  "job_title": "Architect",
+  "current_residence_city": "Dubai",
+  "current_residence_country": "United Arab Emirates",
+  "resident_country_code": "AE",
+  "profile_complete_verified": true,
+  "photos": [
+    "assets/female/Female3.png"
+  ],
+  "faceSelfieUri": "assets/female/Female3.png",
+  "marital_status": "Widowed",
+  "has_children": true,
+  "marriage_time": "Within 2 years",
+  "meet_time": "Within 6 months",
+  "professional_category": "Architecture & Design",
+  "employer_name": "Emaar Properties",
+  "employment_type": "Full-time",
+  "office_address": "Emaar Square, Downtown Dubai, Dubai",
+  "salary_range": "25000–35000 AED/month",
+  "highest_degree": "Master of Architecture (MArch)",
+  "education_level": "Masters",
+  "college_name": "American University of Sharjah",
+  "graduation_year": 2018,
+  "higher_secondary": "Dubai International Academy",
+  "higher_secondary_passing_year": 2013,
+  "high_school": "GEMS Wellington International School",
+  "high_school_passing_year": 2011,
+  "__dummy_display_only": {
+    "is_active_today": true,
+    "membership_tier": "gold",
+    "has_unread_notifications": false
+  }
+}

@@ -479,6 +479,11 @@
   },
   "landing": {
     "actionUnavailable": "Available in a later phase",
+    "likeSent": "Friend request sent",
+    "deckExhausted": {
+      "title": "You've seen everyone",
+      "description": "Check back later for new profiles."
+    },
     "header": {
       "filter": "Filter",
       "notifications": "Notifications"
@@ -493,6 +498,13 @@
       "undo": "Undo",
       "superLike": "Super like",
       "like": "Like"
+    },
+    "request": {
+      "confirmQuestion": "Do you wish to send {name} a connection request?",
+      "confirmDouble": "CONFIRM?",
+      "yes": "YES",
+      "no": "NO",
+      "sending": "Sending Request"
     }
   },
   "menu": {
@@ -531,5 +543,46 @@
       "description": "Profile editing is coming in a later phase"
     },
     "close": "Close profile"
+  },
+  "otherProfile": {
+    "back": "Go back",
+    "acceptedToast": "Friend added",
+    "declinedToast": "Request declined",
+    "notAuthorized": {
+      "title": "Profile unavailable",
+      "description": "You are not authorized to view this profile."
+    },
+    "actions": {
+      "accept": "Accept",
+      "decline": "Decline"
+    },
+    "menu": {
+      "accessibility": "More options",
+      "comingSoonToast": "Options coming soon"
+    },
+    "chat": {
+      "accessibility": "Chat with {name}",
+      "comingSoonToast": "Chat coming soon"
+    }
+  },
+  "explore": {
+    "title": "Explore",
+    "tabs": {
+      "friends": "Friends",
+      "requests": "Requests"
+    },
+    "friends": {
+      "emptyTitle": "No friends yet",
+      "emptyDescription": "Accept a friend request to see profiles here."
+    },
+    "requests": {
+      "sentYou": "Sent you a request",
+      "accept": "Accept",
+      "decline": "Decline",
+      "acceptedToast": "Friend added",
+      "declinedToast": "Request declined",
+      "emptyTitle": "No pending requests",
+      "emptyDescription": "When someone sends you a friend request, it will appear here."
+    }
   }
 }

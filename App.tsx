@@ -12,6 +12,8 @@ import { QueryProvider } from "@/state/query/QueryProvider";
 import { AuthProvider } from "@/state/auth/AuthProvider";
 // TODO(mock-only): remove when real backend + JWT claim decode ship
 import { OnboardingCompletionProvider } from "@/state/onboardingCompletion/OnboardingCompletionProvider";
+// TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship
+import { FriendshipProvider } from "@/state/friendship/FriendshipProvider";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { linking } from "@/navigation/linking";
 
@@ -114,9 +116,12 @@ export default function App() {
               <AuthProvider>
                 {/* TODO(mock-only): remove OnboardingCompletionProvider when real backend + JWT claim decode ship */}
                 <OnboardingCompletionProvider>
-                  <NavigationContainer linking={linking}>
-                    <RootNavigator />
-                  </NavigationContainer>
+                  {/* TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship */}
+                  <FriendshipProvider>
+                    <NavigationContainer linking={linking}>
+                      <RootNavigator />
+                    </NavigationContainer>
+                  </FriendshipProvider>
                 </OnboardingCompletionProvider>
               </AuthProvider>
             </QueryProvider>

@@ -1,0 +1,42 @@
+{
+  "user_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "username": "nadia_hassan",
+  "first_name": "Nadia",
+  "last_name": "Hassan",
+  "sex": "Female",
+  "age": 26,
+  "religion": "Islam",
+  "chosen_profile_avatar": null,
+  "photo_url": "assets/female/Female4.png",
+  "job_title": "Marketing Manager",
+  "current_residence_city": "Amsterdam",
+  "current_residence_country": "Netherlands",
+  "resident_country_code": "NL",
+  "profile_complete_verified": true,
+  "photos": [
+    "assets/female/Female4.png"
+  ],
+  "faceSelfieUri": "assets/female/Female4.png",
+  "marital_status": "Never Married",
+  "has_children": false,
+  "marriage_time": "Within 2 years",
+  "meet_time": "Within 6 months",
+  "professional_category": "Marketing & Communications",
+  "employer_name": "Brand Collective NL",
+  "employment_type": "Full-time",
+  "office_address": "Keizersgracht 312, 1016 EX Amsterdam",
+  "salary_range": "45000–65000 EUR",
+  "highest_degree": "MSc Marketing & Strategy",
+  "education_level": "Masters",
+  "college_name": "University of Amsterdam",
+  "graduation_year": 2021,
+  "higher_secondary": "Amsterdam Lyceum",
+  "higher_secondary_passing_year": 2017,
+  "high_school": "Amsterdam Montessori",
+  "high_school_passing_year": 2015,
+  "__dummy_display_only": {
+    "is_active_today": true,
+    "membership_tier": "silver",
+    "has_unread_notifications": false
+  }
+}

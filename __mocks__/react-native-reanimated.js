@@ -35,9 +35,19 @@ const makeSharedValue = (init) => {
 // makeMutable is the internal API used by module-scope shared values.
 const makeMutable = makeSharedValue;
 
-// withTiming / withSpring — return the target value immediately (no animation).
-const withTiming = (value) => value;
-const withSpring = (value) => value;
+// withTiming / withSpring — return the target value immediately (no
+// animation). If a completion callback is passed (third arg), invoke it
+// synchronously with `finished = true` so animation-chained state changes
+// (runOnJS(setState) inside a withTiming/withSequence callback) actually
+// fire in tests.
+const withTiming = (value, _config, callback) => {
+  if (typeof callback === 'function') callback(true);
+  return value;
+};
+const withSpring = (value, _config, callback) => {
+  if (typeof callback === 'function') callback(true);
+  return value;
+};
 
 // useSharedValue — returns a plain object {value: init} so components can
 // read/write .value without a proxy.

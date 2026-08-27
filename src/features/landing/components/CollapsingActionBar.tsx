@@ -42,9 +42,24 @@ const TAB_BAR_HEIGHT = 49;
 export interface CollapsingActionBarProps {
   /**
    * Called when any of the four action buttons is pressed.
-   * The screen uses this to show the "Available in a later phase" Snackbar.
+   *
+   * Kept for backwards compatibility with phase-12 callers. In phase 13 the
+   * screen passes per-button handlers (`onPass`, `onUndo`, `onSuperLike`,
+   * `onLike`) instead, and `onAction` may be omitted.
+   *
+   * When a per-button handler is provided it takes precedence; if absent the
+   * button falls back to calling `onAction`. When neither is provided the
+   * button press is a no-op.
    */
-  readonly onAction: () => void;
+  readonly onAction?: () => void;
+  /** Called when the X (pass / dislike) button is pressed. */
+  readonly onPass?: () => void;
+  /** Called when the ↺ (undo) button is pressed. */
+  readonly onUndo?: () => void;
+  /** Called when the ⭐ (super-like) button is pressed. */
+  readonly onSuperLike?: () => void;
+  /** Called when the ✓ (like) button is pressed. */
+  readonly onLike?: () => void;
   /**
    * Shared value in the range [0, 1] driving the collapse animation:
    * `0` = fully visible (bar sits above the tab bar), `1` = fully collapsed
@@ -61,10 +76,18 @@ export interface CollapsingActionBarProps {
  * Four round action buttons anchored at the bottom of the landing screen.
  *
  * Button order (left to right): X / Undo / Star / ✓.
- * Each calls `onAction()` on press — the actual handlers land in phase 13.
+ *
+ * In phase 13 each button receives its own handler (`onPass`, `onUndo`,
+ * `onSuperLike`, `onLike`). For backwards compatibility, when a per-button
+ * handler is omitted the button falls back to calling `onAction` (the
+ * phase-12 catch-all). When neither is provided the button press is a no-op.
  */
 export function CollapsingActionBar({
   onAction,
+  onPass,
+  onUndo,
+  onSuperLike,
+  onLike,
   hidden,
 }: CollapsingActionBarProps): React.ReactElement {
   const theme = useTheme();
@@ -83,6 +106,11 @@ export function CollapsingActionBar({
     transform: [{ translateY: hidden.value * actionBarTravel }],
   }));
 
+  const handlePass = onPass ?? onAction;
+  const handleUndo = onUndo ?? onAction;
+  const handleSuperLike = onSuperLike ?? onAction;
+  const handleLike = onLike ?? onAction;
+
   return (
     <Animated.View
       style={[styles.container, animatedStyle]}
@@ -92,7 +120,7 @@ export function CollapsingActionBar({
       <View style={styles.row}>
         {/* Pass (X) */}
         <Pressable
-          onPress={onAction}
+          onPress={handlePass}
           style={({ pressed }) => [styles.button, styles.buttonPass, pressed && styles.buttonPressed]}
           accessibilityRole="button"
           accessibilityLabel={t('landing.actions.pass')}
@@ -103,7 +131,7 @@ export function CollapsingActionBar({
 
         {/* Undo */}
         <Pressable
-          onPress={onAction}
+          onPress={handleUndo}
           style={({ pressed }) => [styles.button, styles.buttonUndo, pressed && styles.buttonPressed]}
           accessibilityRole="button"
           accessibilityLabel={t('landing.actions.undo')}
@@ -114,7 +142,7 @@ export function CollapsingActionBar({
 
         {/* Super-like (Star) */}
         <Pressable
-          onPress={onAction}
+          onPress={handleSuperLike}
           style={({ pressed }) => [styles.button, styles.buttonSuperLike, pressed && styles.buttonPressed]}
           accessibilityRole="button"
           accessibilityLabel={t('landing.actions.superLike')}
@@ -125,7 +153,7 @@ export function CollapsingActionBar({
 
         {/* Like (✓) */}
         <Pressable
-          onPress={onAction}
+          onPress={handleLike}
           style={({ pressed }) => [styles.button, styles.buttonLike, pressed && styles.buttonPressed]}
           accessibilityRole="button"
           accessibilityLabel={t('landing.actions.like')}

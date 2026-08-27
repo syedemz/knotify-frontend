@@ -479,6 +479,11 @@
   },
   "landing": {
     "actionUnavailable": "بعد کے مرحلے میں دستیاب",
+    "likeSent": "دوستی کی درخواست بھیج دی گئی",
+    "deckExhausted": {
+      "title": "آپ نے سبھی کو دیکھ لیا",
+      "description": "نئی پروفائلز کے لیے بعد میں واپس آئیں۔"
+    },
     "header": {
       "filter": "فلٹر",
       "notifications": "اطلاعات"
@@ -493,6 +498,13 @@
       "undo": "واپس کریں",
       "superLike": "سپر لائک",
       "like": "پسند"
+    },
+    "request": {
+      "confirmQuestion": "کیا آپ {name} کو کنیکشن کی درخواست بھیجنا چاہتے ہیں؟",
+      "confirmDouble": "تصدیق کریں؟",
+      "yes": "ہاں",
+      "no": "نہیں",
+      "sending": "درخواست بھیجی جا رہی ہے"
     }
   },
   "menu": {
@@ -531,5 +543,46 @@
       "description": "پروفائل ترمیم بعد کے مرحلے میں آ رہی ہے"
     },
     "close": "پروفائل بند کریں"
+  },
+  "otherProfile": {
+    "back": "واپس جائیں",
+    "acceptedToast": "دوست شامل کیا گیا",
+    "declinedToast": "درخواست مسترد کر دی گئی",
+    "notAuthorized": {
+      "title": "پروفائل دستیاب نہیں",
+      "description": "آپ کو اس پروفائل کو دیکھنے کی اجازت نہیں ہے۔"
+    },
+    "actions": {
+      "accept": "قبول کریں",
+      "decline": "رد کریں"
+    },
+    "menu": {
+      "accessibility": "مزید اختیارات",
+      "comingSoonToast": "اختیارات جلد آ رہے ہیں"
+    },
+    "chat": {
+      "accessibility": "{name} سے چیٹ کریں",
+      "comingSoonToast": "چیٹ جلد آ رہی ہے"
+    }
+  },
+  "explore": {
+    "title": "دریافت کریں",
+    "tabs": {
+      "friends": "دوست",
+      "requests": "درخواستیں"
+    },
+    "friends": {
+      "emptyTitle": "ابھی تک کوئی دوست نہیں",
+      "emptyDescription": "دوستی کی درخواست قبول کریں تاکہ یہاں پروفائلز نظر آئیں۔"
+    },
+    "requests": {
+      "sentYou": "آپ کو درخواست بھیجی",
+      "accept": "قبول کریں",
+      "decline": "رد کریں",
+      "acceptedToast": "دوست شامل کیا گیا",
+      "declinedToast": "درخواست مسترد کر دی گئی",
+      "emptyTitle": "کوئی زیر التواء درخواست نہیں",
+      "emptyDescription": "جب کوئی آپ کو دوستی کی درخواست بھیجے گا تو یہاں نظر آئے گی۔"
+    }
   }
 }

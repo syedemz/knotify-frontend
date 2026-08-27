@@ -3,17 +3,18 @@
  *
  * Registers the four bottom tabs: Marriage, Explore, Chat, Menu.
  * - `Marriage` renders `MarriageLandingScreen` (phase 12.4).
- * - `Explore` and `Chat` remain `EmptyState` placeholders until their
- *   feature phases ship.
+ * - `Explore` renders `ExploreStack` (phase 13.5) — a nested native stack
+ *   with Friends + Requests subtabs and OtherProfileScreen.
+ * - `Chat` remains an `EmptyState` placeholder until its feature phase ships.
  * - `Menu` renders `MenuStack` — a nested native stack that starts at
  *   `MenuHomeScreen` and can push to `MyProfileScreen`.
  *
  * **Tab-bar collapse (Marriage tab only)**
  * A custom `tabBar` prop wraps the default `BottomTabBar` in an
- * `Animated.View`. The wrapper reads `marriageTabBarHidden` (a module-scope
+ * `Animated.View`. The wrapper reads `tabBarHidden` (a module-scope
  * Reanimated shared value written by `MarriageLandingScreen`) via
  * `useAnimatedStyle`. When the focused route is `Marriage` and the user
- * scrolls down past 8 px, `marriageTabBarHidden` transitions from 0 → 1,
+ * scrolls down past 8 px, `tabBarHidden` transitions from 0 → 1,
  * which maps to:
  * - `translateY`: 0 → `TAB_BAR_HEIGHT` (slides the bar off-screen)
  * - `opacity`: 1 → 0 (fades simultaneously)
@@ -45,7 +46,8 @@ import { EmptyState } from '@/components';
 import { t } from '@/labels';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { MenuStack } from './MenuStack';
-import { marriageTabBarHidden } from '@/features/landing/shared/marriageTabBarHidden';
+import { ExploreStack } from './ExploreStack';
+import { tabBarHidden } from '@/state/ui/tabBarHidden';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import type { AppTabsParamList } from './types';
 
@@ -62,18 +64,6 @@ const TAB_BAR_HEIGHT = 49;
 // ---------------------------------------------------------------------------
 // Placeholder screens
 // ---------------------------------------------------------------------------
-
-/**
- * Placeholder for the Explore tab screen.
- */
-function ExploreScreen(): React.JSX.Element {
-  return (
-    <EmptyState
-      title={t('nav.tabs.explore')}
-      description={t('common.notImplemented')}
-    />
-  );
-}
 
 /**
  * Placeholder for the Chat tab screen.
@@ -153,7 +143,7 @@ const menuAvatarSource = resolveDummyPhoto(menuAvatarPath);
 
 /**
  * Custom tab bar. Wraps the default `BottomTabBar` in an `Animated.View`
- * whose transform reads `marriageTabBarHidden` only when the currently
+ * whose transform reads `tabBarHidden` only when the currently
  * focused route is `Marriage`. Any other focused route pins the transform
  * to identity so the bar remains visible on Explore / Chat / Menu.
  */
@@ -167,7 +157,14 @@ function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element {
   const totalHiddenDistance = TAB_BAR_HEIGHT + insets.bottom;
 
   const animatedStyle = useAnimatedStyle(() => {
-    const hidden = focusedRoute === 'Marriage' ? marriageTabBarHidden.value : 0;
+    // Marriage tab writes to the shared value from MarriageLandingScreen's
+    // scroll handler. Explore tab writes to the SAME shared value from
+    // OtherProfileScreen's scroll handler (phase 13). ExploreHomeScreen
+    // itself does not write — OtherProfileScreen resets the value to 0 on
+    // mount + unmount so ExploreHomeScreen always sees the bar visible.
+    const participates =
+      focusedRoute === 'Marriage' || focusedRoute === 'Explore';
+    const hidden = participates ? tabBarHidden.value : 0;
     return {
       transform: [{ translateY: hidden * totalHiddenDistance }],
       opacity: 1 - hidden,
@@ -223,7 +220,7 @@ export function AppTabs(): React.JSX.Element {
       />
       <Tab.Screen
         name="Explore"
-        component={ExploreScreen}
+        component={ExploreStack}
         options={{
           tabBarLabel: t('nav.tabs.explore'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (

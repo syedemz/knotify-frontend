@@ -69,6 +69,26 @@ export type MenuStackParamList = {
 };
 
 // ---------------------------------------------------------------------------
+// Explore Stack
+// ---------------------------------------------------------------------------
+
+/**
+ * Route params for the `ExploreStack` nested navigator (story 13.5).
+ *
+ * Screens:
+ * - `ExploreHomeScreen` (initial) — Friends + Requests subtabs.
+ * - `OtherProfileScreen` — full profile view, pushed from list rows.
+ *
+ * `OtherProfileScreen` receives a `userId` to look up via the friendship
+ * registry and a `source` discriminant controlling the access guard and
+ * ContactActionsSection visibility.
+ */
+export type ExploreStackParamList = {
+  ExploreHomeScreen: undefined;
+  OtherProfileScreen: { userId: string; source: 'friend' | 'request' };
+};
+
+// ---------------------------------------------------------------------------
 // App Tabs
 // ---------------------------------------------------------------------------
 
@@ -76,12 +96,12 @@ export type MenuStackParamList = {
  * Route params for the `AppTabs` bottom-tab navigator.
  *
  * Tabs: `Marriage`, `Explore`, `Chat`, `Menu`.
- * `Menu` hosts a nested `MenuStack`; `Explore` and `Chat` remain
- * `EmptyState` placeholders until their feature phases ship.
+ * `Menu` hosts a nested `MenuStack`; `Explore` hosts a nested `ExploreStack`
+ * (story 13.5); `Chat` remains an `EmptyState` placeholder until its phase ships.
  */
 export type AppTabsParamList = {
   Marriage: undefined;
-  Explore: undefined;
+  Explore: NavigatorScreenParams<ExploreStackParamList>;
   Chat: undefined;
   Menu: NavigatorScreenParams<MenuStackParamList>;
 };
