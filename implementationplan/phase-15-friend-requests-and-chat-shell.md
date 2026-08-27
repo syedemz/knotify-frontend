@@ -1,6 +1,6 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (story 15.1 complete — requestsStorage helper + FriendshipProvider.sendRequest wiring)
+last_updated: 2026-08-27 (story 15.2 complete — ChatHistory AsyncStorage helper + Mehvish seed JSON + BGDark asset move)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -148,7 +148,7 @@ stories:
   - id: 15.2
     title: ChatHistory AsyncStorage helper + Mehvish seed JSON + BGDark asset move
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - Copy `C:\Users\syede\Claude-Master\animations\images\BGDark.jpg` into the project at `assets/chat/bgDark.jpg`. Create the `assets/chat/` directory if it does not exist. Verify with `ls assets/chat/`. Do NOT reference the source path anywhere in code — the file must be self-contained inside the project.
