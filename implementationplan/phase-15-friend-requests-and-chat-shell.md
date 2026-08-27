@@ -1,6 +1,6 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (post-brainstorm — B1/B2 fixes, S1-S5 sharpens, N1 hedge removed)
+last_updated: 2026-08-27 (story 15.1 complete — requestsStorage helper + FriendshipProvider.sendRequest wiring)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -130,7 +130,7 @@ stories:
   - id: 15.1
     title: Requests AsyncStorage helper + FriendshipProvider.sendRequest wiring
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: []
     acceptance_criteria:
       - Add `src/features/friendRequests/storage/requestsStorage.ts` (zero React imports; mirror shape of `src/features/bookmarks/storage/bookmarksStorage.ts`). Exports named consts + functions - `OUTGOING_REQUESTS_STORAGE_KEY = 'dummy.requests.outgoing'`, `getOutgoingRequests(): Promise<string[]>`, `saveOutgoingRequests(ids: string[]): Promise<void>`, `addOutgoingRequest(userId: string): Promise<void>` (dedupes on user_id), `removeOutgoingRequest(userId: string): Promise<void>` (idempotent), `hasOutgoingRequest(userId: string): Promise<boolean>`, `clearOutgoingRequests(): Promise<void>`. Fail-open JSON parse (return `[]` on parse error with `console.warn`). Grep-tag file header with `TODO(mock-only): remove when real send-request endpoint ships`.
@@ -143,7 +143,7 @@ stories:
       requests remain in-memory + fixture-driven; only sent-request IDs persist across
       cold start. That's enough to satisfy "we need them later" without touching phase-13
       surfaces.
-    tracking_issue: null
+    tracking_issue: 127
 
   - id: 15.2
     title: ChatHistory AsyncStorage helper + Mehvish seed JSON + BGDark asset move
@@ -162,7 +162,7 @@ stories:
       Deleted messages are hard-removed for mock simplicity. If the real backend uses
       soft delete (`deleted: true` marker), phase 17 flips this behaviour when swapping
       the mock provider for the real hook. Not a phase-15 concern.
-    tracking_issue: null
+    tracking_issue: 128
 
   - id: 15.3
     title: ChatProvider + useChatHistory hook
@@ -182,7 +182,7 @@ stories:
       `loading` is true only during the initial hydration read for that friend. Once the
       in-memory mirror is populated it stays false. This is a mock — no re-fetch semantics.
       Phase 17 replaces this hook wholesale.
-    tracking_issue: null
+    tracking_issue: 129
 
   - id: 15.4
     title: ChatStack + ChatListScreen (WhatsApp-style friends with last-message list)
@@ -204,7 +204,7 @@ stories:
       Chat list doesn't own tabBarHidden (unlike Marriage / Bookmarks). No collapsing
       behaviour required in phase 15 — the ChatRoomScreen owns its own header. Skip
       the shared value read entirely.
-    tracking_issue: null
+    tracking_issue: 130
 
   - id: 15.5
     title: ChatRoomScreen (WhatsApp-style thread + composer)
@@ -231,7 +231,7 @@ stories:
       Composer height auto-grows with content up to about 4 lines then scrolls internally.
       Do not add a fixed line-count cap unless React Native TextInput default behaviour
       is not acceptable — treat that as a follow-up polish concern, not a phase-15 blocker.
-    tracking_issue: null
+    tracking_issue: 131
 
   - id: 15.6
     title: IncomingRequestModal + MyProfileScreen Edit-tab dev trigger
@@ -259,7 +259,7 @@ stories:
       error surfaces on the nested navigate, verify the nested-params type via
       `NavigatorScreenParams<ExploreStackParamList>` (already applied to
       `AppTabsParamList.Explore` in phase 13.5, so this should type-check).
-    tracking_issue: null
+    tracking_issue: 132
 
   - id: 15.7
     title: RequestAcceptedModal + MyProfileScreen Edit-tab dev trigger
@@ -286,7 +286,7 @@ stories:
       NOT already a friend at the moment the modal opens — but the modal only reads
       display fields (name, avatar, city), so the semantic mismatch during dev testing
       is cosmetic.
-    tracking_issue: null
+    tracking_issue: 133
 
 # Deferred to phase 17 (called out here to prevent re-scoping drift):
 #

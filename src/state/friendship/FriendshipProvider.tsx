@@ -1,19 +1,23 @@
 /**
- * Mock-only friendship and friend-request context for phase 13.
+ * Mock-only friendship and friend-request context for phases 13–15.
  *
  * Hydrates in-memory state from two seed fixtures on mount:
  * - `assets/dummyfriendships.json` — one row: Mehvish is already a friend.
  * - `assets/dummyrequests.json` — one row: Qurat has sent a pending request.
  *
+ * Also hydrates the outgoing-request mirror from AsyncStorage on mount
+ * (story 15.1). This mirror persists across cold starts so a sent request
+ * is not forgotten on relaunch.
+ *
  * Exposes `useFriendship()` for reading and mutating friendship state.
  *
- * **Cold-start reset is expected behavior.** State is in-memory only for
- * phase 13. If a QA session accepts Qurat and then relaunches the app, Qurat's
- * request will reappear and Mehvish will be the only friend again. Real
- * persistence ships in phase 15. Do NOT treat this as a bug.
+ * **Cold-start reset (incoming side only).** The friends list and incoming
+ * requests are in-memory only — they reset on cold start. Outgoing request IDs
+ * are persisted via AsyncStorage and survive relaunches. Do NOT treat the
+ * friends/requests cold-start reset as a bug for phase 13–14.
  *
  * TODO(mock-only): replace in-memory store with real REST/AppSync-backed
- * queries (`GET /friends`, `GET /friend-requests`, etc.) when phase 15 ships.
+ * queries (`GET /friends`, `GET /friend-requests`, etc.) when real backend ships.
  *
  * @module state/friendship/FriendshipProvider
  */
@@ -22,8 +26,14 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from 'react';
+
+import {
+  addOutgoingRequest,
+  getOutgoingRequests,
+} from '@/features/friendRequests/storage/requestsStorage';
 
 import type { DummyFullProfile } from '@/types/DummyFullProfile';
 import dummyMehvishJson from '../../../assets/dummymehvish.json';
@@ -133,6 +143,45 @@ export interface FriendshipContextValue {
    * after displaying the snackbar.
    */
   readonly consumePendingToast: () => void;
+
+  // ── Outgoing-request mirror (story 15.1) ─────────────────────────────────
+
+  /**
+   * The set of user IDs to whom the current user has sent a friend request.
+   *
+   * Hydrated from AsyncStorage on provider mount and updated in-memory on
+   * every `sendRequest` call. Survives cold start.
+   *
+   * TODO(mock-only): remove when real send-request endpoint ships
+   */
+  readonly outgoingRequestIds: readonly string[];
+
+  /**
+   * Persists a friend-request send to AsyncStorage and updates the
+   * in-memory `outgoingRequestIds` mirror.
+   *
+   * Idempotent: if `userId` is already in the mirror, the AsyncStorage write
+   * is a no-op (deduplicated inside `addOutgoingRequest`).
+   *
+   * TODO(mock-only): replace with real `POST /friend-requests` mutation
+   *
+   * @param userId - The `user_id` of the profile the request is being sent to.
+   */
+  readonly sendRequest: (userId: string) => Promise<void>;
+
+  /**
+   * Synchronous check: returns `true` if the current user has already sent a
+   * friend request to `userId`.
+   *
+   * Reads from the in-memory mirror, not AsyncStorage — O(n) scan but always
+   * synchronous. For one-shot async checks outside React, use
+   * `hasOutgoingRequest(userId)` from `requestsStorage.ts` directly.
+   *
+   * TODO(mock-only): remove when real endpoint ships
+   *
+   * @param userId - The `user_id` to check.
+   */
+  readonly hasOutgoingRequest: (userId: string) => boolean;
 }
 
 // ── ALL_FULL_PROFILES registry ────────────────────────────────────────────────
@@ -206,6 +255,27 @@ export function FriendshipProvider({ children }: FriendshipProviderProps): React
   const [friends, setFriends] = useState<DummyFullProfile[]>(hydrateFriends);
   const [requests, setRequests] = useState<PendingRequest[]>(hydrateRequests);
 
+  // ── Outgoing-request mirror (story 15.1) ───────────────────────────────────
+  // Hydrated once from AsyncStorage on mount; updated in-memory on every
+  // sendRequest call. Unlike friends/requests, this mirror survives cold start
+  // because it is backed by AsyncStorage.
+  // TODO(mock-only): remove when real send-request endpoint ships
+  const [outgoingRequestIds, setOutgoingRequestIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const hydrate = async () => {
+      const ids = await getOutgoingRequests();
+      if (!cancelled) {
+        setOutgoingRequestIds(ids);
+      }
+    };
+    hydrate().catch((e) => console.warn('[FriendshipProvider] outgoing-requests hydration failed', e));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // ── Pending-toast cross-screen handoff (option b — story 13.4) ─────────────
   // OtherProfileScreen sets this before calling goBack() on Decline so that
   // ExploreHomeScreen (story 13.5) can show the "Request declined" snackbar
@@ -261,6 +331,23 @@ export function FriendshipProvider({ children }: FriendshipProviderProps): React
     setPendingToastState(null);
   }, []);
 
+  // ── Outgoing-request actions (story 15.1) ──────────────────────────────────
+
+  const sendRequest = useCallback(async (userId: string): Promise<void> => {
+    await addOutgoingRequest(userId);
+    setOutgoingRequestIds((prev) => {
+      if (prev.includes(userId)) {
+        return prev;
+      }
+      return [...prev, userId];
+    });
+  }, []);
+
+  const hasOutgoingRequest = useCallback(
+    (userId: string): boolean => outgoingRequestIds.includes(userId),
+    [outgoingRequestIds],
+  );
+
   const value: FriendshipContextValue = {
     friends,
     requests,
@@ -272,6 +359,9 @@ export function FriendshipProvider({ children }: FriendshipProviderProps): React
     pendingToast,
     setPendingToast,
     consumePendingToast,
+    outgoingRequestIds,
+    sendRequest,
+    hasOutgoingRequest,
   };
 
   return (
@@ -285,6 +375,9 @@ export function FriendshipProvider({ children }: FriendshipProviderProps): React
 
 /**
  * Returns the mock-only friendship state and actions.
+ *
+ * Includes the outgoing-request mirror added in story 15.1:
+ * `outgoingRequestIds`, `sendRequest`, and `hasOutgoingRequest`.
  *
  * Must be called within a {@link FriendshipProvider}.
  *
