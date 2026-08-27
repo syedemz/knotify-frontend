@@ -90,7 +90,7 @@ phases:
 - phase: 15
   title: Friend requests + chat UI shell
   file: implementationplan/phase-15-friend-requests-and-chat-shell.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 16

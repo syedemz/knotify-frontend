@@ -1,432 +1,617 @@
 ================================================================================
-PHASE 14 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
+PHASE 15 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
 ================================================================================
 
-Before I dispatch anyone to write phase-14 code, I re-read the PRD and
+Before I dispatch anyone to write phase-15 code, I re-read the PRD and
 cross-checked every claim in it against the code that already shipped in
-phases 12 and 13. I found 3 blockers (things that will trip the developer
-on day one), 2 medium sharpens, and 3 small notes. Each item below is
-written plainly with an analogy where useful. At the end of each item are
-the fix options so you can pick one — or write your own.
+phases 12, 13, and 14. I found 2 blockers (things that will make the
+developer's day-one work non-testable or crash the app), 5 medium
+sharpens (things the developer will resolve one way or another during
+implementation, but the resolution should be picked NOW to save
+back-and-forth), and 4 small notes. Each item below is written plainly
+with an analogy where useful. At the end of each item are the fix options
+so you can pick one — or write your own.
 
 Vocabulary refresher (skip if you already know it):
 
-  - "PRD"        = the phase-14 plan file at
-                   implementationplan/phase-14-bookmarks.md
-  - "story"      = one numbered task inside that plan (14.1, 14.2, 14.3, 14.4)
+  - "PRD"        = the phase-15 plan file at
+                   implementationplan/phase-15-friend-requests-and-chat-shell.md
+  - "story"      = one numbered task inside that plan (15.1 through 15.7)
   - "AC"         = "acceptance criteria" — the checklist inside each story
                    that says "this story is done when X and Y and Z are true"
-  - "shared value" = a Reanimated primitive (imagine a single variable that
-                   both React and the animation runtime can read/write at
-                   60 fps). We use it to animate the bottom tab bar down
-                   when the user scrolls.
-  - "route type" = a TypeScript declaration saying "the ExploreStack has
-                   these screens, and each takes these params". If a screen
-                   is missing from the type, TS refuses to compile any call
-                   that navigates to it.
   - "provider"   = a React context holding shared state. We already have
-                   AuthProvider, FriendshipProvider, etc. Phase 14 adds
-                   BookmarksProvider.
+                   AuthProvider, FriendshipProvider, BookmarksProvider, etc.
+                   Phase 15 adds ChatProvider. Every screen in the app can
+                   read from it without prop-drilling.
   - "AsyncStorage" = React Native's plain key/value disk store (like
-                   localStorage in a browser). Bookmarks live here so
-                   they survive app restarts.
-  - "expo module" = a native library that ships with Expo. Adding one
-                   requires `npx expo install <name>` (which patches
-                   package.json AND regenerates the native side of the
-                   dev-client). A plain `npm install` is NOT enough.
+                   localStorage in a browser). Sent friend requests and
+                   chat history live here so they survive app restarts.
+  - "modal"      = a dialog box that pops up over the current screen with
+                   a dimmed backdrop behind it. Phase 15 adds two of them:
+                   IncomingRequestModal (someone sent me a request) and
+                   RequestAcceptedModal (someone accepted a request I sent).
+  - "pendingToast" = a small state slot on FriendshipProvider that stores
+                   a message to be shown as a snackbar the next time
+                   ExploreHomeScreen focuses. It's how phase 13 solved
+                   the "show a toast on a screen we just navigated away
+                   from" problem.
+  - "hook"       = a React function starting with `use` (useState,
+                   useEffect, useChatHistory). React has strict rules:
+                   hooks must be called at the top of a component, in
+                   the same order every render, NEVER inside a loop or
+                   inside a callback like FlatList's renderItem.
+  - "FlatList"   = React Native's efficient list component. You give it
+                   an array of data and a `renderItem` function that
+                   returns JSX for one row. It only renders visible
+                   rows for performance.
+  - "testID"     = a string you attach to a component so tests can find
+                   it. Like adding `id="submit-btn"` in HTML for tests
+                   to hook into.
+  - "DevTriggersPanel" = a temporary UI shown on the MyProfile Edit tab
+                   in phase 15 with two buttons that manually pop the
+                   two new modals for testing. The whole panel is
+                   grep-tagged `TODO(mock-only)` and gets deleted in
+                   phase 17 when real GraphQL subscriptions replace the
+                   dev buttons.
 
 
 ================================================================================
-BLOCKER 1 — The PRD tells the developer to import a file that doesn't
-            exist under that name anymore.
+BLOCKER 1 — The IncomingRequestModal can Accept/Decline a request, but
+            no snackbar will ever fire on the screen you're actually
+            looking at.
 ================================================================================
 
-WHAT THE PRD SAYS (story 14.4)
+WHAT THE PRD SAYS (story 15.6)
 
-The new BookmarkDeckViewScreen needs a "floating add-request button" (a
-round button that sits above the bottom tab bar). When the user scrolls
-down the deck card, the tab bar slides off-screen and the button rides
-with it. The animation is driven by a single Reanimated shared value —
-one variable everyone reads/writes to keep every screen's collapse in
-sync.
+The IncomingRequestModal is a dialog that pops up when someone sends me
+a friend request. It shows the sender's avatar, name, and city, with
+Accept and Decline buttons. The AC says:
 
-Story 14.4 AC says: "pass `marriageTabBarHidden` from
-`src/features/landing/shared/marriageTabBarHidden.ts`".
+  - The modal itself calls `acceptRequest(userId)` or `declineRequest(userId)`
+    on FriendshipProvider.
+  - Then the modal calls `onClose()` to disappear.
+  - "Snackbar surfacing is the host's responsibility (via existing
+    `FriendshipProvider.pendingToast` handoff or a local snackbar on the
+    host screen)."
+  - New labels are declared:
+      friendRequests.incoming.acceptedToast   ("You are now friends with X")
+      friendRequests.incoming.declinedToast   ("Request declined")
 
-WHY IT'S A PROBLEM
+In phase 15 the trigger for the modal is a temporary button on the
+MyProfileScreen Edit tab.
 
-That file has been renamed and moved since the PRD was written.
+WHY THIS IS A PROBLEM
 
-  - Old name:  marriageTabBarHidden
-  - New name:  tabBarHidden
-  - Old path:  src/features/landing/shared/marriageTabBarHidden.ts
-  - New path:  src/state/ui/tabBarHidden.ts
+Think of `pendingToast` as a sticky note the FriendshipProvider leaves on
+the fridge. Right now, only ExploreHomeScreen reads the fridge when it
+walks into the kitchen (that is, when Explore is focused). Phase 13.4
+built this pattern for a specific case: on OtherProfileScreen (which
+lives inside the Explore tab), when you tap Decline, we `goBack()` you
+to Explore immediately, and Explore reads the sticky note on focus and
+shows the toast.
 
-The rename happened during phase 13 — once the Explore tab (not just
-Marriage) started writing to the same shared value, the "marriage" prefix
-stopped describing the reality. The JSDoc at the top of tabBarHidden.ts
-explains the rename in its own words.
+In phase 15, the modal opens on MyProfileScreen — which lives in the
+Menu tab, NOT Explore. After you tap Accept:
 
-If the developer copy-pastes the AC verbatim, they will chase down a file
-that no longer exists, and either invent a new one (worst outcome — two
-shared values, out of sync) or pause to ask.
+  1. Modal calls `acceptRequest(userId)` — friendship state updated.  ✓
+  2. Modal calls `onClose()` — modal disappears.                       ✓
+  3. You're still on MyProfileScreen. ExploreHomeScreen never gets
+     focused. The sticky note stays on the fridge, untouched.          ✗
+  4. Toast never fires. Two labels (`acceptedToast`, `declinedToast`)
+     exist but no code path renders them.
+
+The AC is non-testable as written: it declares toast labels but points
+at a mechanism (pendingToast) that doesn't reach the current screen.
 
 ANALOGY
 
-Imagine your PRD says "call Mrs. Robertson at extension 4501". But
-Mrs. Robertson got married last year and changed her surname to Nakamura
-and got transferred to extension 5610. The instructions LOOK right, but
-if you dial the number in the PRD you either get a dead line or —
-worse — you get a totally unrelated person named Robertson who now
-answers on that line.
+Imagine you finish a job at your desk and hit a "done" button. The
+building's confetti-cannon system is only wired to fire in the lobby.
+You're still upstairs at your desk. The confetti fires, but you don't
+see it. The "confetti fired successfully" checkbox is technically
+ticked, but the user experience missed the point entirely.
 
 FIX OPTIONS
 
-  (a) Update the PRD in three places:
-      - Story 14.4 AC: change to "pass `tabBarHidden` from
-        `src/state/ui/tabBarHidden.ts`".
-      - Story 14.4 notes block: swap `marriageTabBarHidden` for
-        `tabBarHidden`.
-      - context_summary: same swap.
-      My recommendation. Zero code impact, keeps the PRD accurate.
+  (a) Local Snackbar on MyProfileScreen driven directly.
+      Mount a Snackbar component on MyProfileScreen with local
+      useState. When the modal fires Accept/Decline, the host passes
+      the result back and MyProfileScreen shows its own snackbar. Skip
+      pendingToast for this surface entirely.
+      + Simple. Cleanly scoped to the screen the user is on.
+      - MyProfileScreen grows a local snackbar; small state added.
 
-  (b) Leave the PRD as-is and trust the subagent to figure it out. The
-      grep will succeed on the file's own JSDoc which explains the
-      rename, so a smart subagent can bridge it. But this trades
-      certainty for cleverness and creates a risk of a bad guess.
+  (b) Modal accepts callbacks (onAccept, onDecline) — host owns everything.
+      Change the modal from "presentation-only that calls
+      acceptRequest/declineRequest itself" to "presentation-only that
+      fires onAccept(userId) / onDecline(userId) callbacks the host
+      wired". Host then calls acceptRequest + shows local snackbar.
+      This matches the shape of the RequestAcceptedModal in story 15.7,
+      which uses onSayHi (already a host-owned callback).
+      + Modal stays presentation-only. Consistent with 15.7. Host owns
+        both the persistence AND the toast — one place, one flow.
+      - 15.6 AC needs an edit: move the acceptRequest/declineRequest
+        invocation from the modal into the host.
 
-  (c) Rename `tabBarHidden` BACK to `marriageTabBarHidden`. Nonsensical
-      — the rename was correct, the PRD is out of date.
+  (c) Broaden pendingToast consumers.
+      Also mount a useEffect on MyProfileScreen that consumes
+      pendingToast on focus. Same pattern as ExploreHomeScreen.
+      + Reuses existing provider surface.
+      - Two consumers means state churn is easier to double-consume or
+        drop. Adds a subtle race with tab-switch focus events.
 
-ANSWER: yes go with option a
+  MY RECOMMENDATION: (b). The modal is already declared "presentation-
+  only" in the AC — passing user actions up through callbacks makes the
+  modal a pure UI component and matches 15.7's shape.
+
+  ANSWER: okay go with option b
 
 
 ================================================================================
-BLOCKER 2 — The PRD invents a label-key namespace that the codebase
-            doesn't use.
+BLOCKER 2 — The ChatListScreen would call a hook inside a FlatList's
+            renderItem — React will throw at runtime.
 ================================================================================
 
-WHAT THE PRD SAYS (story 14.3)
+WHAT THE PRD SAYS (story 15.4)
 
-The Explore screen already has two tabs (Friends and Requests) with
-label keys. Story 14.3 adds a third tab (Bookmarks). The AC says:
+ChatListScreen shows a WhatsApp-style list of friends. Each row shows:
 
-  New label: `explore.tabs.bookmarks`
-  Sits alongside existing keys `explore.tabs.friends` and
-  `explore.tabs.requests`.
+  - the friend's avatar (left)
+  - name + last-message preview (middle)
+  - timestamp (right)
 
-WHY IT'S A PROBLEM
+The AC says: "Last-message preview is derived per-row from
+`useChatHistory(friend.user_id).messages` — if messages array is
+non-empty, show `messages[messages.length - 1].text`."
 
-Those two "existing" keys don't exist. The actual keys today are
-`explore.friends` and `explore.requests` — no `.tabs.` in the middle.
-If we add `explore.tabs.bookmarks`, we end up with a Frankenstein
-namespace where two tabs live under `explore.*` and the third one lives
-under `explore.tabs.*`. Anyone opening `labels.en.json` later will
-assume the pattern is inconsistent and either try to "fix" it (touching
-phase-13 code we said not to touch) or copy the wrong prefix in phase 15
-and beyond.
+Which means: for every friend in the FlatList, we look up their chat
+history via `useChatHistory(friendId)` and use the last message.
+
+WHY THIS IS A PROBLEM
+
+React has one very strict rule: hooks (any function starting with `use`)
+must be called AT THE TOP LEVEL of a component, in the same order every
+render. They CANNOT be called inside a callback that only runs on demand
+— like FlatList's `renderItem`.
+
+If you write:
+
+    <FlatList
+      data={friends}
+      renderItem={({ item }) => {
+        const { messages } = useChatHistory(item.user_id);  // ← ILLEGAL
+        return <Row lastMessage={messages[messages.length-1]?.text} />;
+      }}
+    />
+
+React will throw "Rendered more hooks than during the previous render"
+or "Invalid hook call" the moment FlatList decides to render 3 rows
+instead of 4 (when a friend goes offline, when the list scrolls, etc.).
+It's a crash, not a warning.
 
 ANALOGY
 
-Every apartment on your floor is numbered "4-A", "4-B", "4-C". You buy
-the empty apartment next door and the landlord tells you it's "4-Wing-D".
-Now every delivery driver, every friend, every emergency responder has
-to be told "yes, we're on floor 4 but the addressing scheme changes
-just at our door". It works. It's ugly.
+Imagine a restaurant where the chef can only take orders from a
+specific position behind the counter — one at a time, in the order
+customers walked in. If the chef starts taking orders while walking
+around the dining room (from FlatList's renderItem), the whole system
+falls apart because the kitchen loses track of which order came first.
+React tracks hooks the same way: it counts hooks per component render
+and expects the same count in the same order every single time.
+
+FIX
+
+Extract each row into its own component — `ChatListRow`. Then the hook
+is at the top of ChatListRow, called exactly once per row instance:
+
+    // src/features/chat/components/ChatListRow.tsx
+    function ChatListRow({ friend, onPress }) {
+      const { messages } = useChatHistory(friend.user_id);
+      const last = messages[messages.length - 1];
+      return <Row ... />;
+    }
+
+    // In ChatListScreen:
+    <FlatList
+      data={friends}
+      renderItem={({ item }) => (
+        <ChatListRow friend={item} onPress={() => nav(...)} />
+      )}
+    />
+
+This is not a scope change — the same code, moved into a properly-
+scoped component. But the AC doesn't spell it out, and a subagent
+following the AC literally will inline the hook and hit the crash on
+the first test run.
 
 FIX OPTIONS
 
-  (a) Use `explore.bookmarks` for the new key. Matches the existing
-      convention exactly. Also fix the PRD's false claim about
-      `.tabs.friends` / `.tabs.requests` existing. My recommendation.
+  (a) Add one line to 15.4 AC.
+      Amend AC to say: "Row is a standalone component `ChatListRow` at
+      `src/features/chat/components/ChatListRow.tsx` — the
+      `useChatHistory` call lives at the top of that component, not
+      inside `renderItem`."
+      + Explicit, zero ambiguity. Subagent will not inline.
+      - Requires a small PRD edit.
 
-  (b) Rename `explore.friends` → `explore.tabs.friends` and
-      `explore.requests` → `explore.tabs.requests` too, so all three
-      match the PRD's proposed namespace. Correct if you think `.tabs.`
-      is a better structure long-term, but it touches phase-13 code
-      (the PRD said not to). Larger churn.
+  (b) Leave the AC as-is, trust the subagent to extract the component.
+      + No PRD edit.
+      - Non-trivial risk the subagent inlines the hook and only catches
+        the bug when tests fail. Wastes a dispatch cycle.
 
-  (c) Ship as-is with the inconsistent naming and add a cleanup story
-      to a future refactor phase. Delays the mess, doesn't avoid it.
+  MY RECOMMENDATION: (a). Non-negotiable React rule; better to lock it
+  in the AC than let it become a "why is my test crashing" round-trip.
 
-ANSWER: okay sounds right, use option a
+  ANSWER: okay go with option a, ofcourse it has to be a separate component, we have a rule remember, reusable components
 
 
 ================================================================================
-BLOCKER 3 — Story 14.3 uses a library we haven't installed yet, and
-            the install command is different from a normal npm install.
+SHARPEN 1 — The "cross-tab nav fixture test" in 15.5 doesn't say what
+             kind of test to write.
 ================================================================================
 
-WHAT THE PRD SAYS (story 14.3)
+WHAT THE PRD SAYS (story 15.5)
 
-Each BookmarkCard shows a photo with the user's name and details
-overlaid at the bottom. To keep the text readable no matter what the
-photo looks like, we add a dark-to-transparent gradient across the
-bottom of the card. The PRD says use `expo-linear-gradient` for that.
+At the bottom of story 15.5 (ChatRoomScreen), the last AC line reads:
 
-The PRD notes acknowledge this: "If it is not currently in package.json,
-it is an Expo module and can be installed via `npx expo install
-expo-linear-gradient`."
+  "Add a fixture test that constructs the nested navigate call and
+   asserts the params flow through."
 
-WHY IT'S A PROBLEM
+This is to prove that story 15.7's `onSayHi` handler can call
+`navigation.navigate('Chat', { screen: 'ChatRoomScreen', params: { friendUserId } })`
+from inside the Menu stack (where MyProfileScreen lives) and land on
+ChatRoomScreen in the Chat stack with the correct params.
 
-The library is NOT currently in package.json. And this is an expo module,
-which means `npm install` is not the right command — you need
-`npx expo install` because it also patches the native side of the
-dev-client, then a Metro restart. If a subagent does a plain
-`npm install expo-linear-gradient` (a very common mistake), the JS side
-works but the native module isn't linked and you get a red-screen
-runtime error the first time a BookmarkCard renders.
+WHY IT NEEDS SHARPENING
 
-The PRD flags this in the notes block, but not as a hard AC. Notes get
-skimmed. ACs get followed.
+There are two very different ways to write this test:
+
+  1. Unit test with a spy: `const nav = { navigate: jest.fn() };`
+     — trivial to write, but only tests that the callback fires with
+     the right arguments. It does NOT verify that the navigation
+     actually works end-to-end (the params could still be malformed
+     for the real navigator, and you'd never know).
+
+  2. Integration test with a real NavigationContainer scaffold: build
+     a tiny app tree with a real Tab.Navigator + two Stack.Navigators,
+     press a stub button that fires the nested navigate call, and
+     assert that the target screen renders with the correct params.
+     Phase 14 uses this exact pattern in
+     __tests__/navigation/MenuStack.test.tsx and
+     __tests__/features/bookmarks/ExploreStack.test.tsx.
 
 ANALOGY
 
-The recipe says "add a pinch of saffron", and mentions in the margin
-"we don't currently stock saffron — pick some up on the way to work".
-The chef gets busy, skims the margin note, and starts cooking without
-saffron. The dish comes out wrong at the last step.
+"Add a test that proves the doorbell works" — do you (1) fake the
+doorbell and check that pressing the button plays a MP3 file, or
+(2) actually wire the button to a real doorbell and listen for a ring?
+Both are valid, but they answer different questions.
 
 FIX OPTIONS
 
-  (a) Promote the install line to a first-class AC on story 14.3:
-      "Run `npx expo install expo-linear-gradient` and verify it appears
-      in package.json before writing the LinearGradient import."
-      My recommendation. Zero-cost sharpen.
+  (a) Real-navigator scaffold (matches phase 14 pattern).
+      + Actually verifies the nested navigation. Reuses an established
+        test pattern in the repo.
+      - Slightly heavier test setup.
 
-  (b) Leave in the notes and trust the subagent. Cheaper on PRD editing,
-      more risk on execution.
+  (b) Spy on navigation.navigate.
+      + Fast to write. Zero setup.
+      - Does not verify that the nested params structure is correct
+        for the real navigator.
 
-  (c) Swap out the gradient scrim for a plain semi-opaque
-      `View style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}` and skip
-      the dependency entirely. Loses the gradient (which is what makes
-      text over an arbitrary photo look polished) but avoids the
-      install step altogether.
-
-ANSWER: let us try option c, if i dont like it then we can use the gradient later
+  MY RECOMMENDATION: (a). Phase 14 already has the pattern boilerplate
+  copy-paste-ready. Verifies the real behaviour.
+  
+  ANSWER: okay go with option a
 
 
 ================================================================================
-SHARPEN 1 — Story 14.3 tries to navigate to a screen that only exists
-            after story 14.4 lands. TypeScript will refuse to compile it.
+SHARPEN 2 — 15.2 says "roughly 18 seed messages" but 15.3's test
+             appears to require exactly 18.
 ================================================================================
 
-WHAT THE PRD SAYS (stories 14.3 and 14.4)
+WHAT THE PRD SAYS
 
-Story 14.3 builds the Bookmarks grid on ExploreHomeScreen. Each card in
-the grid, when tapped, is supposed to navigate to a new screen called
-BookmarkDeckViewScreen using
-`navigation.navigate('BookmarkDeckViewScreen', { userId })`.
+  Story 15.2 (seed JSON):    "roughly 18 seed messages"
+  Story 15.3 (hook tests):   "first mount for Mehvish seeds 18 messages"
 
-Story 14.4 is the story that ACTUALLY adds BookmarkDeckViewScreen to
-the ExploreStack — both the TypeScript type for the route AND the screen
-component itself.
+WHY THIS IS A PROBLEM
 
-The stories are ordered so that 14.3 runs before 14.4 (which is correct
-if you go by dependencies — 14.4 depends on 14.3 for the entry point).
+Story 15.3's test will presumably assert
+`expect(result.current.messages.length).toBe(18)`. If story 15.2 ships
+17 or 19 messages because "roughly" left it open, story 15.3's test
+fails until someone rewrites either the JSON or the test. Small
+mismatch, easy fix, but worth locking now.
 
-WHY IT'S WORTH LOCKING DOWN
+FIX OPTIONS
 
-TypeScript enforces navigation types strictly. The moment story 14.3 tries
-to call `navigation.navigate('BookmarkDeckViewScreen', ...)`, TS will say:
-"there's no such screen in this stack". The build breaks. Tests won't
-run because the file won't compile.
+  (a) Lock 15.2 to exactly 18.
+      Reword: "Add exactly 18 seed messages."
+      + Test in 15.3 stays as-written. Deterministic.
+      - No downside worth naming.
 
-There are three ways out:
+  (b) Reword 15.3's assertion to `>= 15`.
+      + Flexible.
+      - Loses precision for no real gain.
 
-  (1) Do 14.4 before 14.3. But then 14.4 has nowhere to point its own
-      "back button" entry point from (the Bookmarks tab), and TS on 14.4
-      probably works but the acceptance criteria don't (you can't test
-      "tapping a BookmarkCard opens BookmarkDeckViewScreen" until 14.3
-      exists).
+  MY RECOMMENDATION: (a). Pick a number and stick to it.
 
-  (2) In story 14.3, register the route type AND stub in an empty
-      placeholder screen (a component that just returns `null` or a "TODO
-      14.4" text). Then story 14.4 replaces the placeholder with the
-      real screen. Clean split — each story does one full thing.
+  ANSWER: okay go with option a
 
-  (3) Use a `// @ts-ignore` or cast the navigation call to `any` in
-      story 14.3, and unmask it in 14.4. Cheap but ugly — the whole
-      point of typed navigation is that you can't do this.
+
+================================================================================
+SHARPEN 3 — The `.md` sidecar next to the seed JSON is a new convention.
+             We already have a repo pattern for annotating fixtures.
+================================================================================
+
+WHAT THE PRD SAYS (story 15.2)
+
+The seed JSON's timestamps span "the last 3-4 days (relative to a
+hard-coded base date so tests are stable)". JSON has no comments —
+where does the base date get documented? The PRD says:
+
+  "document the base date in a companion README fragment or an
+   accompanying `.md` sidecar next to the JSON since JSON has no
+   comments"
+
+WHY IT NEEDS SHARPENING
+
+Phase 12 solved the exact same problem in a different way: it stashed
+metadata INSIDE the JSON in a specially-named block. Look at
+`assets/dummyprofile.json` — it has a `__mutability_notes` field at
+the top that explains editing rules. That pattern is already an
+established convention in this codebase.
+
+Adding a `.md` sidecar next to the JSON is a new convention no other
+fixture in the repo uses. It creates a maintenance burden ("when I
+edit chatMehvish.json, do I need to update the sidecar too?") and a
+discoverability burden ("does this JSON have a sidecar? where?").
 
 ANALOGY
 
-You're building a house. The blueprints say "electrician wires up the
-kitchen outlets first, then the plumber installs the sink". But the
-kitchen outlets need to connect to the panel breaker that the plumber's
-box actually houses. So the electrician has to either wait for the
-plumber, install a temporary jumper wire, or fix the ordering. Doing
-nothing means the electrician stops halfway through with a hot wire in
-their hand.
+You're writing a note on a package. You could scribble the shipping
+instructions on the box itself (existing pattern) or attach a
+Post-it note stuck to the outside that could fall off (proposed
+`.md` sidecar). Both work, but the in-box option is what everyone
+else in the warehouse already does.
 
 FIX OPTIONS
 
-  (a) Update story 14.3 AC to include: "Register
-      `BookmarkDeckViewScreen: { userId: string }` on
-      `ExploreStackParamList` in `src/navigation/types.ts`, and add a
-      placeholder screen in `ExploreStack.tsx` that renders `null`.
-      Story 14.4 replaces the placeholder with the real screen." My
-      recommendation. Cleanest split, no TS suppressions, both stories
-      remain testable.
+  (a) Put the base date INSIDE chatMehvish.json under a `_meta` block.
+      { "_meta": {
+          "base_timestamp_ms": 1756944000000,
+          "description": "Base date for stable test timestamps."
+        },
+        "messages": [ ... ]
+      }
+      + Consistent with __mutability_notes precedent from phase 12.
+      + Zero risk of the sidecar going missing.
+      - Storage helper has to skip the `_meta` key when parsing (or
+        the seed reader has to grab `.messages` instead of the root).
 
-  (b) Reorder: run 14.4 before 14.3. Awkward because 14.4's own tests
-      ("tapping a bookmark card opens the screen") can't run until 14.3
-      exists.
+  (b) `.md` sidecar as the PRD currently suggests.
+      + No JSON schema change.
+      - New convention. Two files to keep in sync.
 
-  (c) Allow a temporary `as any` cast in 14.3 with a `TODO(14.4)`
-      comment. Works but every subagent-driven pattern like this
-      eventually leaks into review.
+  MY RECOMMENDATION: (a). Aligns with existing repo pattern. Storage
+  helper reads `.messages`, tests only care about actual message data.
 
-ANSWER: okay go with option a
+  ANSWER: okay go with option a, but we dont know what timestamps backend may use, so we may have to change this later, keep that in mind
+
 
 ================================================================================
-SHARPEN 2 — Story 14.1's description of "where to put the new provider
-            in the tree" is wrong (harmless, but confusing to the
-            subagent).
+SHARPEN 4 — MessageBubble test assertions on styles could be flaky.
 ================================================================================
 
-WHAT THE PRD SAYS (story 14.1)
+WHAT THE PRD SAYS (story 15.5)
 
-The BookmarksProvider needs to sit in the React tree somewhere in App.tsx.
-The PRD says:
+Sent messages sit on the right with theme.colors.accent.primary background;
+received messages sit on the left with theme.colors.bg.surface. The AC
+for tests says:
 
-  "Order: AuthProvider > OnboardingCompletionProvider > FriendshipProvider
-   > BookmarksProvider > NavigationContainer."
+  "sent messages have `alignSelf: flex-end` and
+   `theme.colors.accent.primary` background (assert via style prop or
+   testID + rendered style)"
 
-WHY IT'S WORTH LOCKING DOWN
+WHY IT NEEDS SHARPENING
 
-The insertion point (between FriendshipProvider and NavigationContainer)
-is correct. But the described "order" is missing 5 outer providers that
-already wrap those four:
+React Native Testing Library flattens style props unpredictably. A
+component like:
 
-  Actual tree:
-    GestureHandlerRootView > SafeAreaProvider > ThemeProvider >
-    LanguageProvider > QueryProvider > AuthProvider >
-    OnboardingCompletionProvider > FriendshipProvider > NavigationContainer
+    <View style={[styles.bubble, { alignSelf: 'flex-end' }, extraStyle]} />
 
-The subagent will open App.tsx, see a much bigger tree than the PRD
-described, and either (a) trust the PRD and try to delete the outer
-providers ("the PRD says the top of the tree is AuthProvider — is the
-tree wrong?") which would be a disaster, or (b) trust the file, insert
-correctly, but pause to flag the mismatch.
-
-Neither outcome is a code disaster — but option (a) is a real risk if
-the subagent is over-eager.
+can render as `props.style === Array<[{}, {}, {}]>` or as a merged
+`{}` depending on which internal flattener runs. Tests that read
+literal style values often break when a maintainer refactors the
+style composition — the runtime behaviour is unchanged, but the test
+suddenly sees an array instead of an object.
 
 ANALOGY
 
-You tell a movers crew: "put the couch between the coffee table and
-the TV stand". They arrive at the house and there's also a bookshelf,
-a rug, three lamps, and a piano in that room. The instruction is still
-followable — the couch's target position is unambiguous — but the movers
-now have to decide whether YOU forgot the other furniture or the tenant
-just added it after you wrote the note. If they take the note as
-authoritative, they might move the piano out on their own initiative.
+Testing the alignment of a sent message by inspecting its raw CSS is
+like verifying "this car is red" by measuring the wavelength of light
+reflecting off its bumper — technically correct but wildly brittle.
+Better to check "this car has a `sent-message` label on its door".
 
 FIX OPTIONS
 
-  (a) Trim story 14.1's AC to just: "insert BookmarksProvider between
-      FriendshipProvider and NavigationContainer in App.tsx, keeping
-      all existing outer providers untouched." My recommendation.
-      Removes the misleading full-tree list, keeps the actionable
-      instruction.
+  (a) Semantic testIDs.
+      Give MessageBubble a `testID` that reflects its semantic role:
+      `bubble-sent` for sender==='me', `bubble-received` for
+      sender==='friend'. Tests query for the right testID; they don't
+      touch style props.
+      + Fast, resilient to internal style refactors, clear intent.
+      - No downside.
 
-  (b) Rewrite the AC with the correct full 9-provider list. Accurate
-      but verbose, and will go stale again the next time we add a
-      provider.
+  (b) Literal style prop assertions.
+      + Directly verifies the visual outcome.
+      - Flaky. Breaks on internal refactors that don't change UX.
 
-  (c) Leave as-is. The subagent will probably read the code first
-      anyway; only downside is a minor "wait, is this right?" pause.
+  MY RECOMMENDATION: (a). testIDs already used everywhere in the repo;
+  keep this consistent.
 
-ANSWER: okay go with option a
-
-
-================================================================================
-NOTE 1 — resolveDummyPhoto() can return undefined; the BookmarkCard AC
-         doesn't say what to render in that case.
-================================================================================
-
-WHAT THE PRD SAYS (story 14.3)
-
-Each BookmarkCard shows a background image via `resolveDummyPhoto()`.
-The AC says use `photos[0]` if present, else `photo_url`. The overlay
-text (name, age, job) sits on top of the image.
-
-WHY IT'S WORTH FLAGGING
-
-`resolveDummyPhoto()` returns `undefined` when the input is null or the
-asset isn't registered. If a fixture ever has neither `photos[0]` nor
-`photo_url` (in mock world this shouldn't happen, but the type allows
-it), the card renders as: no background, dark scrim on nothing, white
-text floating in mid-air with black scrim above it. Ugly but not broken.
-
-Not a blocker. Just needs one line: "if `resolveDummyPhoto()` returns
-`undefined`, render a solid `theme.colors.bg.surface` background under
-the overlay". The subagent will likely add this on their own — but
-making it explicit removes any lingering ambiguity.
-
-ANSWER do the recommendation
+  ANSWER: okay go with option a
 
 
 ================================================================================
-NOTE 2 — SendRequestModal's testIDs were not confirmed by the audit;
-         story 14.4's tests query by them.
+SHARPEN 5 — DevTriggersPanel design in 15.6 should be slot-based so 15.7
+             can append without editing 15.6's file.
 ================================================================================
 
-WHAT THE PRD SAYS (story 14.4)
+WHAT THE PRD SAYS
 
-The tests for BookmarkDeckViewScreen use `getByTestId('send-request-card')`
-and press `send-request-no-ask` to simulate the cancel flow. These IDs
-come from the phase-13 SendRequestModal component.
+Story 15.6 creates the DevTriggersPanel component with ONE trigger
+button (the IncomingRequestModal button, using Qurat as the fixture).
+Story 15.7 says:
 
-WHY IT'S WORTH FLAGGING
+  "Add the second button 'Trigger RequestAcceptedModal (Mehvish)' to
+   the `DevTriggersPanel` created in 15.6."
 
-The audit confirmed the modal's behavior (the `onCancel` after `onConfirmed`
-timing, `SENDING_HOLD_MS = 1000`) but did not directly confirm the specific
-testID strings. If the modal uses different strings — or no testIDs at
-all — story 14.4's tests will fail on the wrong thing (querySelector,
-not on any behavior).
+Story 15.6 also says: "design the panel so 15.7 only has to append."
 
-Non-blocking. Just a heads-up for the 14.4 subagent: verify the testIDs
-BEFORE writing the assertions. If they don't exist, either add them
-(a passive change to SendRequestModal that changes no behavior) or query
-by role/text instead.
+WHY IT NEEDS SHARPENING
 
-ANSWER okay do it
+There are two ways to "append":
+
+  1. If the panel hard-codes one button in its JSX, story 15.7 has to
+     open the file created in story 15.6 and edit it.
+  2. If the panel accepts children (a slot), story 15.7 just adds a
+     second `<TriggerButton />` sibling in MyProfileScreen's JSX
+     without touching DevTriggersPanel.tsx.
+
+The second option is cleaner for the story boundary and makes 15.7's
+diff strictly additive.
+
+ANALOGY
+
+Story 15.6 is building a bulletin board. Story 15.7 wants to pin a
+second flyer. Option 1: story 15.7 rips the board off the wall,
+adds a slot for the new flyer, re-hangs it. Option 2: story 15.6
+built the board with a pinboard surface from day one; story 15.7
+just pins the flyer.
+
+FIX OPTIONS
+
+  (a) DevTriggersPanel accepts children (slot).
+      Panel renders: section heading + description + {children}.
+      MyProfileScreen composes both buttons as siblings inside the
+      panel. 15.6 ships with one child button. 15.7 appends a second.
+      + Clean append, no cross-story file edits.
+      - Slightly more component surface (accepts children prop).
+
+  (b) Panel hard-codes button(s) internally.
+      + Simpler component.
+      - 15.7 has to edit 15.6's file.
+
+  MY RECOMMENDATION: (a). Small design nudge, big cleanliness win.
+  ANSWER: okay go with option a
 
 
 ================================================================================
-NOTE 3 — AsyncStorage's jest mock is not currently registered anywhere.
+NOTE 1 — `theme.colors.text.link` doesn't exist. Delete the "or accent
+          .primary" hedge and just say accent.primary.
 ================================================================================
 
-WHAT THE PRD SAYS (story 14.1)
+Story 15.6 AC says the "View full profile" text link uses:
 
-The AC says "use the standard `@react-native-async-storage/async-storage/
-jest/async-storage-mock` preset. If not registered, add it — do NOT roll
-a bespoke mock."
+  "Text variant `label.sm` colour `text.link` (or `accent.primary` if
+   no link token)"
 
-WHY IT'S WORTH FLAGGING
-
-`jest.setup.ts` is currently empty (just a comment saying "no setup steps
-required"). So the AC's second half ("if not registered, add it") is
-what actually runs. The subagent will add one line
-`jest.setup.ts`:
-
-  jest.mock('@react-native-async-storage/async-storage', () =>
-    require('@react-native-async-storage/async-storage/jest/async-storage-mock')
-  );
-
-Non-blocking. The AC already handles this. Flagging so you know that
-"the mock is not currently registered" is a fact, not a surprise.
-
-ANSWER (optional — say "skip"):
+I checked the theme file — there is no `text.link` token. The subagent
+will end up picking `accent.primary` regardless. Just tighten the AC to
+"colour `accent.primary`" and remove the hedge. Zero decision cost.
 
 
 ================================================================================
-END OF PHASE 14 EXPLANATIONS
+NOTE 2 — BGDark.jpg `require()` path verified.
 ================================================================================
 
-Please write your picks / instructions in QA/answers.txt (or reply
-here). Once I have your calls, I'll update the PRD and either re-run
-/implement-phase 14 or proceed directly, per your preference.
+Story 15.5 uses `require('../../../../assets/chat/bgDark.jpg')` from
+`src/features/chat/screens/ChatRoomScreen.tsx`. Counting the `../`s:
+
+  src/features/chat/screens/ChatRoomScreen.tsx
+  → ../                (screens/)
+  → ../../             (chat/)
+  → ../../../          (features/)
+  → ../../../../       (src/) — no, this is project root
+  → then assets/chat/bgDark.jpg
+
+Correct as-written. No action needed.
+
+
+================================================================================
+NOTE 3 — Mehvish already-a-friend fixture mismatch for the
+          RequestAcceptedModal dev trigger.
+================================================================================
+
+Story 15.7's dev-trigger button uses Mehvish as the fixture for
+"someone accepted my request" — but Mehvish is already a friend in
+`assets/dummyfriendships.json`. In production, this event fires when
+someone who WAS NOT a friend becomes one. So there's a mild semantic
+mismatch during dev testing.
+
+The PRD notes acknowledge this and explain the trade-off: using Mehvish
+gives us a full profile AND a real chat history, so "Say hi" lands on a
+populated ChatRoomScreen — the happy path we want to see during dev
+testing.
+
+Swapping to Qurat is possible but adds fixture churn: she'd have to be
+removed from `assets/dummyrequests.json` first, adding two more edits
+for a mock-only surface.
+
+I recommend accepting the mismatch as-noted. But flagging it so you can
+overrule me if you want.
+
+ANSWER: keep mehvish, this is just for testing, wont be like this in production
+
+
+================================================================================
+NOTE 4 — Everything else in the PRD checks out.
+================================================================================
+
+  - BGDark.jpg source file verified present at
+    C:\Users\syede\Claude-Master\animations\images\BGDark.jpg.
+  - The two `TODO(mock-only)` callsites the PRD expects to modify —
+    MarriageLandingScreen.tsx:307 and BookmarkDeckViewScreen.tsx:136 —
+    match the PRD's expected wording verbatim.
+  - Provider-tree order specified in the PRD (BookmarksProvider →
+    ChatProvider → NavigationContainer) is consistent with the phase
+    14 App.tsx layout.
+  - Story dependency graph is acyclic and topologically clean:
+      15.1 depends on nothing.
+      15.2 depends on nothing.
+      15.3 depends on 15.2.
+      15.4 depends on 15.3.
+      15.5 depends on 15.4.
+      15.6 depends on 15.1.
+      15.7 depends on 15.5 + 15.6.
+    Serial dispatch order: 15.1 → 15.2 → 15.3 → 15.4 → 15.5 → 15.6 → 15.7.
+  - No scope drift into phases 16/17. The teardown checklist in the
+    PRD's `teardown_additions:` block is coherent.
+
+
+================================================================================
+DECISION SUMMARY
+================================================================================
+
+Please pick a fix for each of these (or write your own answer):
+
+  B1 [15.6]  How does the Accept/Decline snackbar reach the user on
+             MyProfileScreen?           → (a) / (b) / (c) / your own
+  B2 [15.4]  Explicit `ChatListRow` component in the AC?
+                                        → (a) / (b) / your own
+  S1 [15.5]  Cross-tab nav test flavour → (a) / (b) / your own
+  S2 [15.2]  Lock 18 or reword 15.3?    → (a) / (b) / your own
+  S3 [15.2]  Base timestamp storage     → (a) / (b) / your own
+  S4 [15.5]  MessageBubble test tactic  → (a) / (b) / your own
+  S5 [15.6]  DevTriggersPanel shape     → (a) / (b) / your own
+
+Once you pick, I'll update the PRD, append a "post-answers" section to
+phasebrainstorms/phase-15-friend-requests-and-chat-shell-brainstorm.md
+recording the decisions, and we can either:
+
+  (i)  re-run /implement-phase 15 (fresh brainstorm cycle picks up the
+       updated PRD and moves on), or
+  (ii) proceed straight to Step 1 (create tracking issues + dispatch).
+
+Say the word.
