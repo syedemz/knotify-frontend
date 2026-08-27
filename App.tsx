@@ -16,6 +16,8 @@ import { OnboardingCompletionProvider } from "@/state/onboardingCompletion/Onboa
 import { FriendshipProvider } from "@/state/friendship/FriendshipProvider";
 // TODO(mock-only): remove BookmarksProvider when real bookmark backend ships
 import { BookmarksProvider } from "@/state/bookmarks/BookmarksProvider";
+// TODO(mock-only): remove ChatProvider when real messages endpoint ships (phase 17)
+import { ChatProvider } from "@/state/chat/ChatProvider";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { linking } from "@/navigation/linking";
 
@@ -122,9 +124,12 @@ export default function App() {
                   <FriendshipProvider>
                     {/* TODO(mock-only): remove BookmarksProvider when real bookmark backend ships */}
                     <BookmarksProvider>
-                      <NavigationContainer linking={linking}>
-                        <RootNavigator />
-                      </NavigationContainer>
+                      {/* TODO(mock-only): remove ChatProvider when real messages endpoint ships (phase 17) */}
+                      <ChatProvider>
+                        <NavigationContainer linking={linking}>
+                          <RootNavigator />
+                        </NavigationContainer>
+                      </ChatProvider>
                     </BookmarksProvider>
                   </FriendshipProvider>
                 </OnboardingCompletionProvider>
