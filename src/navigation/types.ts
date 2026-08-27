@@ -69,6 +69,24 @@ export type MenuStackParamList = {
 };
 
 // ---------------------------------------------------------------------------
+// Chat Stack
+// ---------------------------------------------------------------------------
+
+/**
+ * Route params for the `ChatStack` nested navigator (story 15.4).
+ *
+ * Screens:
+ * - `ChatListScreen` (initial) — WhatsApp-style list of friends with last message + timestamp.
+ * - `ChatRoomScreen` — per-friend message thread (story 15.5 replaces the placeholder).
+ *
+ * `ChatRoomScreen` receives the `user_id` of the friend whose thread to open.
+ */
+export type ChatStackParamList = {
+  ChatListScreen: undefined;
+  ChatRoomScreen: { friendUserId: string };
+};
+
+// ---------------------------------------------------------------------------
 // Explore Stack
 // ---------------------------------------------------------------------------
 
@@ -103,12 +121,12 @@ export type ExploreStackParamList = {
  *
  * Tabs: `Marriage`, `Explore`, `Chat`, `Menu`.
  * `Menu` hosts a nested `MenuStack`; `Explore` hosts a nested `ExploreStack`
- * (story 13.5); `Chat` remains an `EmptyState` placeholder until its phase ships.
+ * (story 13.5); `Chat` hosts a nested `ChatStack` (story 15.4).
  */
 export type AppTabsParamList = {
   Marriage: undefined;
   Explore: NavigatorScreenParams<ExploreStackParamList>;
-  Chat: undefined;
+  Chat: NavigatorScreenParams<ChatStackParamList>;
   Menu: NavigatorScreenParams<MenuStackParamList>;
 };
 

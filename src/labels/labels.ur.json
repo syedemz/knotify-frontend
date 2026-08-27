@@ -602,5 +602,14 @@
       "missingTitle": "یہ بک مارک اب دستیاب نہیں",
       "missingDescription": "ہو سکتا ہے کہ اسے آپ کے بک مارکس سے ہٹا دیا گیا ہو۔"
     }
+  },
+  "chat": {
+    "list": {
+      "headerTitle": "چیٹ",
+      "noMessagesYet": "ابھی تک کوئی پیغام نہیں",
+      "emptyTitle": "ابھی کوئی گفتگو نہیں",
+      "emptyDescription": "جب آپ کسی سے منسلک ہو جائیں گے تو آپ کی چیٹس یہاں نظر آئیں گی۔",
+      "rowAccessibility": "{firstName} {lastName} سے چیٹ کریں"
+    }
   }
 }

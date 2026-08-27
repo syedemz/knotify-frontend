@@ -4,8 +4,9 @@
  * Registers the four bottom tabs: Marriage, Explore, Chat, Menu.
  * - `Marriage` renders `MarriageLandingScreen` (phase 12.4).
  * - `Explore` renders `ExploreStack` (phase 13.5) — a nested native stack
- *   with Friends + Requests subtabs and OtherProfileScreen.
- * - `Chat` remains an `EmptyState` placeholder until its feature phase ships.
+ *   with Friends + Requests + Bookmarks subtabs and OtherProfileScreen.
+ * - `Chat` renders `ChatStack` (phase 15.4) — a nested native stack with
+ *   `ChatListScreen` and `ChatRoomScreen`.
  * - `Menu` renders `MenuStack` — a nested native stack that starts at
  *   `MenuHomeScreen` and can push to `MyProfileScreen`.
  *
@@ -42,11 +43,11 @@ import {
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Heart, Compass, MessageCircle, Menu } from 'lucide-react-native';
 
-import { EmptyState } from '@/components';
 import { t } from '@/labels';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { MenuStack } from './MenuStack';
 import { ExploreStack } from './ExploreStack';
+import { ChatStack } from './ChatStack';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import type { AppTabsParamList } from './types';
@@ -60,22 +61,6 @@ import type { AppTabsParamList } from './types';
  * animation. Matches the default height on both iOS and Android.
  */
 const TAB_BAR_HEIGHT = 49;
-
-// ---------------------------------------------------------------------------
-// Placeholder screens
-// ---------------------------------------------------------------------------
-
-/**
- * Placeholder for the Chat tab screen.
- */
-function ChatScreen(): React.JSX.Element {
-  return (
-    <EmptyState
-      title={t('nav.tabs.chat')}
-      description={t('common.notImplemented')}
-    />
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Menu tab icon
@@ -199,6 +184,8 @@ const styles = {
  * Tabs: `Marriage` / `Explore` / `Chat` / `Menu`.
  * Mounted when `status === 'authenticated' && profileComplete === true`
  * (or when the mock-only onboarding completion flag is set in phase 12).
+ * Chat tab wired to `ChatStack` in story 15.4 (previously an `EmptyState`
+ * placeholder).
  *
  * @see {@link AppTabsParamList} for typed navigation.
  */
@@ -230,7 +217,7 @@ export function AppTabs(): React.JSX.Element {
       />
       <Tab.Screen
         name="Chat"
-        component={ChatScreen}
+        component={ChatStack}
         options={{
           tabBarLabel: t('nav.tabs.chat'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (

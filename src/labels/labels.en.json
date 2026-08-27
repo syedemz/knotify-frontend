@@ -602,5 +602,14 @@
       "missingTitle": "This bookmark is no longer available",
       "missingDescription": "It may have been removed from your bookmarks."
     }
+  },
+  "chat": {
+    "list": {
+      "headerTitle": "Chat",
+      "noMessagesYet": "No messages yet",
+      "emptyTitle": "No conversations yet",
+      "emptyDescription": "Once you are connected with someone, your chats will appear here.",
+      "rowAccessibility": "Chat with {firstName} {lastName}"
+    }
   }
 }

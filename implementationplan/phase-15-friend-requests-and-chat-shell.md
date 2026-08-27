@@ -1,6 +1,6 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (story 15.3 complete — ChatProvider + useChatHistory hook + App.tsx mount)
+last_updated: 2026-08-27 (story 15.4 complete — ChatStack + ChatListScreen + ChatListRow + formatChatTimestamp)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -187,7 +187,7 @@ stories:
   - id: 15.4
     title: ChatStack + ChatListScreen (WhatsApp-style friends with last-message list)
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [15.3]
     acceptance_criteria:
       - Add `src/navigation/ChatStack.tsx` using `createNativeStackNavigator`. Mirror `ExploreStack.tsx`/`MenuStack.tsx` pattern - `headerShown: false`, `ChatListScreen` as initial route + `ChatRoomScreen` as second route. `ChatRoomScreen` is a placeholder that renders `null` in this story; story 15.5 replaces it.
