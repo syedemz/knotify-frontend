@@ -1,6 +1,6 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (story 15.2 complete — ChatHistory AsyncStorage helper + Mehvish seed JSON + BGDark asset move)
+last_updated: 2026-08-27 (story 15.3 complete — ChatProvider + useChatHistory hook + App.tsx mount)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -167,7 +167,7 @@ stories:
   - id: 15.3
     title: ChatProvider + useChatHistory hook
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [15.2]
     acceptance_criteria:
       - Add `src/state/chat/ChatProvider.tsx`. Exports named - `ChatProvider` component + `useChatHistory(friendUserId: string)` hook + module-scope `MEHVISH_USER_ID` constant (derived once from `assets/dummymehvish.json`).
