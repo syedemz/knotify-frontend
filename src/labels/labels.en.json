@@ -587,6 +587,11 @@
       "declinedToast": "Request declined",
       "emptyTitle": "No pending requests",
       "emptyDescription": "When someone sends you a friend request, it will appear here."
+    },
+    "bookmarks": {
+      "emptyTitle": "No bookmarks yet",
+      "emptyDescription": "Star a profile from the Marriage tab to save it here.",
+      "tab": "Bookmarks"
     }
   }
 }
