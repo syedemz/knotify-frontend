@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-26 (phase 13 complete)
+last_updated: 2026-08-27 (phase 14 complete)
 
 phases:
 
@@ -85,7 +85,7 @@ phases:
   title: Bookmarks
   file: implementationplan/phase-14-bookmarks.md
   ready: true
-  done: false
+  done: true
 
 - phase: 15
   title: Friend requests

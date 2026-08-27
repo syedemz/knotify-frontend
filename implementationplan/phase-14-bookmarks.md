@@ -1,6 +1,6 @@
 phase: 14
 title: Bookmarks
-last_updated: 2026-08-27
+last_updated: 2026-08-27 (story 14.4 complete)
 
 context_summary: |
   Phase 14 turns the currently-inert **Star (⭐) button** on the Marriage-tab deck into a real
@@ -224,7 +224,7 @@ stories:
   - id: 14.2
     title: Wire Star (⭐) button on MarriageLandingScreen → bookmark toggle
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [14.1]
     tracking_issue: 123
     acceptance_criteria:
@@ -296,7 +296,7 @@ stories:
   - id: 14.3
     title: Bookmarks subtab in ExploreHomeScreen + BookmarkCard 2-column grid
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [14.1]
     tracking_issue: 124
     acceptance_criteria:
@@ -436,7 +436,7 @@ stories:
   - id: 14.4
     title: BookmarkDeckViewScreen + FloatingAddRequestButton + SendRequestModal wiring
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [14.1, 14.3]
     tracking_issue: 125
     acceptance_criteria:

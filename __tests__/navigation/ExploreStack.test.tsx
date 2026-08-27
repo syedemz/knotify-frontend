@@ -1,19 +1,25 @@
 /**
- * End-to-end wiring test for `src/navigation/ExploreStack.tsx` (story 13.5).
+ * End-to-end wiring test for `src/navigation/ExploreStack.tsx`.
  *
- * Verifies:
+ * Story 13.5 tests:
  *   (1) Mounting the Explore stack lands on ExploreHomeScreen.
  *   (2) Tapping a row on ExploreHomeScreen navigates to OtherProfileScreen.
  *   (3) Calling goBack from OtherProfileScreen returns to ExploreHomeScreen.
  *
- * Both screen components are replaced with lightweight stubs that render
- * identifiable text and, in the case of ExploreHomeScreen, a pressable
- * "friend row" button that triggers navigation. This avoids pulling in the full
- * FriendshipProvider, react-native-reanimated, or the profile-sections render tree.
+ * Story 14.4 additions:
+ *   (4) BookmarkDeckViewScreen is registered as a route.
+ *   (5) goBack() from BookmarkDeckViewScreen lands on ExploreHomeScreen.
+ *   (6) After push→goBack cycle to BookmarkDeckViewScreen, the Bookmarks tab
+ *       selection on ExploreHomeScreen is preserved (tab-stickiness AC).
+ *       This verifies that native-stack does NOT unmount ExploreHomeScreen on
+ *       push — so useState(activeTab) is preserved across push/pop.
+ *
+ * Both screen components are replaced with lightweight stubs. This avoids
+ * pulling in FriendshipProvider, react-native-reanimated, or the profile
+ * sections render tree.
  *
  * Strategy: render `ExploreStack` inside a real `NavigationContainer` so the
- * actual `createNativeStackNavigator` wiring is exercised. Mocked screens
- * confirm that the correct route components are registered.
+ * actual `createNativeStackNavigator` wiring is exercised.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -24,8 +30,9 @@ import { NavigationContainer } from '@react-navigation/native';
 
 // ── Screen stubs ──────────────────────────────────────────────────────────────
 
-// ExploreHomeScreen stub: renders identifiable text + pressable row that
-// navigates to OtherProfileScreen with { userId: 'test-user', source: 'friend' }.
+// ExploreHomeScreen stub: renders identifiable text + pressable rows that
+// navigate to OtherProfileScreen or BookmarkDeckViewScreen. Also tracks
+// `activeTab` state so we can verify tab-stickiness across push/pop.
 jest.mock('@/features/explore/screens/ExploreHomeScreen', () => {
   const RN = require('react-native') as typeof import('react-native');
   const Rct = require('react') as typeof import('react');
@@ -33,10 +40,14 @@ jest.mock('@/features/explore/screens/ExploreHomeScreen', () => {
   return {
     ExploreHomeScreen: function StubExploreHomeScreen() {
       const navigation = Nav.useNavigation<any>();
+      const [activeTab, setActiveTab] = Rct.useState<string>('friends');
       return Rct.createElement(
         RN.View,
         { testID: 'explore-home-screen' },
         Rct.createElement(RN.Text, null, 'EXPLORE_HOME'),
+        // Text shows current activeTab so tests can assert it after goBack
+        Rct.createElement(RN.Text, { testID: 'stub-active-tab' }, activeTab),
+        // Friend row — navigates to OtherProfileScreen
         Rct.createElement(
           RN.Pressable,
           {
@@ -48,6 +59,43 @@ jest.mock('@/features/explore/screens/ExploreHomeScreen', () => {
               }),
           },
           Rct.createElement(RN.Text, null, 'Friend Row'),
+        ),
+        // Bookmarks navigation — sets activeTab then navigates to BookmarkDeckViewScreen
+        Rct.createElement(
+          RN.Pressable,
+          {
+            testID: 'stub-bookmark-nav',
+            onPress: () => {
+              setActiveTab('bookmarks');
+              navigation.navigate('BookmarkDeckViewScreen', { userId: 'aisha-id' });
+            },
+          },
+          Rct.createElement(RN.Text, null, 'Bookmark Card'),
+        ),
+      );
+    },
+  };
+});
+
+// BookmarkDeckViewScreen stub: renders identifiable text + a pressable back button.
+jest.mock('@/features/bookmarks/screens/BookmarkDeckViewScreen', () => {
+  const RN = require('react-native') as typeof import('react-native');
+  const Rct = require('react') as typeof import('react');
+  const Nav = require('@react-navigation/native') as typeof import('@react-navigation/native');
+  return {
+    BookmarkDeckViewScreen: function StubBookmarkDeckViewScreen() {
+      const navigation = Nav.useNavigation<any>();
+      return Rct.createElement(
+        RN.View,
+        { testID: 'bookmark-deck-view-screen' },
+        Rct.createElement(RN.Text, null, 'BOOKMARK_DECK_VIEW'),
+        Rct.createElement(
+          RN.Pressable,
+          {
+            testID: 'stub-bookmark-go-back',
+            onPress: () => navigation.goBack(),
+          },
+          Rct.createElement(RN.Text, null, 'Back'),
         ),
       );
     },
@@ -273,6 +321,82 @@ describe('ExploreStack navigation wiring', () => {
 
       // ExploreHomeScreen should be restored.
       await expect(findByText('EXPLORE_HOME')).resolves.toBeTruthy();
+    },
+  );
+});
+
+describe('ExploreStack navigation wiring — BookmarkDeckViewScreen (story 14.4)', () => {
+  it(
+    'given ExploreHomeScreen, when a bookmark card is tapped, then BookmarkDeckViewScreen is pushed',
+    async () => {
+      const { findByTestId, findByText } = renderExploreStack();
+
+      await findByText('EXPLORE_HOME');
+
+      // Tap the stub bookmark navigation button
+      const bookmarkBtn = await findByTestId('stub-bookmark-nav');
+      await act(async () => {
+        fireEvent.press(bookmarkBtn);
+      });
+
+      await expect(findByText('BOOKMARK_DECK_VIEW')).resolves.toBeTruthy();
+    },
+  );
+
+  it(
+    'given BookmarkDeckViewScreen is mounted, when goBack is called, then ExploreHomeScreen is restored',
+    async () => {
+      const { findByTestId, findByText } = renderExploreStack();
+
+      await findByText('EXPLORE_HOME');
+
+      // Navigate to BookmarkDeckViewScreen
+      const bookmarkBtn = await findByTestId('stub-bookmark-nav');
+      await act(async () => {
+        fireEvent.press(bookmarkBtn);
+      });
+      await findByText('BOOKMARK_DECK_VIEW');
+
+      // Press back on the BookmarkDeckViewScreen stub
+      const backBtn = await findByTestId('stub-bookmark-go-back');
+      await act(async () => {
+        fireEvent.press(backBtn);
+      });
+
+      await expect(findByText('EXPLORE_HOME')).resolves.toBeTruthy();
+    },
+  );
+
+  it(
+    'given the Bookmarks tab was selected before push, after goBack the activeTab remains bookmarks (tab-stickiness AC)',
+    async () => {
+      const { findByTestId, findByText, getByTestId } = renderExploreStack();
+
+      // Wait for initial screen
+      await findByText('EXPLORE_HOME');
+
+      // Initially on the friends tab
+      await findByTestId('stub-active-tab');
+      expect(getByTestId('stub-active-tab').props.children).toBe('friends');
+
+      // Simulate: tap bookmark tab (sets activeTab=bookmarks) + navigate to BookmarkDeckViewScreen
+      const bookmarkBtn = await findByTestId('stub-bookmark-nav');
+      await act(async () => {
+        fireEvent.press(bookmarkBtn);
+      });
+      await findByText('BOOKMARK_DECK_VIEW');
+
+      // Go back
+      const backBtn = await findByTestId('stub-bookmark-go-back');
+      await act(async () => {
+        fireEvent.press(backBtn);
+      });
+
+      await findByText('EXPLORE_HOME');
+
+      // Verify that activeTab is still 'bookmarks' — proving native-stack did
+      // NOT remount ExploreHomeScreen and the useState value was preserved.
+      expect(getByTestId('stub-active-tab').props.children).toBe('bookmarks');
     },
   );
 });

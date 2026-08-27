@@ -593,5 +593,14 @@
       "emptyDescription": "Star a profile from the Marriage tab to save it here.",
       "tab": "Bookmarks"
     }
+  },
+  "bookmarks": {
+    "deckView": {
+      "back": "Go back",
+      "sendRequest": "Send request",
+      "sendRequestAccessibility": "Send {name} a connection request",
+      "missingTitle": "This bookmark is no longer available",
+      "missingDescription": "It may have been removed from your bookmarks."
+    }
   }
 }

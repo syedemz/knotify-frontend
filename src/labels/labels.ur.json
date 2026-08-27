@@ -593,5 +593,14 @@
       "emptyDescription": "نکاح ٹیب سے کوئی پروفائل اسٹار کریں تاکہ یہاں محفوظ ہو۔",
       "tab": "بک مارکس"
     }
+  },
+  "bookmarks": {
+    "deckView": {
+      "back": "واپس جائیں",
+      "sendRequest": "درخواست بھیجیں",
+      "sendRequestAccessibility": "{name} کو کنیکشن کی درخواست بھیجیں",
+      "missingTitle": "یہ بک مارک اب دستیاب نہیں",
+      "missingDescription": "ہو سکتا ہے کہ اسے آپ کے بک مارکس سے ہٹا دیا گیا ہو۔"
+    }
   }
 }
