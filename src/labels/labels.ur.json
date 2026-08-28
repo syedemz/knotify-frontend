@@ -535,6 +535,15 @@
       "discountSubtitle": "مز گولڈ ڈسکاؤنٹ",
       "getMore": "مزید حاصل کریں",
       "claim": "چھوٹ حاصل کریں"
+    },
+    "myProfile": {
+      "editTab": {
+        "devTriggers": {
+          "sectionHeading": "ڈیو ٹرگرز — بھیجنے سے پہلے ہٹائیں",
+          "sectionDescription": "یہ بٹن ان سبسکرپشن ایونٹس کی نقل کرتے ہیں جو فیز 17 میں AppSync سے آئیں گے۔",
+          "incomingButtonLabel": "آنے والی دوستی کی درخواست شبیہ کریں (قرۃ)"
+        }
+      }
     }
   },
   "myProfile": {
@@ -620,6 +629,17 @@
       "missingTitle": "گفتگو دستیاب نہیں",
       "missingDescription": "ہم آپ کے کنکشنز میں اس شخص کو نہیں ڈھونڈ سکے۔",
       "editedSuffix": "· ترمیم شدہ"
+    }
+  },
+  "friendRequests": {
+    "incoming": {
+      "title": "دوستی کی درخواست",
+      "subtitle": "آپ سے جڑنا چاہتے ہیں",
+      "acceptLabel": "قبول کریں",
+      "declineLabel": "رد کریں",
+      "viewFullProfileLabel": "مکمل پروفائل دیکھیں",
+      "acceptedToast": "آپ اور {firstName} اب منسلک ہیں!",
+      "declinedToast": "درخواست مسترد کر دی گئی"
     }
   }
 }

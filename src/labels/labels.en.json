@@ -535,6 +535,15 @@
       "discountSubtitle": "Muzz Gold discount",
       "getMore": "Get more",
       "claim": "Claim discount"
+    },
+    "myProfile": {
+      "editTab": {
+        "devTriggers": {
+          "sectionHeading": "Dev triggers — remove before ship",
+          "sectionDescription": "These buttons simulate subscription events that will be driven by AppSync in phase 17.",
+          "incomingButtonLabel": "Simulate incoming friend request (Qurat)"
+        }
+      }
     }
   },
   "myProfile": {
@@ -620,6 +629,17 @@
       "missingTitle": "Conversation unavailable",
       "missingDescription": "We could not find this person in your connections.",
       "editedSuffix": "· edited"
+    }
+  },
+  "friendRequests": {
+    "incoming": {
+      "title": "Friend Request",
+      "subtitle": "wants to connect with you",
+      "acceptLabel": "Accept",
+      "declineLabel": "Decline",
+      "viewFullProfileLabel": "View full profile",
+      "acceptedToast": "You and {firstName} are now connected!",
+      "declinedToast": "Request declined"
     }
   }
 }
