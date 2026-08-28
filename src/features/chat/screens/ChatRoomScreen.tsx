@@ -29,7 +29,7 @@
  * @module features/chat/screens/ChatRoomScreen
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   ImageBackground,
@@ -98,6 +98,14 @@ export function ChatRoomScreen(): React.ReactElement {
 
   const [composerText, setComposerText] = useState('');
 
+  // Ref for the message-thread FlatList so we can scroll to the latest
+  // message on mount and whenever a new message is appended. The list is
+  // rendered in natural chronological order (oldest at top, newest at
+  // bottom) — no `inverted` prop — so we must actively pin the viewport
+  // to the end to match the WhatsApp UX ("open at latest, scroll up for
+  // history").
+  const flatListRef = useRef<FlatList<ChatMessage>>(null);
+
   const handleBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
@@ -120,6 +128,17 @@ export function ChatRoomScreen(): React.ReactElement {
     ({ item }: { item: ChatMessage }) => <MessageBubble message={item} />,
     [],
   );
+
+  // `onContentSizeChange` fires on initial layout AND whenever items are
+  // added — perfect trigger for auto-scroll-to-end. Not animated on first
+  // mount (jumps straight to the latest so the user never sees old messages
+  // flash by); subsequent appends animate for a natural feel.
+  const hasScrolledOnceRef = useRef(false);
+  const handleContentSizeChange = useCallback(() => {
+    const animated = hasScrolledOnceRef.current;
+    hasScrolledOnceRef.current = true;
+    flatListRef.current?.scrollToEnd({ animated });
+  }, []);
 
   // ── Profile resolution — after all hooks ───────────────────────────────────
 
@@ -209,17 +228,22 @@ export function ChatRoomScreen(): React.ReactElement {
           style={styles.threadBackground}
         >
           {/*
-            FlatList with inverted=true renders messages so the latest appears
-            at the bottom. The data array is passed as-is; RN's inverted FlatList
-            reverses the visual order internally.
+            Chronological render (natural order): oldest message at the top,
+            newest just above the composer. `onContentSizeChange` triggers
+            `scrollToEnd` so the viewport pins to the latest message on mount
+            AND when a new message is appended — matches the WhatsApp UX.
+            No `inverted` prop: the seed data is already chronological and
+            the mock has no back-pagination story to justify inverted-list
+            memory savings.
           */}
           <FlatList
+            ref={flatListRef}
             testID="chat-room-flatlist"
             data={messages as ChatMessage[]}
             keyExtractor={keyExtractor}
             renderItem={renderBubble}
-            inverted={true}
             contentContainerStyle={styles.listContent}
+            onContentSizeChange={handleContentSizeChange}
           />
         </ImageBackground>
       </View>
