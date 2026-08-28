@@ -1,6 +1,6 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (story 15.6 complete — IncomingRequestModal + DevTriggersPanel + MyProfileScreen Edit-tab dev trigger)
+last_updated: 2026-08-27 (phase 15 complete — story 15.7 shipped)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -264,7 +264,7 @@ stories:
   - id: 15.7
     title: RequestAcceptedModal + MyProfileScreen Edit-tab dev trigger
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [15.5, 15.6]
     acceptance_criteria:
       - Add `src/features/friendRequests/components/RequestAcceptedModal.tsx`. Presentation-only. Props identical to IncomingRequestModal - `readonly visible: boolean`, `readonly profile: DummyFullProfile | null`, `readonly onClose: () => void` — plus `readonly onSayHi: () => void` for the parent to handle the navigation (rather than the modal owning cross-tab knowledge).
