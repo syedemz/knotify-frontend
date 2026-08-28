@@ -29,7 +29,7 @@
  * @module features/chat/screens/ChatRoomScreen
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   ImageBackground,
@@ -98,13 +98,18 @@ export function ChatRoomScreen(): React.ReactElement {
 
   const [composerText, setComposerText] = useState('');
 
-  // Ref for the message-thread FlatList so we can scroll to the latest
-  // message on mount and whenever a new message is appended. The list is
-  // rendered in natural chronological order (oldest at top, newest at
-  // bottom) — no `inverted` prop — so we must actively pin the viewport
-  // to the end to match the WhatsApp UX ("open at latest, scroll up for
-  // history").
-  const flatListRef = useRef<FlatList<ChatMessage>>(null);
+  // Reverse the chronological source so index 0 is the NEWEST message.
+  // Combined with `inverted={true}` on the FlatList below, RN renders
+  // index 0 at the visual bottom and later indices upward — matching the
+  // WhatsApp UX where the newest message sits right above the composer
+  // and scrolling UP reveals older history. The critical benefit: the
+  // list opens instantly at the latest message with zero scroll animation
+  // (imagine a 2000-message thread — no user should watch a "scroll from
+  // the top" animation on every open).
+  const messagesDescending = useMemo(
+    () => [...messages].reverse(),
+    [messages],
+  );
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -128,17 +133,6 @@ export function ChatRoomScreen(): React.ReactElement {
     ({ item }: { item: ChatMessage }) => <MessageBubble message={item} />,
     [],
   );
-
-  // `onContentSizeChange` fires on initial layout AND whenever items are
-  // added — perfect trigger for auto-scroll-to-end. Not animated on first
-  // mount (jumps straight to the latest so the user never sees old messages
-  // flash by); subsequent appends animate for a natural feel.
-  const hasScrolledOnceRef = useRef(false);
-  const handleContentSizeChange = useCallback(() => {
-    const animated = hasScrolledOnceRef.current;
-    hasScrolledOnceRef.current = true;
-    flatListRef.current?.scrollToEnd({ animated });
-  }, []);
 
   // ── Profile resolution — after all hooks ───────────────────────────────────
 
@@ -171,7 +165,14 @@ export function ChatRoomScreen(): React.ReactElement {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      // iOS uses 'padding' to add bottom padding equal to the keyboard
+      // height. On Android we pass `undefined` so KeyboardAvoidingView
+      // becomes a passthrough — the manifest's `windowSoftInputMode="adjustResize"`
+      // already resizes the window to make room for the keyboard. Using
+      // `behavior="height"` on Android instead causes the two to fight
+      // each other on keyboard dismiss, leaving a residual empty strip
+      // below the composer.
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: insets.top + theme.spacing.sm }]}>
@@ -228,22 +229,27 @@ export function ChatRoomScreen(): React.ReactElement {
           style={styles.threadBackground}
         >
           {/*
-            Chronological render (natural order): oldest message at the top,
-            newest just above the composer. `onContentSizeChange` triggers
-            `scrollToEnd` so the viewport pins to the latest message on mount
-            AND when a new message is appended — matches the WhatsApp UX.
-            No `inverted` prop: the seed data is already chronological and
-            the mock has no back-pagination story to justify inverted-list
-            memory savings.
+            Inverted list rendering the DESCENDING-order copy of `messages`
+            (see `messagesDescending` useMemo above). Result: newest just
+            above the composer, oldest at the top of the scrollback —
+            standard WhatsApp/iMessage pattern. No scroll animation on
+            mount and no scroll-to-end needed on send; RN's inverted-list
+            layout pins index 0 (the newest) to the visual bottom natively.
           */}
           <FlatList
-            ref={flatListRef}
             testID="chat-room-flatlist"
-            data={messages as ChatMessage[]}
+            data={messagesDescending}
             keyExtractor={keyExtractor}
             renderItem={renderBubble}
+            inverted={true}
             contentContainerStyle={styles.listContent}
-            onContentSizeChange={handleContentSizeChange}
+            // RN's default `initialNumToRender=10` would only mount the
+            // newest 10 messages on open — scrolling up to older messages
+            // would trigger virtualization mounts one page at a time.
+            // For a chat thread that's cheap: render ~30 up-front so
+            // scroll-back is instant and older messages (including any
+            // with `editedAt` suffixes) are already in the tree.
+            initialNumToRender={30}
           />
         </ImageBackground>
       </View>
