@@ -21,13 +21,14 @@
  * @module features/profile/screens/MyProfileScreen
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, CheckCircle } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import type { AppTabsParamList } from '@/navigation/types';
 
 import {
   Row,
@@ -49,6 +50,8 @@ import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import { ShareProfileButton } from '../components/ShareProfileButton';
 import { DevTriggersPanel } from '../components/DevTriggersPanel';
 import { IncomingRequestModal } from '@/features/friendRequests/components/IncomingRequestModal';
+import { RequestAcceptedModal } from '@/features/friendRequests/components/RequestAcceptedModal';
+import { MEHVISH_USER_ID } from '@/state/chat/ChatProvider';
 
 // Static import — no API call in phase 12.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -79,8 +82,17 @@ type MenuLocalParamList = {
   MyProfileScreen: { initialTab?: 'preview' | 'edit' } | undefined;
 };
 
-type MyProfileNav = NativeStackNavigationProp<MenuLocalParamList, 'MyProfileScreen'>;
 type MyProfileRoute = RouteProp<MenuLocalParamList, 'MyProfileScreen'>;
+
+/**
+ * Cross-tab navigation type that covers both the Menu stack (goBack, close)
+ * and the top-level tab navigator (Chat → ChatRoomScreen for Say-hi).
+ *
+ * Using `AppTabsParamList` ensures `navigate('Chat', { screen: 'ChatRoomScreen',
+ * params: { friendUserId } })` type-checks. `goBack()` is available on all
+ * navigation objects regardless of the param list.
+ */
+type MyProfileNav = NativeStackNavigationProp<AppTabsParamList>;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -112,6 +124,9 @@ export function MyProfileScreen(): React.ReactElement {
   // ── Modal + snackbar state (15.6) ──────────────────────────────────────────
   const [incomingModalProfile, setIncomingModalProfile] = useState<DummyFullProfile | null>(null);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+
+  // ── Modal state (15.7) — RequestAcceptedModal ──────────────────────────────
+  const [acceptedModalProfile, setAcceptedModalProfile] = useState<DummyFullProfile | null>(null);
 
   const handleClose = useCallback(() => {
     navigation.goBack();
@@ -179,6 +194,43 @@ export function MyProfileScreen(): React.ReactElement {
   const handleDismissSnackbar = useCallback(() => {
     setSnackbarMessage(null);
   }, []);
+
+  // ── Dev-trigger handler — Request Accepted (Mehvish) ──────────────────────
+
+  /**
+   * Opens the RequestAcceptedModal with Mehvish's full profile.
+   * Uses `MEHVISH_USER_ID` exported from `ChatProvider` — the single source
+   * of truth for this fixture constant.
+   *
+   * TODO(mock-only): remove when real `onFriendRequestAccepted` subscription
+   * ships in phase 17.
+   */
+  const handleOpenAcceptedModal = useCallback(() => {
+    const profile = getFullProfile(MEHVISH_USER_ID);
+    if (profile !== undefined) {
+      setAcceptedModalProfile(profile);
+    }
+  }, [getFullProfile]);
+
+  const handleCloseAcceptedModal = useCallback(() => {
+    setAcceptedModalProfile(null);
+  }, []);
+
+  /**
+   * Host-owned Say-hi handler for RequestAcceptedModal.
+   * Navigates cross-tab to ChatRoomScreen with Mehvish's userId.
+   * The modal fires `onSayHi()` then `onClose()` — the modal itself does NOT
+   * call navigate (B1 contract: host owns navigation).
+   *
+   * Same nested cross-tab pattern validated by `ChatStack.crossTab.test.tsx`
+   * (story 15.5).
+   */
+  const handleSayHi = useCallback(() => {
+    navigation.navigate('Chat', {
+      screen: 'ChatRoomScreen',
+      params: { friendUserId: MEHVISH_USER_ID },
+    });
+  }, [navigation]);
 
   // ── Display values ─────────────────────────────────────────────────────────
 
@@ -285,8 +337,14 @@ export function MyProfileScreen(): React.ReactElement {
               onPress={handleOpenIncomingModal}
               testID="dev-trigger-incoming-btn"
             />
-            {/* Story 15.7 will append a second Button sibling here — no edits
-                to DevTriggersPanel.tsx required. */}
+            {/* Trigger 2 — RequestAcceptedModal (Mehvish)
+                Story 15.7. TODO(mock-only): remove when subscription ships. */}
+            <Button
+              label={t('menu.myProfile.editTab.devTriggers.acceptedButtonLabel')}
+              variant="ghost"
+              onPress={handleOpenAcceptedModal}
+              testID="dev-trigger-accepted-btn"
+            />
           </DevTriggersPanel>
         </ScrollView>
       )}
@@ -300,6 +358,16 @@ export function MyProfileScreen(): React.ReactElement {
         onClose={handleCloseIncomingModal}
         onAccept={handleAcceptRequest}
         onDecline={handleDeclineRequest}
+      />
+
+      {/* ── RequestAcceptedModal — screen-level mount ────────────────────────── */}
+      {/* TODO(mock-only): trigger source will change from dev button to
+          real AppSync onFriendRequestAccepted subscription in phase 17. */}
+      <RequestAcceptedModal
+        visible={acceptedModalProfile !== null}
+        profile={acceptedModalProfile}
+        onClose={handleCloseAcceptedModal}
+        onSayHi={handleSayHi}
       />
 
       {/* ── Local Snackbar for Accept/Decline toasts ───────────────────────── */}

@@ -541,7 +541,8 @@
         "devTriggers": {
           "sectionHeading": "ڈیو ٹرگرز — بھیجنے سے پہلے ہٹائیں",
           "sectionDescription": "یہ بٹن ان سبسکرپشن ایونٹس کی نقل کرتے ہیں جو فیز 17 میں AppSync سے آئیں گے۔",
-          "incomingButtonLabel": "آنے والی دوستی کی درخواست شبیہ کریں (قرۃ)"
+          "incomingButtonLabel": "آنے والی دوستی کی درخواست شبیہ کریں (قرۃ)",
+          "acceptedButtonLabel": "درخواست قبول ہونے کی شبیہ کریں (مہویش)"
         }
       }
     }
@@ -640,6 +641,12 @@
       "viewFullProfileLabel": "مکمل پروفائل دیکھیں",
       "acceptedToast": "آپ اور {firstName} اب منسلک ہیں!",
       "declinedToast": "درخواست مسترد کر دی گئی"
+    },
+    "accepted": {
+      "title": "آپ اور {{firstName}} اب منسلک ہیں!",
+      "subtitle": "ابھی گفتگو شروع کریں۔",
+      "sayHiLabel": "ہیلو کہیں",
+      "notNowLabel": "ابھی نہیں"
     }
   }
 }

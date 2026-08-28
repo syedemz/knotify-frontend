@@ -541,7 +541,8 @@
         "devTriggers": {
           "sectionHeading": "Dev triggers — remove before ship",
           "sectionDescription": "These buttons simulate subscription events that will be driven by AppSync in phase 17.",
-          "incomingButtonLabel": "Simulate incoming friend request (Qurat)"
+          "incomingButtonLabel": "Simulate incoming friend request (Qurat)",
+          "acceptedButtonLabel": "Simulate request accepted (Mehvish)"
         }
       }
     }
@@ -640,6 +641,12 @@
       "viewFullProfileLabel": "View full profile",
       "acceptedToast": "You and {firstName} are now connected!",
       "declinedToast": "Request declined"
+    },
+    "accepted": {
+      "title": "You and {{firstName}} are now connected!",
+      "subtitle": "You can start a chat now.",
+      "sayHiLabel": "Say hi",
+      "notNowLabel": "Not now"
     }
   }
 }
