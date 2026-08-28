@@ -1,6 +1,6 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (story 15.5 complete — ChatRoomScreen + MessageBubble + cross-tab nav test)
+last_updated: 2026-08-27 (story 15.6 complete — IncomingRequestModal + DevTriggersPanel + MyProfileScreen Edit-tab dev trigger)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -236,7 +236,7 @@ stories:
   - id: 15.6
     title: IncomingRequestModal + MyProfileScreen Edit-tab dev trigger
     agent: frontenddeveloper
-    done: false
+    done: true
     depends_on: [15.1]
     acceptance_criteria:
       - Add `src/features/friendRequests/components/IncomingRequestModal.tsx`. **Fully presentation-only** — no `useFriendship()` calls inside the modal. Props - `readonly visible: boolean`, `readonly profile: DummyFullProfile | null`, `readonly onClose: () => void`, `readonly onAccept: (userId: string) => void`, `readonly onDecline: (userId: string) => void`. The modal fires the callbacks; the HOST calls `acceptRequest` / `declineRequest` on `FriendshipProvider` AND owns the snackbar. This matches the shape of `RequestAcceptedModal.onSayHi` in story 15.7. The `pendingToast` cross-screen handoff is NOT used for this surface — the toast fires locally on the host (`MyProfileScreen`) because the user stays on that screen after tapping Accept / Decline.
