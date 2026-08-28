@@ -10,6 +10,10 @@
  * stub that renders only the initial screen — sufficient to assert that
  * `AppTabs` passes the correct screen components to the navigator.
  *
+ * The stub also captures the `tabBar` render prop passed to `Navigator` so
+ * the `CollapsingTabBar` behaviour can be exercised by calling the captured
+ * prop with synthetic `BottomTabBarProps` state in subsequent tests.
+ *
  * `MarriageLandingScreen` and `MenuStack` are mocked with lightweight stubs
  * so the test does not pull in the Reanimated worklet chain or the full
  * profile-sections tree.
@@ -21,7 +25,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { render, act } from "@testing-library/react-native";
+import { View } from "react-native";
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
@@ -93,10 +98,15 @@ jest.mock("react-native-gesture-handler", () => {
 // react-native-reanimated is handled by moduleNameMapper in jest.config.js
 // (redirects to __mocks__/react-native-reanimated.js). No jest.mock() needed.
 
+// Captured tabBar render prop: set by the Navigator mock so tests can call it
+// directly with synthetic BottomTabBarProps.
+let capturedTabBarProp: ((props: any) => React.JSX.Element | null) | undefined;
+
 // Mock createBottomTabNavigator to avoid the native Animated driver call
 // that BottomTabBar triggers in Jest (React renderer version mismatch).
 // The stub renders the first registered screen component unconditionally —
 // this is enough to assert that AppTabs wires the correct placeholder screens.
+// It also captures the `tabBar` prop so CollapsingTabBar can be tested directly.
 jest.mock("@react-navigation/bottom-tabs", () => {
   const Rct = require("react") as typeof import("react");
   const RN = require("react-native") as typeof import("react-native");
@@ -105,6 +115,10 @@ jest.mock("@react-navigation/bottom-tabs", () => {
       // Track registered screens in registration order.
       const screens: any[] = [];
       const Navigator = function(props: any) {
+        // Capture the tabBar render prop if provided.
+        if (typeof props.tabBar === 'function') {
+          capturedTabBarProp = props.tabBar;
+        }
         Rct.Children.forEach(props.children, function(child: any) {
           if (child && child.props && child.props.component) {
             screens.push(child.props.component);
@@ -119,6 +133,41 @@ jest.mock("@react-navigation/bottom-tabs", () => {
       Screen.displayName = "MockTabScreen";
       return { Navigator: Navigator, Screen: Screen };
     },
+    // BottomTabBar stub: renders an identifiable testID so tests can detect
+    // whether the tab bar was rendered.
+    BottomTabBar: function(props: any) {
+      return Rct.createElement(RN.View, { testID: "bottom-tab-bar" }, null);
+    },
+  };
+});
+
+// Mock safe-area-context so useSafeAreaInsets returns zero insets (avoids native module).
+jest.mock("react-native-safe-area-context", () => {
+  const RN = require("react-native") as typeof import("react-native");
+  const Rct = require("react") as typeof import("react");
+  const INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+  const ctx = Rct.createContext(INSETS);
+  return {
+    SafeAreaProvider: function(props: any) {
+      return Rct.createElement(ctx.Provider, { value: INSETS }, Rct.createElement(RN.View, null, props.children));
+    },
+    SafeAreaConsumer: function(props: any) { return props.children(INSETS); },
+    SafeAreaView: function(props: any) { return Rct.createElement(RN.View, null, props.children); },
+    SafeAreaInsetsContext: ctx,
+    useSafeAreaInsets: function() { return INSETS; },
+    useSafeAreaFrame: function() { return { x: 0, y: 0, width: 375, height: 812 }; },
+    initialWindowMetrics: { insets: INSETS, frame: { x: 0, y: 0, width: 375, height: 812 } },
+  };
+});
+
+// Mock getFocusedRouteNameFromRoute so we can control nested-route resolution
+// in the CollapsingTabBar tests.
+const mockGetFocusedRouteNameFromRoute = jest.fn<string | undefined, [any]>();
+jest.mock("@react-navigation/native", () => {
+  const actual = jest.requireActual("@react-navigation/native") as Record<string, unknown>;
+  return {
+    ...actual,
+    getFocusedRouteNameFromRoute: (route: any) => mockGetFocusedRouteNameFromRoute(route),
   };
 });
 
@@ -130,7 +179,7 @@ import { AppTabs } from "@/navigation/AppTabs";
 import { t } from "@/labels";
 import { ThemeProvider } from "@/theme";
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function renderAppTabs() {
   return render(
@@ -140,16 +189,38 @@ function renderAppTabs() {
   );
 }
 
+/**
+ * Build a minimal synthetic BottomTabBarProps-like object for the
+ * CollapsingTabBar render-prop tests. Only the `state` fields used by
+ * `CollapsingTabBar` are populated.
+ */
+function makeTabBarProps(tabName: string, route?: Record<string, unknown>) {
+  const routeObj = route ?? { name: tabName, key: `${tabName}-key` };
+  return {
+    state: {
+      index: 0,
+      routes: [routeObj],
+    },
+    descriptors: {},
+    navigation: {},
+    insets: { top: 0, right: 0, bottom: 0, left: 0 },
+  } as unknown as Parameters<NonNullable<typeof capturedTabBarProp>>[0];
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("AppTabs", () => {
+  beforeEach(() => {
+    capturedTabBarProp = undefined;
+    mockGetFocusedRouteNameFromRoute.mockReset();
+  });
+
   it("given AppTabs renders, then it mounts without throwing", () => {
     expect(() => renderAppTabs()).not.toThrow();
   });
 
   it("given AppTabs renders, then the Marriage tab screen is visible (initial tab)", () => {
     const { queryByTestId } = renderAppTabs();
-
     // The mock navigator renders the first registered screen (MarriageLandingScreen
     // stub). We assert the stub's testID is present to confirm that the
     // Marriage tab is registered first and its component is mounted.
@@ -159,5 +230,120 @@ describe("AppTabs", () => {
   it("given AppTabs renders, then nav.tabs.marriage label is declared in labels", () => {
     // Confirm the new label key resolves to a non-empty string.
     expect(t("nav.tabs.marriage")).toBeTruthy();
+  });
+});
+
+// ── CollapsingTabBar visibility tests ─────────────────────────────────────────
+//
+// After rendering AppTabs, `capturedTabBarProp` holds the arrow function
+// `(props) => <CollapsingTabBar {...props} />` that AppTabs passes as `tabBar`
+// to the navigator. Calling it returns a React element — we must render that
+// element to observe whether `BottomTabBar` (testID="bottom-tab-bar") is
+// mounted or not.
+//
+// When `CollapsingTabBar` returns `null` (the ChatRoomScreen hide path), the
+// element renders nothing and `bottom-tab-bar` is absent.
+// When it returns the Animated.View wrapper, `bottom-tab-bar` IS present.
+
+/**
+ * Renders the tab-bar element produced by the captured render prop with the
+ * given synthetic props and returns the RNTL query utilities.
+ */
+function renderTabBar(props: Parameters<NonNullable<typeof capturedTabBarProp>>[0]) {
+  const element = capturedTabBarProp!(props);
+  return render(
+    <ThemeProvider>
+      {element}
+    </ThemeProvider>,
+  );
+}
+
+describe("CollapsingTabBar — Chat tab + ChatRoomScreen nested route", () => {
+  it("given Chat tab focused + ChatRoomScreen nested, then BottomTabBar is NOT rendered (tab bar hidden)", () => {
+    renderAppTabs();
+    expect(capturedTabBarProp).toBeDefined();
+
+    // Simulate: Chat tab is focused, nested route is ChatRoomScreen.
+    mockGetFocusedRouteNameFromRoute.mockReturnValue("ChatRoomScreen");
+    const chatTabRoute = {
+      name: "Chat",
+      key: "chat-key",
+      state: { routes: [{ name: "ChatRoomScreen" }], index: 0 },
+    };
+    const props = makeTabBarProps("Chat", chatTabRoute);
+
+    const { queryByTestId } = renderTabBar(props);
+
+    // CollapsingTabBar returns null → BottomTabBar stub is NOT rendered.
+    expect(queryByTestId("bottom-tab-bar")).toBeNull();
+  });
+
+  it("given Chat tab focused + ChatListScreen nested, then BottomTabBar IS rendered", () => {
+    renderAppTabs();
+    expect(capturedTabBarProp).toBeDefined();
+
+    // Simulate: Chat tab is focused, nested route is ChatListScreen.
+    mockGetFocusedRouteNameFromRoute.mockReturnValue("ChatListScreen");
+    const chatTabRoute = {
+      name: "Chat",
+      key: "chat-key",
+      state: { routes: [{ name: "ChatListScreen" }], index: 0 },
+    };
+    const props = makeTabBarProps("Chat", chatTabRoute);
+
+    const { queryByTestId } = renderTabBar(props);
+
+    // CollapsingTabBar returns the Animated wrapper → BottomTabBar stub IS rendered.
+    expect(queryByTestId("bottom-tab-bar")).not.toBeNull();
+  });
+
+  it("given Chat tab focused + getFocusedRouteNameFromRoute returns undefined (defaults to ChatListScreen), then BottomTabBar IS rendered", () => {
+    renderAppTabs();
+    expect(capturedTabBarProp).toBeDefined();
+
+    // undefined → defaults to 'ChatListScreen' in the implementation.
+    mockGetFocusedRouteNameFromRoute.mockReturnValue(undefined);
+    const chatTabRoute = {
+      name: "Chat",
+      key: "chat-key",
+      state: { routes: [] },
+    };
+    const props = makeTabBarProps("Chat", chatTabRoute);
+
+    const { queryByTestId } = renderTabBar(props);
+
+    expect(queryByTestId("bottom-tab-bar")).not.toBeNull();
+  });
+});
+
+describe("CollapsingTabBar — non-Chat tabs", () => {
+  it("given Marriage tab focused, then BottomTabBar IS rendered (not hidden)", () => {
+    renderAppTabs();
+    expect(capturedTabBarProp).toBeDefined();
+
+    const props = makeTabBarProps("Marriage", { name: "Marriage", key: "marriage-key" });
+    const { queryByTestId } = renderTabBar(props);
+
+    expect(queryByTestId("bottom-tab-bar")).not.toBeNull();
+  });
+
+  it("given Explore tab focused, then BottomTabBar IS rendered (not hidden)", () => {
+    renderAppTabs();
+    expect(capturedTabBarProp).toBeDefined();
+
+    const props = makeTabBarProps("Explore", { name: "Explore", key: "explore-key" });
+    const { queryByTestId } = renderTabBar(props);
+
+    expect(queryByTestId("bottom-tab-bar")).not.toBeNull();
+  });
+
+  it("given Menu tab focused, then BottomTabBar IS rendered (not hidden)", () => {
+    renderAppTabs();
+    expect(capturedTabBarProp).toBeDefined();
+
+    const props = makeTabBarProps("Menu", { name: "Menu", key: "menu-key" });
+    const { queryByTestId } = renderTabBar(props);
+
+    expect(queryByTestId("bottom-tab-bar")).not.toBeNull();
   });
 });

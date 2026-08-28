@@ -19,6 +19,38 @@ import React from 'react';
 import { Share } from 'react-native';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 
+// ── FriendshipProvider mock ───────────────────────────────────────────────────
+// MyProfileScreen now calls useFriendship() — mock it for these wiring tests.
+
+const mockQuratProfile = require('../../../assets/dummyqurat.json') as {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  age: number;
+  current_residence_city: string;
+};
+
+jest.mock('@/state/friendship/FriendshipProvider', () => ({
+  useFriendship: () => ({
+    acceptRequest: jest.fn(),
+    declineRequest: jest.fn(),
+    getFullProfile: (userId: string) => {
+      if (userId === mockQuratProfile.user_id) return mockQuratProfile;
+      return undefined;
+    },
+    friends: [],
+    requests: [],
+    isFriend: () => false,
+    receivedRequestFrom: () => false,
+    pendingToast: null,
+    setPendingToast: jest.fn(),
+    consumePendingToast: jest.fn(),
+    outgoingRequestIds: [],
+    sendRequest: jest.fn(),
+    hasOutgoingRequest: () => false,
+  }),
+}));
+
 // ── Native module mocks ───────────────────────────────────────────────────────
 
 jest.mock('react-native-safe-area-context', () => {
@@ -158,24 +190,29 @@ describe('(a) Preview tab renders expected sections', () => {
   });
 });
 
-// ── (b) Edit tab renders EmptyState "Coming soon" ─────────────────────────────
+// ── (b) Edit tab renders DevTriggersPanel (story 15.6) ───────────────────────
 
-describe('(b) Edit tab renders EmptyState "Coming soon"', () => {
-  it('tapping the Edit tab shows "Coming soon"', () => {
+describe('(b) Edit tab renders DevTriggersPanel with dev triggers', () => {
+  it('tapping the Edit tab shows the DevTriggersPanel', () => {
     renderScreen('preview');
     // Switch to Edit tab.
     fireEvent.press(screen.getByTestId('my-profile-tab-edit'));
-    expect(screen.getByText('Coming soon')).toBeTruthy();
+    expect(screen.getByTestId('dev-triggers-panel')).toBeTruthy();
   });
 
-  it('rendering with initialTab="edit" directly shows "Coming soon"', () => {
+  it('rendering with initialTab="edit" directly shows the DevTriggersPanel', () => {
     renderScreen('edit');
-    expect(screen.getByText('Coming soon')).toBeTruthy();
+    expect(screen.getByTestId('dev-triggers-panel')).toBeTruthy();
   });
 
   it('Edit tab does NOT render ProfileScrollView sections', () => {
     renderScreen('edit');
     expect(screen.queryByTestId('profile-scroll-view')).toBeNull();
+  });
+
+  it('Edit tab does NOT show "Coming soon" EmptyState (replaced by DevTriggersPanel)', () => {
+    renderScreen('edit');
+    expect(screen.queryByText('Coming soon')).toBeNull();
   });
 });
 

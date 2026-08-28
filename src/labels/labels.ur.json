@@ -535,6 +535,16 @@
       "discountSubtitle": "مز گولڈ ڈسکاؤنٹ",
       "getMore": "مزید حاصل کریں",
       "claim": "چھوٹ حاصل کریں"
+    },
+    "myProfile": {
+      "editTab": {
+        "devTriggers": {
+          "sectionHeading": "ڈیو ٹرگرز — بھیجنے سے پہلے ہٹائیں",
+          "sectionDescription": "یہ بٹن ان سبسکرپشن ایونٹس کی نقل کرتے ہیں جو فیز 17 میں AppSync سے آئیں گے۔",
+          "incomingButtonLabel": "آنے والی دوستی کی درخواست شبیہ کریں (قرۃ)",
+          "acceptedButtonLabel": "درخواست قبول ہونے کی شبیہ کریں (مہویش)"
+        }
+      }
     }
   },
   "myProfile": {
@@ -565,8 +575,7 @@
       "comingSoonToast": "اختیارات جلد آ رہے ہیں"
     },
     "chat": {
-      "accessibility": "{name} سے چیٹ کریں",
-      "comingSoonToast": "چیٹ جلد آ رہی ہے"
+      "accessibility": "{name} سے چیٹ کریں"
     }
   },
   "explore": {
@@ -601,6 +610,42 @@
       "sendRequestAccessibility": "{name} کو کنیکشن کی درخواست بھیجیں",
       "missingTitle": "یہ بک مارک اب دستیاب نہیں",
       "missingDescription": "ہو سکتا ہے کہ اسے آپ کے بک مارکس سے ہٹا دیا گیا ہو۔"
+    }
+  },
+  "chat": {
+    "list": {
+      "headerTitle": "چیٹ",
+      "noMessagesYet": "ابھی تک کوئی پیغام نہیں",
+      "emptyTitle": "ابھی کوئی گفتگو نہیں",
+      "emptyDescription": "جب آپ کسی سے منسلک ہو جائیں گے تو آپ کی چیٹس یہاں نظر آئیں گی۔",
+      "rowAccessibility": "{firstName} {lastName} سے چیٹ کریں"
+    },
+    "room": {
+      "composerPlaceholder": "پیغام لکھیں…",
+      "sendAccessibility": "پیغام بھیجیں",
+      "micAccessibility": "آواز کا پیغام ریکارڈ کریں",
+      "menuAccessibility": "چیٹ کے اختیارات",
+      "backAccessibility": "واپس جائیں",
+      "missingTitle": "گفتگو دستیاب نہیں",
+      "missingDescription": "ہم آپ کے کنکشنز میں اس شخص کو نہیں ڈھونڈ سکے۔",
+      "editedSuffix": "· ترمیم شدہ"
+    }
+  },
+  "friendRequests": {
+    "incoming": {
+      "title": "دوستی کی درخواست",
+      "subtitle": "آپ سے جڑنا چاہتے ہیں",
+      "acceptLabel": "قبول کریں",
+      "declineLabel": "رد کریں",
+      "viewFullProfileLabel": "مکمل پروفائل دیکھیں",
+      "acceptedToast": "آپ اور {firstName} اب منسلک ہیں!",
+      "declinedToast": "درخواست مسترد کر دی گئی"
+    },
+    "accepted": {
+      "title": "آپ اور {{firstName}} اب منسلک ہیں!",
+      "subtitle": "ابھی گفتگو شروع کریں۔",
+      "sayHiLabel": "ہیلو کہیں",
+      "notNowLabel": "ابھی نہیں"
     }
   }
 }

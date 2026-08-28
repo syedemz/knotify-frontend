@@ -4,8 +4,9 @@
  * Registers the four bottom tabs: Marriage, Explore, Chat, Menu.
  * - `Marriage` renders `MarriageLandingScreen` (phase 12.4).
  * - `Explore` renders `ExploreStack` (phase 13.5) — a nested native stack
- *   with Friends + Requests subtabs and OtherProfileScreen.
- * - `Chat` remains an `EmptyState` placeholder until its feature phase ships.
+ *   with Friends + Requests + Bookmarks subtabs and OtherProfileScreen.
+ * - `Chat` renders `ChatStack` (phase 15.4) — a nested native stack with
+ *   `ChatListScreen` and `ChatRoomScreen`.
  * - `Menu` renders `MenuStack` — a nested native stack that starts at
  *   `MenuHomeScreen` and can push to `MyProfileScreen`.
  *
@@ -39,14 +40,15 @@ import {
   BottomTabBar,
   type BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Heart, Compass, MessageCircle, Menu } from 'lucide-react-native';
 
-import { EmptyState } from '@/components';
 import { t } from '@/labels';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { MenuStack } from './MenuStack';
 import { ExploreStack } from './ExploreStack';
+import { ChatStack } from './ChatStack';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import type { AppTabsParamList } from './types';
@@ -60,22 +62,6 @@ import type { AppTabsParamList } from './types';
  * animation. Matches the default height on both iOS and Android.
  */
 const TAB_BAR_HEIGHT = 49;
-
-// ---------------------------------------------------------------------------
-// Placeholder screens
-// ---------------------------------------------------------------------------
-
-/**
- * Placeholder for the Chat tab screen.
- */
-function ChatScreen(): React.JSX.Element {
-  return (
-    <EmptyState
-      title={t('nav.tabs.chat')}
-      description={t('common.notImplemented')}
-    />
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Menu tab icon
@@ -143,12 +129,33 @@ const menuAvatarSource = resolveDummyPhoto(menuAvatarPath);
 
 /**
  * Custom tab bar. Wraps the default `BottomTabBar` in an `Animated.View`
- * whose transform reads `tabBarHidden` only when the currently
- * focused route is `Marriage`. Any other focused route pins the transform
- * to identity so the bar remains visible on Explore / Chat / Menu.
+ * whose transform reads `tabBarHidden` only when the currently focused
+ * route is `Marriage` or `Explore`. Any other focused route pins the
+ * transform to identity so the bar stays visible.
+ *
+ * **Chat + ChatRoomScreen:** When the Chat tab is focused and its nested
+ * focused sub-route is `ChatRoomScreen`, the tab-bar overlay is removed
+ * entirely (`return null`). This allows the composer at the bottom of
+ * `ChatRoomScreen` to sit flush against the physical screen bottom without
+ * being occluded by the absolute-positioned tab-bar overlay.
+ *
+ * The `Marriage` and `Explore` collapse animation is not affected.
  */
-function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element {
-  const focusedRoute = props.state.routes[props.state.index]?.name;
+function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element | null {
+  const focusedTabRoute = props.state.routes[props.state.index];
+  const focusedRouteName = focusedTabRoute?.name;
+
+  // Determine whether ChatRoomScreen is the nested-focused route inside the
+  // Chat tab. Computed before all hook calls so the result is stable, but
+  // the early return (return null) happens AFTER all hooks are called —
+  // satisfying the Rules of Hooks.
+  const chatNestedRoute =
+    focusedRouteName === 'Chat' && focusedTabRoute !== undefined
+      ? (getFocusedRouteNameFromRoute(focusedTabRoute) ?? 'ChatListScreen')
+      : null;
+  const hiddenForChatRoom = chatNestedRoute === 'ChatRoomScreen';
+
+  // All hooks are declared unconditionally before any conditional return.
   const insets = useSafeAreaInsets();
   // The tab bar's rendered height includes the bottom safe-area inset
   // (Android gesture-bar padding / iOS home-indicator). Translating by the
@@ -163,13 +170,20 @@ function CollapsingTabBar(props: BottomTabBarProps): React.JSX.Element {
     // itself does not write — OtherProfileScreen resets the value to 0 on
     // mount + unmount so ExploreHomeScreen always sees the bar visible.
     const participates =
-      focusedRoute === 'Marriage' || focusedRoute === 'Explore';
+      focusedRouteName === 'Marriage' || focusedRouteName === 'Explore';
     const hidden = participates ? tabBarHidden.value : 0;
     return {
       transform: [{ translateY: hidden * totalHiddenDistance }],
       opacity: 1 - hidden,
     };
-  }, [focusedRoute, totalHiddenDistance]);
+  }, [focusedRouteName, totalHiddenDistance]);
+
+  // Hide the tab-bar overlay entirely when ChatRoomScreen is nested-focused
+  // inside the Chat tab. The composer would otherwise be occluded by the
+  // absolute-positioned tab bar overlay.
+  if (hiddenForChatRoom) {
+    return null;
+  }
 
   // Absolute overlay: React Navigation would otherwise shrink each screen
   // container to sit ABOVE the tab bar. That means an absolute-positioned
@@ -199,6 +213,8 @@ const styles = {
  * Tabs: `Marriage` / `Explore` / `Chat` / `Menu`.
  * Mounted when `status === 'authenticated' && profileComplete === true`
  * (or when the mock-only onboarding completion flag is set in phase 12).
+ * Chat tab wired to `ChatStack` in story 15.4 (previously an `EmptyState`
+ * placeholder).
  *
  * @see {@link AppTabsParamList} for typed navigation.
  */
@@ -230,7 +246,7 @@ export function AppTabs(): React.JSX.Element {
       />
       <Tab.Screen
         name="Chat"
-        component={ChatScreen}
+        component={ChatStack}
         options={{
           tabBarLabel: t('nav.tabs.chat'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (

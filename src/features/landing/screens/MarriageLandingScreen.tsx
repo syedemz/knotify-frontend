@@ -66,6 +66,7 @@ import { EmptyState, Snackbar } from '@/components';
 import { t } from '@/labels';
 import { DECK_FIXTURES } from '@/features/discover/data/deckFixtures';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
+import { useFriendship } from '@/state/friendship/FriendshipProvider';
 
 import { HeaderBar } from '../components/HeaderBar';
 import { DeckCard } from '../components/DeckCard';
@@ -141,6 +142,9 @@ const CURRENT_USER_HAS_UNREAD =
 export function MarriageLandingScreen(): React.ReactElement {
   // ── Bookmarks state ─────────────────────────────────────────────────────────
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+
+  // ── Friendship state (outgoing requests) ────────────────────────────────────
+  const { sendRequest } = useFriendship();
 
   // ── Deck index state ────────────────────────────────────────────────────────
   const [currentDeckIndex, setCurrentDeckIndex] = useState(0);
@@ -305,9 +309,13 @@ export function MarriageLandingScreen(): React.ReactElement {
 
   const handleRequestConfirmed = useCallback(() => {
     // TODO(mock-only): real request-create ships in phase 15
+    const currentDeck = DECK_FIXTURES[currentDeckIndex];
+    if (currentDeck !== undefined) {
+      sendRequest(currentDeck.user_id).catch((e) => console.warn('sendRequest failed', e));
+    }
     animateDeckTransition(1);
     setSnackbarMsg(t('landing.likeSent'));
-  }, [animateDeckTransition]);
+  }, [animateDeckTransition, currentDeckIndex, sendRequest]);
 
   const handleUndo = useCallback(() => {
     animateDeckTransition(-1);

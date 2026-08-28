@@ -1,5 +1,5 @@
 /**
- * Tests for OtherProfileScreen (story 13.4).
+ * Tests for OtherProfileScreen (story 13.4 + bug-fix phase 15).
  *
  * AC coverage:
  * (a) source='friend' for Mehvish → ProfileScrollView shown, ContactActionsSection present,
@@ -16,9 +16,22 @@
  * (i) Missing profile (undefined from getFullProfile) → EmptyState shown.
  * (j) Accepted snackbar visible during the 1499ms window.
  * (k) Decline does NOT render a snackbar on OtherProfileScreen (handoff mechanism used instead).
+ * (l) Chat FAB press → calls openChatRoom spy with profile.user_id (bug-fix: was showing
+ *     "coming soon" toast; now navigates to ChatRoomScreen via the shared helper).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
+
+// ── openChatRoom mock ──────────────────────────────────────────────────────────
+// Exposes a spy so we can assert the chat FAB calls openChatRoom with the
+// correct user_id rather than inlining a "coming soon" snackbar.
+const mockOpenChatRoom = jest.fn<Promise<void>, [string]>().mockResolvedValue(undefined);
+
+jest.mock('@/features/chat/navigation/openChatRoom', () => ({
+  chatRoomExistsForUser: jest.fn().mockResolvedValue(true),
+  useOpenChatRoom: () => mockOpenChatRoom,
+}));
+
 jest.mock('react-native-safe-area-context', () => {
   const RN = require('react-native') as typeof import('react-native');
   const Rct = require('react') as typeof import('react');
@@ -327,5 +340,40 @@ describe('OtherProfileScreen — AC (j): accepted snackbar visible during 1500ms
 
     // The snackbar should be visible (not yet dismissed)
     expect(screen.getByTestId('other-profile-accept-snackbar')).toBeTruthy();
+  });
+});
+
+// ── AC (l): Chat FAB → openChatRoom called with profile.user_id (bug-fix) ─────
+//
+// Before the bug-fix, pressing the chat FAB showed a "Chat coming soon" snackbar.
+// After the fix, it calls `useOpenChatRoom()(profile.user_id)` which navigates to
+// ChatRoomScreen. We verify by asserting the mock spy was called with Mehvish's id.
+
+describe('OtherProfileScreen — AC (l): chat FAB opens ChatRoom via useOpenChatRoom', () => {
+  beforeEach(() => {
+    mockRoute = { params: { userId: dummyMehvish.user_id, source: 'friend' } };
+    mockOpenChatRoom.mockClear();
+  });
+
+  it('pressing the chat FAB calls openChatRoom with the friend\'s user_id', () => {
+    renderScreen();
+
+    // The FloatingChatButton renders with testID="floating-chat-button".
+    const chatFab = screen.getByTestId('floating-chat-button');
+    fireEvent.press(chatFab);
+
+    expect(mockOpenChatRoom).toHaveBeenCalledTimes(1);
+    expect(mockOpenChatRoom).toHaveBeenCalledWith(dummyMehvish.user_id);
+  });
+
+  it('pressing the chat FAB does NOT show a "coming soon" snackbar', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('floating-chat-button'));
+
+    // The Snackbar renders null when visible=false (snackbar message stays null).
+    // Confirm no "Chat coming soon" text appears in the tree.
+    expect(screen.queryByText('Chat coming soon')).toBeNull();
+    // The snackbar testID itself is absent because Snackbar returns null when not visible.
+    expect(screen.queryByTestId('other-profile-accept-snackbar')).toBeNull();
   });
 });

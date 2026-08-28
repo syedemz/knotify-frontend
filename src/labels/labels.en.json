@@ -535,6 +535,16 @@
       "discountSubtitle": "Muzz Gold discount",
       "getMore": "Get more",
       "claim": "Claim discount"
+    },
+    "myProfile": {
+      "editTab": {
+        "devTriggers": {
+          "sectionHeading": "Dev triggers — remove before ship",
+          "sectionDescription": "These buttons simulate subscription events that will be driven by AppSync in phase 17.",
+          "incomingButtonLabel": "Simulate incoming friend request (Qurat)",
+          "acceptedButtonLabel": "Simulate request accepted (Mehvish)"
+        }
+      }
     }
   },
   "myProfile": {
@@ -565,8 +575,7 @@
       "comingSoonToast": "Options coming soon"
     },
     "chat": {
-      "accessibility": "Chat with {name}",
-      "comingSoonToast": "Chat coming soon"
+      "accessibility": "Chat with {name}"
     }
   },
   "explore": {
@@ -601,6 +610,42 @@
       "sendRequestAccessibility": "Send {name} a connection request",
       "missingTitle": "This bookmark is no longer available",
       "missingDescription": "It may have been removed from your bookmarks."
+    }
+  },
+  "chat": {
+    "list": {
+      "headerTitle": "Chat",
+      "noMessagesYet": "No messages yet",
+      "emptyTitle": "No conversations yet",
+      "emptyDescription": "Once you are connected with someone, your chats will appear here.",
+      "rowAccessibility": "Chat with {firstName} {lastName}"
+    },
+    "room": {
+      "composerPlaceholder": "Type a message…",
+      "sendAccessibility": "Send message",
+      "micAccessibility": "Record voice message",
+      "menuAccessibility": "Chat options",
+      "backAccessibility": "Go back",
+      "missingTitle": "Conversation unavailable",
+      "missingDescription": "We could not find this person in your connections.",
+      "editedSuffix": "· edited"
+    }
+  },
+  "friendRequests": {
+    "incoming": {
+      "title": "Friend Request",
+      "subtitle": "wants to connect with you",
+      "acceptLabel": "Accept",
+      "declineLabel": "Decline",
+      "viewFullProfileLabel": "View full profile",
+      "acceptedToast": "You and {firstName} are now connected!",
+      "declinedToast": "Request declined"
+    },
+    "accepted": {
+      "title": "You and {{firstName}} are now connected!",
+      "subtitle": "You can start a chat now.",
+      "sayHiLabel": "Say hi",
+      "notNowLabel": "Not now"
     }
   }
 }

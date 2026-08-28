@@ -40,6 +40,28 @@ jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
   }),
 }));
 
+// ── useFriendship mock ────────────────────────────────────────────────────────
+
+const mockSendRequest = jest.fn<Promise<void>, [string]>().mockResolvedValue(undefined);
+
+jest.mock('@/state/friendship/FriendshipProvider', () => ({
+  useFriendship: () => ({
+    friends: [],
+    requests: [],
+    acceptRequest: jest.fn(),
+    declineRequest: jest.fn(),
+    isFriend: jest.fn().mockReturnValue(false),
+    receivedRequestFrom: jest.fn().mockReturnValue(false),
+    getFullProfile: jest.fn().mockReturnValue(undefined),
+    pendingToast: null,
+    setPendingToast: jest.fn(),
+    consumePendingToast: jest.fn(),
+    outgoingRequestIds: [],
+    sendRequest: mockSendRequest,
+    hasOutgoingRequest: jest.fn().mockReturnValue(false),
+  }),
+}));
+
 // ── Navigation mock ───────────────────────────────────────────────────────────
 
 const mockGoBack = jest.fn();
@@ -179,6 +201,7 @@ beforeEach(() => {
   mockGoBack.mockClear();
   mockNavigate.mockClear();
   mockRemoveBookmark.mockClear();
+  mockSendRequest.mockClear();
   mockGetBookmark.mockReturnValue(AISHA_FIXTURE);
 });
 

@@ -1,0 +1,135 @@
+{
+  "_meta": {
+    "base_timestamp_ms": 1724630400000,
+    "description": "Base date: 2024-08-26 00:00:00 UTC. Message timestamps are offsets in ms from this base. Covers roughly 3-4 days of conversation between the current user (Adnan) and Mehvish. This block documents the time anchor IN the fixture — it is not persisted to AsyncStorage. When phase 17 wires the real backend, whichever timestamp format AppSync uses will replace this fixture entirely."
+  },
+  "messages": [
+    {
+      "id": "msg-0001",
+      "sender": "friend",
+      "text": "Assalamu Alaikum! I saw your profile on Knotify — hope you don't mind me saying hello.",
+      "timestamp": 1724630400000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0002",
+      "sender": "me",
+      "text": "Wa Alaikum Assalam Mehvish! Not at all, lovely to hear from you. How are you doing?",
+      "timestamp": 1724631000000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0003",
+      "sender": "friend",
+      "text": "Alhamdulillah, really well thank you. I noticed you're based in Mannheim — what's it like there?",
+      "timestamp": 1724631600000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0004",
+      "sender": "me",
+      "text": "It's a lovely city — very multicultural, good food scene. Are you enjoying Hamburg?",
+      "timestamp": 1724632800000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0005",
+      "sender": "friend",
+      "text": "Hamburg is beautiful, especially along the Alster. I moved here for my MSc two years ago and just stayed after getting the job at Clinic Nord.",
+      "timestamp": 1724634000000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0006",
+      "sender": "me",
+      "text": "Biomedical engineering sounds fascinating. What kind of projects are you working on right now?",
+      "timestamp": 1724720400000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0007",
+      "sender": "friend",
+      "text": "Mostly medical device testing and regulatory submissions. It's detail-heavy work but I really enjoy it. What about you — software engineering must keep you busy too!",
+      "timestamp": 1724721600000,
+      "status": "read",
+      "editedAt": 1724722200000
+    },
+    {
+      "id": "msg-0008",
+      "sender": "me",
+      "text": "Ha, definitely never a dull moment. I work mainly on backend systems — distributed architecture, that sort of thing. Keeps the brain busy.",
+      "timestamp": 1724723400000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0009",
+      "sender": "friend",
+      "text": "That sounds really impressive mashAllah. Do you enjoy it, or is it one of those jobs that feels like work?",
+      "timestamp": 1724724000000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0010",
+      "sender": "me",
+      "text": "Honestly I enjoy it most of the time. The problem-solving aspect keeps it fresh. What do you like to do outside of work?",
+      "timestamp": 1724806800000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0011",
+      "sender": "friend",
+      "text": "I love reading — mostly non-fiction, science and history. I also try to keep up with fitness, gym three times a week inshAllah. You?",
+      "timestamp": 1724808000000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0012",
+      "sender": "me",
+      "text": "Same on the gym front! I also enjoy cooking — I find it relaxing after a long day in front of the screen.",
+      "timestamp": 1724809200000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0013",
+      "sender": "friend",
+      "text": "A man who can cook — that's a rare find! What's your go-to dish?",
+      "timestamp": 1724810400000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0014",
+      "sender": "me",
+      "text": "Probably daal makhani — slow cooked for a couple of hours. Simple but it always comes out well.",
+      "timestamp": 1724811600000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0015",
+      "sender": "friend",
+      "text": "Oh that sounds delicious! My mum's recipe is unbeatable but I've been trying to learn it. Maybe a cook-off one day! 😄",
+      "timestamp": 1724893200000,
+      "status": "read"
+    },
+    {
+      "id": "msg-0016",
+      "sender": "me",
+      "text": "Ha, challenge accepted! On a more serious note — are you open to meeting in person at some point, perhaps in a family setting?",
+      "timestamp": 1724894400000,
+      "status": "delivered"
+    },
+    {
+      "id": "msg-0017",
+      "sender": "friend",
+      "text": "Yes, inshAllah. I think that would be a good next step. I'd want my parents involved from the start — I hope that's okay.",
+      "timestamp": 1724895600000,
+      "status": "delivered"
+    },
+    {
+      "id": "msg-0018",
+      "sender": "me",
+      "text": "Absolutely, that's exactly how I'd want to do it too. Let me speak to my family and we can arrange something. JazakAllah khair Mehvish.",
+      "timestamp": 1724896800000,
+      "status": "sent"
+    }
+  ]
+}
