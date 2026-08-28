@@ -575,8 +575,7 @@
       "comingSoonToast": "Options coming soon"
     },
     "chat": {
-      "accessibility": "Chat with {name}",
-      "comingSoonToast": "Chat coming soon"
+      "accessibility": "Chat with {name}"
     }
   },
   "explore": {

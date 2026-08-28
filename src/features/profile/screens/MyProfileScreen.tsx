@@ -52,6 +52,7 @@ import { DevTriggersPanel } from '../components/DevTriggersPanel';
 import { IncomingRequestModal } from '@/features/friendRequests/components/IncomingRequestModal';
 import { RequestAcceptedModal } from '@/features/friendRequests/components/RequestAcceptedModal';
 import { MEHVISH_USER_ID } from '@/state/chat/ChatProvider';
+import { useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
 
 // Static import — no API call in phase 12.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -115,6 +116,7 @@ export function MyProfileScreen(): React.ReactElement {
   const route = useRoute<MyProfileRoute>();
   const insets = useSafeAreaInsets();
   const { getFullProfile, acceptRequest, declineRequest } = useFriendship();
+  const openChatRoom = useOpenChatRoom();
 
   const initialTab: TabKey =
     route.params?.initialTab === 'edit' ? 'edit' : 'preview';
@@ -218,19 +220,16 @@ export function MyProfileScreen(): React.ReactElement {
 
   /**
    * Host-owned Say-hi handler for RequestAcceptedModal.
-   * Navigates cross-tab to ChatRoomScreen with Mehvish's userId.
-   * The modal fires `onSayHi()` then `onClose()` — the modal itself does NOT
-   * call navigate (B1 contract: host owns navigation).
+   * Delegates to `useOpenChatRoom` which handles the existence check and
+   * the cross-tab navigate. The modal fires `onSayHi()` then `onClose()` —
+   * the modal itself does NOT call navigate (B1 contract: host owns navigation).
    *
    * Same nested cross-tab pattern validated by `ChatStack.crossTab.test.tsx`
    * (story 15.5).
    */
   const handleSayHi = useCallback(() => {
-    navigation.navigate('Chat', {
-      screen: 'ChatRoomScreen',
-      params: { friendUserId: MEHVISH_USER_ID },
-    });
-  }, [navigation]);
+    void openChatRoom(MEHVISH_USER_ID);
+  }, [openChatRoom]);
 
   // ── Display values ─────────────────────────────────────────────────────────
 

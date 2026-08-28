@@ -163,6 +163,16 @@ jest.mock('@/state/chat/ChatProvider', () => {
   };
 });
 
+// Mock openChatRoom so AC (h) can verify that Say-hi routes through the shared
+// helper rather than inlining a navigation.navigate() call.
+// The spy is a module-level variable so beforeEach can clear it.
+const mockOpenChatRoomSpy = jest.fn<Promise<void>, [string]>().mockResolvedValue(undefined);
+
+jest.mock('@/features/chat/navigation/openChatRoom', () => ({
+  chatRoomExistsForUser: jest.fn().mockResolvedValue(true),
+  useOpenChatRoom: () => mockOpenChatRoomSpy,
+}));
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Render helper ──────────────────────────────────────────────────────────────
@@ -182,6 +192,7 @@ beforeEach(() => {
   mockNavigate.mockClear();
   mockAcceptRequest.mockClear();
   mockDeclineRequest.mockClear();
+  mockOpenChatRoomSpy.mockClear();
 });
 
 // ── (a) Incoming trigger button rendered inside DevTriggersPanel ───────────────
@@ -352,18 +363,30 @@ describe('(g) opening one modal does not open the other (independent state)', ()
   });
 });
 
-// ── (h) Say-hi button triggers nested cross-tab navigation ───────────────────
+// ── (h) Say-hi button routes through useOpenChatRoom hook ────────────────────
+//
+// Before the phase-15 bug-fix, handleSayHi inlined `navigation.navigate(...)`.
+// After the fix, it delegates to `useOpenChatRoom()(MEHVISH_USER_ID)`.
+// We verify via the `mockOpenChatRoomSpy` returned by the mocked `useOpenChatRoom`.
+// The end-to-end cross-tab navigate path is already covered by
+// `ChatStack.crossTab.test.tsx` so we only need to verify hook invocation here.
 
-describe('(h) Say-hi triggers navigation.navigate("Chat", { screen: "ChatRoomScreen", params: { friendUserId: MEHVISH_USER_ID } })', () => {
-  it('calls navigation.navigate with correct Chat / ChatRoomScreen params when Say hi is pressed', () => {
+describe('(h) Say-hi triggers useOpenChatRoom(MEHVISH_USER_ID) via the shared helper', () => {
+  it('calls openChatRoom spy with MEHVISH_USER_ID when Say hi is pressed', () => {
     renderScreen();
     fireEvent.press(screen.getByTestId('dev-trigger-accepted-btn'));
     expect(screen.getByTestId('request-accepted-card')).toBeTruthy();
     fireEvent.press(screen.getByTestId('request-accepted-say-hi-btn'));
-    expect(mockNavigate).toHaveBeenCalledWith('Chat', {
-      screen: 'ChatRoomScreen',
-      params: { friendUserId: mehvishFixture.user_id },
-    });
+    expect(mockOpenChatRoomSpy).toHaveBeenCalledTimes(1);
+    expect(mockOpenChatRoomSpy).toHaveBeenCalledWith(mehvishFixture.user_id);
+  });
+
+  it('does NOT call navigation.navigate directly when Say hi is pressed (routes via hook)', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('dev-trigger-accepted-btn'));
+    fireEvent.press(screen.getByTestId('request-accepted-say-hi-btn'));
+    // navigation.navigate is NOT called directly — the hook handles the navigate internally.
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('also closes the modal after Say hi is pressed', () => {

@@ -68,6 +68,7 @@ import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import type { ExploreStackParamList } from '@/navigation/types';
 import { CandidateHero } from '@/features/landing/components/CandidateHero';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
+import { useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
 
 import { BackHeaderBar } from '../components/BackHeaderBar';
 import { FloatingChatButton } from '../components/FloatingChatButton';
@@ -99,7 +100,10 @@ export function OtherProfileScreen(): React.ReactElement {
     setPendingToast,
   } = useFriendship();
 
-  // ── Snackbar (Accept toast + menu/chat "coming soon" toasts) ───────────────
+  // ── Chat-room navigation helper ─────────────────────────────────────────────
+  const openChatRoom = useOpenChatRoom();
+
+  // ── Snackbar (Accept toast + menu "coming soon" toast) ──────────────────────
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
 
   // ── goBack timer ref — cleared on unmount ──────────────────────────────────
@@ -181,10 +185,11 @@ export function OtherProfileScreen(): React.ReactElement {
   }, []);
 
   const handleChatPress = useCallback(() => {
-    // TODO(mock-only): real chat ships in phase 17. For now the FAB is
-    // clickable but shows only a toast.
-    setSnackbarMsg(t('otherProfile.chat.comingSoonToast'));
-  }, []);
+    if (profile === undefined) {
+      return;
+    }
+    void openChatRoom(profile.user_id);
+  }, [openChatRoom, profile]);
 
   const handleSnackbarDismiss = useCallback(() => {
     setSnackbarMsg(null);
