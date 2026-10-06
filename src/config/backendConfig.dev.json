@@ -3,12 +3,12 @@
   "region": "eu-central-1",
   "cognito": {
     "region": "eu-central-1",
-    "userPoolId": "eu-central-1_dummydummy",
-    "appClientId": "dummydummydummydummydummy1",
+    "userPoolId": "eu-central-1_ZikQ7GALD",
+    "appClientId": "2huvv6nh4l71eu8c7deup239i3",
     "appClientHasSecret": false
   },
   "restApi": {
-    "baseUrl": "https://dummy.example.invalid/v1",
+    "baseUrl": "https://d227zbmdq6iplf.cloudfront.net/v1",
     "auth": {
       "mode": "COGNITO_JWT",
       "headerName": "Authorization",
@@ -16,8 +16,8 @@
     }
   },
   "appsync": {
-    "graphqlUrl": "https://dummy.appsync-api.eu-central-1.amazonaws.com/graphql",
-    "realtimeUrl": "wss://dummy.appsync-realtime-api.eu-central-1.amazonaws.com/graphql",
+    "graphqlUrl": "https://jaxpw7cxffd4hle7bz3wucwtyy.appsync-api.eu-central-1.amazonaws.com/graphql",
+    "realtimeUrl": "wss://jaxpw7cxffd4hle7bz3wucwtyy.appsync-realtime-api.eu-central-1.amazonaws.com/graphql",
     "auth": {
       "headerName": "Authorization"
     }
@@ -26,6 +26,6 @@
     "registerEndpoint": "/v1/push-tokens"
   },
   "media": {
-    "readPhotoCloudFrontDomain": "dummy.cloudfront.net"
+    "readPhotoCloudFrontDomain": "<FILL_PHOTO_CLOUDFRONT_DOMAIN>"
   }
 }
