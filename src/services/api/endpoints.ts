@@ -17,6 +17,7 @@ import type {
   UserProfile,
   UserProfileWritable,
 } from '@/types/api/UserProfile';
+import type { DeckProfile } from '@/types/api/DeckProfile';
 
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -36,4 +37,24 @@ export const profileApi = {
    */
   updateMe: (patch: Partial<UserProfileWritable>): Promise<UserProfile> =>
     request<UserProfile>({ method: 'PATCH', path: '/profile/me', body: patch }),
+} as const;
+
+// ── Match ────────────────────────────────────────────────────────────────────
+
+/**
+ * Typed helpers for `/match/*` endpoints.
+ *
+ * `/match/deck` requires `profile_complete_verified=true` on the viewer. The
+ * backend returns 403 otherwise — `RootNavigator` already gates on
+ * `profileComplete`, so this is a defensive edge.
+ */
+export const matchApi = {
+  /**
+   * `GET /match/deck` — fetch the current deck of candidate profiles.
+   *
+   * Returns an array of {@link DeckProfile} (16-column backend `deck_view`
+   * rows). The array may be empty when no more candidates are available.
+   */
+  getDeck: (): Promise<DeckProfile[]> =>
+    request<DeckProfile[]>({ method: 'GET', path: '/match/deck' }),
 } as const;

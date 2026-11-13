@@ -62,11 +62,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { EmptyState, Snackbar } from '@/components';
+import { EmptyState, LoadingState, Snackbar, Button } from '@/components';
 import { t } from '@/labels';
-import { DECK_FIXTURES } from '@/features/discover/data/deckFixtures';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
 import { useFriendship } from '@/state/friendship/FriendshipProvider';
+import { useDeckQuery } from '@/features/landing/hooks/useDeckQuery';
+import type { DeckProfile } from '@/types/api/DeckProfile';
+import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
 
 import { HeaderBar } from '../components/HeaderBar';
 import { DeckCard } from '../components/DeckCard';
@@ -134,6 +136,58 @@ const ENTER_EASING = Easing.inOut(Easing.cubic);
 const CURRENT_USER_HAS_UNREAD =
   dummyprofile.__dummy_display_only?.has_unread_notifications === true;
 
+// ── Backend → UI adapter ──────────────────────────────────────────────────────
+
+/**
+ * Adapts a backend `DeckProfile` (16 columns from `deck_view`) to the
+ * UI-side `DummyDeckProfile` shape expected by `DeckCard`, `addBookmark`,
+ * etc. All frontend-extension fields default to safe nulls / empties so the
+ * dependent sections hide gracefully until the backend extends `deck_view`.
+ */
+function toUiDeck(backend: DeckProfile): DummyDeckProfile {
+  return {
+    user_id: backend.user_id,
+    first_name: backend.first_name,
+    last_name: backend.last_name,
+    sex: backend.sex,
+    age: backend.age,
+    chosen_profile_avatar: backend.chosen_profile_avatar,
+    photo_url: backend.photo_url,
+    current_residence_city: backend.current_residence_city,
+    current_residence_country: backend.current_residence_country,
+    resident_country_code: backend.resident_country_code,
+    religion: backend.religion,
+    job_title: backend.job_title,
+    username: backend.username,
+    profile_complete_verified: backend.profile_complete_verified,
+    // Frontend-extension fields — not served by deck_view yet.
+    photos: [],
+    faceSelfieUri: null,
+    marital_status: null,
+    has_children: null,
+    marriage_time: null,
+    meet_time: null,
+    professional_category: null,
+    employer_name: null,
+    employment_type: null,
+    office_address: null,
+    salary_range: null,
+    highest_degree: null,
+    education_level: null,
+    college_name: null,
+    graduation_year: null,
+    higher_secondary: null,
+    higher_secondary_passing_year: null,
+    high_school: null,
+    high_school_passing_year: null,
+    __dummy_display_only: {
+      is_active_today: false,
+      membership_tier: null,
+      has_unread_notifications: false,
+    },
+  };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 /**
@@ -145,6 +199,13 @@ export function MarriageLandingScreen(): React.ReactElement {
 
   // ── Friendship state (outgoing requests) ────────────────────────────────────
   const { sendRequest } = useFriendship();
+
+  // ── Deck data (real backend GET /match/deck) ────────────────────────────────
+  const deckQuery = useDeckQuery();
+  const deck: DummyDeckProfile[] = React.useMemo(
+    () => (deckQuery.data ?? []).map(toUiDeck),
+    [deckQuery.data],
+  );
 
   // ── Deck index state ────────────────────────────────────────────────────────
   const [currentDeckIndex, setCurrentDeckIndex] = useState(0);
@@ -309,13 +370,13 @@ export function MarriageLandingScreen(): React.ReactElement {
 
   const handleRequestConfirmed = useCallback(() => {
     // TODO(mock-only): real request-create ships in phase 15
-    const currentDeck = DECK_FIXTURES[currentDeckIndex];
+    const currentDeck = deck[currentDeckIndex];
     if (currentDeck !== undefined) {
       sendRequest(currentDeck.user_id).catch((e) => console.warn('sendRequest failed', e));
     }
     animateDeckTransition(1);
     setSnackbarMsg(t('landing.likeSent'));
-  }, [animateDeckTransition, currentDeckIndex, sendRequest]);
+  }, [animateDeckTransition, currentDeckIndex, deck, sendRequest]);
 
   const handleUndo = useCallback(() => {
     animateDeckTransition(-1);
@@ -324,7 +385,7 @@ export function MarriageLandingScreen(): React.ReactElement {
   const handleSuperLike = useCallback(() => {
     // Defensive guard: if the deck is exhausted the Star button is hidden
     // (CollapsingActionBar returns null), but guard here as well.
-    const currentDeck = DECK_FIXTURES[currentDeckIndex];
+    const currentDeck = deck[currentDeckIndex];
     if (!currentDeck) return;
 
     if (!isBookmarked(currentDeck.user_id)) {
@@ -335,14 +396,50 @@ export function MarriageLandingScreen(): React.ReactElement {
       setSnackbarMsg(t('landing.bookmark.removed'));
     }
     // Deck index does NOT change. tabBarHidden.value does NOT reset.
-  }, [currentDeckIndex, isBookmarked, addBookmark, removeBookmark]);
+  }, [currentDeckIndex, deck, isBookmarked, addBookmark, removeBookmark]);
 
   const handleSnackbarDismiss = useCallback(() => {
     setSnackbarMsg(null);
   }, []);
 
   // ── Exhausted state ────────────────────────────────────────────────────────
-  const isExhausted = currentDeckIndex >= DECK_FIXTURES.length;
+  const isExhausted = currentDeckIndex >= deck.length;
+
+  // ── Loading / error gates ──────────────────────────────────────────────────
+  // Loading: first fetch in flight with no data yet. Error: network fetch
+  // failed AND we have no cached data (TanStack Query `isError`). Each
+  // renders inline so the header + tab bar stay mounted.
+
+  if (deckQuery.isLoading && deck.length === 0) {
+    return (
+      <View testID="marriage-landing-screen" style={{ flex: 1 }}>
+        <HeaderBar hasUnreadNotifications={CURRENT_USER_HAS_UNREAD} />
+        <LoadingState message={t('common.loading')} />
+      </View>
+    );
+  }
+
+  if (deckQuery.isError && deck.length === 0) {
+    return (
+      <View testID="marriage-landing-screen" style={{ flex: 1 }}>
+        <HeaderBar hasUnreadNotifications={CURRENT_USER_HAS_UNREAD} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+          <EmptyState
+            title={t('common.error')}
+            description={t('landing.errors.deckLoadFailed')}
+          />
+          <Button
+            label={t('common.retry')}
+            variant="primary"
+            size="sm"
+            fullWidth={false}
+            onPress={() => { void deckQuery.refetch(); }}
+            testID="deck-retry-button"
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View testID="marriage-landing-screen" style={{ flex: 1 }}>
@@ -369,7 +466,7 @@ export function MarriageLandingScreen(): React.ReactElement {
           ) : (
             /* Active deck card — index is in bounds because !isExhausted */
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            <DeckCard deck={DECK_FIXTURES[currentDeckIndex]!} />
+            <DeckCard deck={deck[currentDeckIndex]!} />
           )}
         </Animated.View>
       </Animated.ScrollView>
@@ -382,7 +479,7 @@ export function MarriageLandingScreen(): React.ReactElement {
           onUndo={handleUndo}
           onSuperLike={handleSuperLike}
           hidden={tabBarHidden}
-          isSuperLikeActive={isBookmarked(DECK_FIXTURES[currentDeckIndex]?.user_id ?? '')}
+          isSuperLikeActive={isBookmarked(deck[currentDeckIndex]?.user_id ?? '')}
         />
       )}
 
@@ -401,7 +498,7 @@ export function MarriageLandingScreen(): React.ReactElement {
         targetName={
           !isExhausted
             ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              `${DECK_FIXTURES[currentDeckIndex]!.first_name ?? ''} ${DECK_FIXTURES[currentDeckIndex]!.last_name ?? ''}`.trim()
+              `${deck[currentDeckIndex]!.first_name ?? ''} ${deck[currentDeckIndex]!.last_name ?? ''}`.trim()
             : ''
         }
         onCancel={handleRequestCancel}
