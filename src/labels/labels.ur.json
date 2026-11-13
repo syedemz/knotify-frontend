@@ -560,6 +560,13 @@
           "sectionDescription": "یہ بٹن ان سبسکرپشن ایونٹس کی نقل کرتے ہیں جو فیز 17 میں AppSync سے آئیں گے۔",
           "incomingButtonLabel": "آنے والی دوستی کی درخواست شبیہ کریں (قرۃ)",
           "acceptedButtonLabel": "درخواست قبول ہونے کی شبیہ کریں (مہویش)"
+        },
+        "appearance": {
+          "sectionHeading": "ظاہری شکل",
+          "sectionDescription": "منتخب کریں کہ ایپ کیسی دکھے۔ 'سسٹم' آپ کی ڈیوائس کی ترتیب سے مماثل ہوگا۔",
+          "light": "لائٹ",
+          "dark": "ڈارک",
+          "system": "سسٹم"
         }
       }
     }

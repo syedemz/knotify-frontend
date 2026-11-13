@@ -560,6 +560,13 @@
           "sectionDescription": "These buttons simulate subscription events that will be driven by AppSync in phase 17.",
           "incomingButtonLabel": "Simulate incoming friend request (Qurat)",
           "acceptedButtonLabel": "Simulate request accepted (Mehvish)"
+        },
+        "appearance": {
+          "sectionHeading": "Appearance",
+          "sectionDescription": "Choose how the app looks. 'System' matches your device setting.",
+          "light": "Light",
+          "dark": "Dark",
+          "system": "System"
         }
       }
     }
