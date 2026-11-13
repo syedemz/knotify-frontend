@@ -84,13 +84,11 @@ export function HeroBlock({ profile, viewer }: HeroBlockProps): React.ReactEleme
         <View style={[styles.image, styles.imagePlaceholder]} />
       )}
 
-      {/* Fake gradient — three stacked bands so the bottom fades in
-          instead of the image looking half-darkened by a single overlay. */}
-      <View pointerEvents="none" style={styles.gradientStack}>
-        <View style={[styles.gradientBand, styles.gradientBand1]} />
-        <View style={[styles.gradientBand, styles.gradientBand2]} />
-        <View style={[styles.gradientBand, styles.gradientBand3]} />
-      </View>
+      {/* Single uniform scrim behind the bottom overlay. Previously a
+          three-band fake gradient, which read as three visibly distinct
+          shades (esp. when the photo was missing). Unified at the darkest
+          value for consistent contrast across all backgrounds. */}
+      <View pointerEvents="none" style={styles.scrim} />
 
       {/* Content overlay at the bottom */}
       <View style={styles.overlay}>
@@ -166,32 +164,13 @@ function createStyles(theme: Theme) {
     imagePlaceholder: {
       backgroundColor: theme.colors.bg.input,
     },
-    gradientStack: {
+    scrim: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
       height: HERO_HEIGHT * 0.32,
-    },
-    gradientBand: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-    },
-    gradientBand1: {
-      bottom: 0,
-      height: '45%',
       backgroundColor: 'rgba(0,0,0,0.55)',
-    },
-    gradientBand2: {
-      bottom: '45%',
-      height: '30%',
-      backgroundColor: 'rgba(0,0,0,0.3)',
-    },
-    gradientBand3: {
-      bottom: '75%',
-      height: '25%',
-      backgroundColor: 'rgba(0,0,0,0.12)',
     },
     overlay: {
       position: 'absolute',
