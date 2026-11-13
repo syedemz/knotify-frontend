@@ -24,13 +24,21 @@ export const DECK_QUERY_KEY = ['match', 'deck'] as const;
 /**
  * Fetches the current deck of candidate profiles.
  *
- * @returns TanStack Query result with `data`, `isLoading`, `isError`,
- *   `error`, and `refetch` surfaced to the caller.
+ * The backend returns `{ results, next_cursor }` — this hook plucks
+ * `.results` so consumers see a plain `DeckProfile[]`. Pagination via
+ * `next_cursor` isn't wired yet (future work); when it is, add a separate
+ * `useDeckPagesQuery` or extend this hook to expose both fields.
+ *
+ * @returns TanStack Query result with `data: DeckProfile[]`, `isLoading`,
+ *   `isError`, `error`, and `refetch` surfaced to the caller.
  */
 export function useDeckQuery() {
   return useQuery<DeckProfile[], Error>({
     queryKey: DECK_QUERY_KEY,
-    queryFn: () => matchApi.getDeck(),
+    queryFn: async () => {
+      const envelope = await matchApi.getDeck();
+      return envelope.results;
+    },
   });
 }
 

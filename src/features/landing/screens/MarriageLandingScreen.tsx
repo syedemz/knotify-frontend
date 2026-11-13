@@ -141,11 +141,27 @@ const CURRENT_USER_HAS_UNREAD =
 /**
  * Adapts a backend `DeckProfile` (16 columns from `deck_view`) to the
  * UI-side `DummyDeckProfile` shape expected by `DeckCard`, `addBookmark`,
- * etc. All frontend-extension fields default to safe nulls / empties so the
- * dependent sections hide gracefully until the backend extends `deck_view`.
+ * etc. Frontend-extension fields (photos, faceSelfieUri, education /
+ * employment blocks, `__dummy_display_only`) are filled with safe defaults
+ * so dependent sections hide gracefully until the backend extends
+ * `deck_view`.
+ *
+ * **Fixture-friendly**: when the input happens to already carry the
+ * extension fields (e.g. a `DummyDeckProfile` passed through the real
+ * code path in tests), those are preserved via the `b.* ?? default`
+ * pattern. Real backend responses have them undefined → defaults kick in.
  */
 function toUiDeck(backend: DeckProfile): DummyDeckProfile {
+  // Spread the input first so any extra fields the caller carries (test
+  // fixtures include relation / religious_level / subsect / siblings /
+  // created_at / updated_at — fields declared on neighbouring types but not
+  // DummyDeckProfile) ride through untouched. Then overwrite with the
+  // backend-mandatory fields + extension defaults. Real backend responses
+  // have only the 14 backend fields; the spread picks those up and the
+  // `?? default` clauses fill the extensions.
+  const b = backend as unknown as DummyDeckProfile & Record<string, unknown>;
   return {
+    ...b,
     user_id: backend.user_id,
     first_name: backend.first_name,
     last_name: backend.last_name,
@@ -160,27 +176,28 @@ function toUiDeck(backend: DeckProfile): DummyDeckProfile {
     job_title: backend.job_title,
     username: backend.username,
     profile_complete_verified: backend.profile_complete_verified,
-    // Frontend-extension fields — not served by deck_view yet.
-    photos: [],
-    faceSelfieUri: null,
-    marital_status: null,
-    has_children: null,
-    marriage_time: null,
-    meet_time: null,
-    professional_category: null,
-    employer_name: null,
-    employment_type: null,
-    office_address: null,
-    salary_range: null,
-    highest_degree: null,
-    education_level: null,
-    college_name: null,
-    graduation_year: null,
-    higher_secondary: null,
-    higher_secondary_passing_year: null,
-    high_school: null,
-    high_school_passing_year: null,
-    __dummy_display_only: {
+    // Frontend-extension fields — not served by deck_view yet. ?? defaults
+    // kick in only when the spread didn't provide a value (real backend).
+    photos: b.photos ?? [],
+    faceSelfieUri: b.faceSelfieUri ?? null,
+    marital_status: b.marital_status ?? null,
+    has_children: b.has_children ?? null,
+    marriage_time: b.marriage_time ?? null,
+    meet_time: b.meet_time ?? null,
+    professional_category: b.professional_category ?? null,
+    employer_name: b.employer_name ?? null,
+    employment_type: b.employment_type ?? null,
+    office_address: b.office_address ?? null,
+    salary_range: b.salary_range ?? null,
+    highest_degree: b.highest_degree ?? null,
+    education_level: b.education_level ?? null,
+    college_name: b.college_name ?? null,
+    graduation_year: b.graduation_year ?? null,
+    higher_secondary: b.higher_secondary ?? null,
+    higher_secondary_passing_year: b.higher_secondary_passing_year ?? null,
+    high_school: b.high_school ?? null,
+    high_school_passing_year: b.high_school_passing_year ?? null,
+    __dummy_display_only: b.__dummy_display_only ?? {
       is_active_today: false,
       membership_tier: null,
       has_unread_notifications: false,

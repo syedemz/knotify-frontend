@@ -15,7 +15,22 @@
  */
 
 /**
- * A single deck-card as returned by `GET /match/deck`.
+ * Response envelope returned by `GET /match/deck`.
+ *
+ * Backend reference: `knotify-backend/infrastructure/src/functions/match/handler.py`
+ * line 575 — `_json_response(200, {"results": results, "next_cursor": ...})`.
+ *
+ * `next_cursor` is a user_id UUID when more pages are available (pass as
+ * `?cursor=<uuid>` on the next request) or `null` when the deck is
+ * exhausted. Pagination isn't wired into the UI yet — future work.
+ */
+export interface DeckResponse {
+  readonly results: DeckProfile[];
+  readonly next_cursor: string | null;
+}
+
+/**
+ * A single deck-card as returned inside `DeckResponse.results`.
  */
 export interface DeckProfile {
   /** Cognito `sub` — the viewed user's immutable UUID. */

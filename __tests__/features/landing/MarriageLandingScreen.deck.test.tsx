@@ -22,6 +22,24 @@ import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { DECK_FIXTURES } from '@/features/discover/data/deckFixtures';
 
+// ── useDeckQuery mock — returns DECK_FIXTURES so existing assertions pass ─────
+
+jest.mock('@/features/landing/hooks/useDeckQuery', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { DECK_FIXTURES } = require('@/features/discover/data/deckFixtures') as typeof import('@/features/discover/data/deckFixtures');
+  return {
+    useDeckQuery: () => ({
+      data: DECK_FIXTURES,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    }),
+    useInvalidateDeck: () => jest.fn(),
+    DECK_QUERY_KEY: ['match', 'deck'],
+  };
+});
+
 // ── useBookmarks mock ─────────────────────────────────────────────────────────
 // Default: nothing bookmarked. Per-test overrides via mockReturnValue / mockImplementation.
 

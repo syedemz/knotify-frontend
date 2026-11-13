@@ -17,7 +17,7 @@ import type {
   UserProfile,
   UserProfileWritable,
 } from '@/types/api/UserProfile';
-import type { DeckProfile } from '@/types/api/DeckProfile';
+import type { DeckProfile, DeckResponse } from '@/types/api/DeckProfile';
 
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -52,9 +52,10 @@ export const matchApi = {
   /**
    * `GET /match/deck` — fetch the current deck of candidate profiles.
    *
-   * Returns an array of {@link DeckProfile} (16-column backend `deck_view`
-   * rows). The array may be empty when no more candidates are available.
+   * Returns the full {@link DeckResponse} envelope — callers get both
+   * `results` (array of {@link DeckProfile}) and `next_cursor` (for
+   * pagination). `useDeckQuery` plucks `results` for the common case.
    */
-  getDeck: (): Promise<DeckProfile[]> =>
-    request<DeckProfile[]>({ method: 'GET', path: '/match/deck' }),
+  getDeck: (): Promise<DeckResponse> =>
+    request<DeckResponse>({ method: 'GET', path: '/match/deck' }),
 } as const;
