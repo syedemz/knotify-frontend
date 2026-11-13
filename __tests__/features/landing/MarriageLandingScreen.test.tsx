@@ -23,6 +23,27 @@ import { ThemeProvider } from '@/theme';
 import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
 import { t } from '@/labels';
 
+// ── useDeckQuery mock — returns DECK_FIXTURES so existing assertions pass ─────
+// MarriageLandingScreen now reads from this hook instead of importing
+// DECK_FIXTURES directly. Mock returns the same fixtures so wiring tests
+// keep their expectations.
+
+jest.mock('@/features/landing/hooks/useDeckQuery', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { DECK_FIXTURES } = require('@/features/discover/data/deckFixtures') as typeof import('@/features/discover/data/deckFixtures');
+  return {
+    useDeckQuery: () => ({
+      data: DECK_FIXTURES,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    }),
+    useInvalidateDeck: () => jest.fn(),
+    DECK_QUERY_KEY: ['match', 'deck'],
+  };
+});
+
 // ── Native-module mocks ───────────────────────────────────────────────────────
 
 jest.mock('react-native-safe-area-context', () => {

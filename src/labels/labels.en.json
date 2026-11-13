@@ -497,6 +497,9 @@
   "landing": {
     "actionUnavailable": "Available in a later phase",
     "likeSent": "Friend request sent",
+    "errors": {
+      "deckLoadFailed": "We couldn't load the deck. Please try again."
+    },
     "deckExhausted": {
       "title": "You've seen everyone",
       "description": "Check back later for new profiles."

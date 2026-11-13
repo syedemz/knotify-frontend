@@ -16,6 +16,24 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
+// Mock useDeckQuery so the test does not try to hit the real backend and
+// the amplify import chain is short-circuited.
+jest.mock('@/features/landing/hooks/useDeckQuery', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { DECK_FIXTURES } = require('@/features/discover/data/deckFixtures') as typeof import('@/features/discover/data/deckFixtures');
+  return {
+    useDeckQuery: () => ({
+      data: DECK_FIXTURES,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    }),
+    useInvalidateDeck: () => jest.fn(),
+    DECK_QUERY_KEY: ['match', 'deck'],
+  };
+});
+
 // Mock dummyprofile.json BEFORE any imports so the module-scope constant in
 // MarriageLandingScreen picks up has_unread_notifications = true.
 jest.mock('../../../assets/dummyprofile.json', () => ({
