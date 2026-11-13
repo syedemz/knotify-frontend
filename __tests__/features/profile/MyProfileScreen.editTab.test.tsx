@@ -95,6 +95,21 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+// ── OwnProfileProvider mock ───────────────────────────────────────────────────
+
+jest.mock('@/state/ownProfile/OwnProfileProvider', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mockOwnProfile = require('../../../assets/dummyprofile.json');
+  return {
+    useOwnProfile: () => ({
+      profile: mockOwnProfile,
+      status: 'ready' as const,
+      error: null,
+      refresh: jest.fn(),
+    }),
+  };
+});
+
 // ── FriendshipProvider mock ────────────────────────────────────────────────────
 
 const mockAcceptRequest = jest.fn();

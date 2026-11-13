@@ -17,6 +17,20 @@ import React from 'react';
 import { Share } from 'react-native';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 
+// ── OwnProfileProvider mock ───────────────────────────────────────────────────
+
+jest.mock('@/state/ownProfile/OwnProfileProvider', () => {
+  const mockOwnProfile = require('../../../assets/dummyprofile.json');
+  return {
+    useOwnProfile: () => ({
+      profile: mockOwnProfile,
+      status: 'ready' as const,
+      error: null,
+      refresh: jest.fn(),
+    }),
+  };
+});
+
 // ── Native module mocks ───────────────────────────────────────────────────────
 
 jest.mock('react-native-safe-area-context', () => {

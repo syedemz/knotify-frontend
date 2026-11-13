@@ -39,6 +39,8 @@ import {
   Icon,
   Button,
   Snackbar,
+  LoadingState,
+  EmptyState,
 } from '@/components';
 import { t } from '@/labels';
 import { ProfileScrollView } from '@/features/profile-sections';
@@ -46,6 +48,7 @@ import type { DummyOverlay } from '@/types/DummyOverlay';
 import type { UserProfile } from '@/types/api/UserProfile';
 import type { DummyFullProfile } from '@/types/DummyFullProfile';
 import { useFriendship } from '@/state/friendship/FriendshipProvider';
+import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 
 import { ShareProfileButton } from '../components/ShareProfileButton';
 import { DevTriggersPanel } from '../components/DevTriggersPanel';
@@ -53,12 +56,6 @@ import { IncomingRequestModal } from '@/features/friendRequests/components/Incom
 import { RequestAcceptedModal } from '@/features/friendRequests/components/RequestAcceptedModal';
 import { MEHVISH_USER_ID } from '@/state/chat/ChatProvider';
 import { useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
-
-// Static import — no API call in phase 12.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import dummyprofileJson from '../../../../assets/dummyprofile.json';
-import type { DummyOwnProfile } from '@/types/DummyOwnProfile';
-const dummyprofile = dummyprofileJson as unknown as DummyOwnProfile;
 
 // ── Fixture constants ─────────────────────────────────────────────────────────
 
@@ -117,6 +114,7 @@ export function MyProfileScreen(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const { getFullProfile, acceptRequest, declineRequest } = useFriendship();
   const openChatRoom = useOpenChatRoom();
+  const { profile: ownProfile, status: ownStatus, refresh: refreshOwn } = useOwnProfile();
 
   const initialTab: TabKey =
     route.params?.initialTab === 'edit' ? 'edit' : 'preview';
@@ -231,19 +229,51 @@ export function MyProfileScreen(): React.ReactElement {
     void openChatRoom(MEHVISH_USER_ID);
   }, [openChatRoom]);
 
+  // ── Loading / error gating ─────────────────────────────────────────────────
+  // Show a spinner while the first hydration (cache or network) is in flight.
+  // If the network errored AND we have no cached snapshot, show a retry CTA.
+
+  if (ownProfile === null) {
+    return (
+      <View testID="my-profile-screen" style={{ flex: 1, paddingTop: insets.top }}>
+        {ownStatus === 'error' ? (
+          <Column gap="md" align="center" justify="center" flex>
+            <EmptyState
+              title={t('common.error')}
+              description={t('myProfile.errors.loadFailed')}
+            />
+            <Button
+              label={t('common.retry')}
+              variant="primary"
+              size="sm"
+              fullWidth={false}
+              onPress={() => { void refreshOwn(); }}
+              testID="my-profile-retry-button"
+            />
+          </Column>
+        ) : (
+          <LoadingState message={t('common.loading')} />
+        )}
+      </View>
+    );
+  }
+
   // ── Display values ─────────────────────────────────────────────────────────
 
-  const fullName = `${dummyprofile.first_name} ${dummyprofile.last_name}`;
-  const isVerified = dummyprofile.faceSelfieUri != null;
+  const firstName = ownProfile.first_name ?? '';
+  const lastName = ownProfile.last_name ?? '';
+  const fullName = `${firstName} ${lastName}`.trim() || t('myProfile.nameFallback');
+  const isVerified = ownProfile.profile_complete_verified === true;
 
   const profileSlice = {
-    user_id: dummyprofile.user_id,
-    first_name: dummyprofile.first_name,
+    user_id: ownProfile.user_id,
+    first_name: ownProfile.first_name,
   };
 
-  // Cast needed because DummyOwnProfile has a narrowed `preferences` field
-  // that is not directly assignable to `UserProfile & DummyOverlay`.
-  const profileForSections = dummyprofile as unknown as UserProfile & DummyOverlay;
+  // Real `UserProfile` satisfies `UserProfile & DummyOverlay` — every
+  // DummyOverlay field is optional, so sections like PhotoBlockSection and
+  // VerifiedProfileSection simply hide until the real backend equivalents ship.
+  const profileForSections = ownProfile as UserProfile & DummyOverlay;
 
   return (
     <View testID="my-profile-screen" style={{ flex: 1, paddingTop: insets.top }}>

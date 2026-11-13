@@ -171,6 +171,17 @@ jest.mock("@react-navigation/native", () => {
   };
 });
 
+// AppTabs now reads the real own-profile for the Menu tab avatar. Mock to
+// avoid pulling AuthProvider/Amplify into the Jest import chain.
+jest.mock("@/state/ownProfile/OwnProfileProvider", () => ({
+  useOwnProfile: () => ({
+    profile: null,
+    status: "idle" as const,
+    error: null,
+    refresh: jest.fn(),
+  }),
+}));
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Imports under test ────────────────────────────────────────────────────────

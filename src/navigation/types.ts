@@ -50,6 +50,13 @@ export type OnboardingStackParamList = {
   [K in OnboardingRouteName]: undefined;
 } & {
   Page32ConfirmSelfieScreen: { faceSelfieUri: string };
+  /**
+   * Sign-in path for returning users with an existing Cognito account.
+   * Pushed from Page 1's "Log in" link. Sits inside `OnboardingStack`
+   * (not `AuthStack`) because cross-navigator transitions require a
+   * RootNavigator swap, which happens state-driven on successful signIn.
+   */
+  LoginScreen: undefined;
 };
 
 // ---------------------------------------------------------------------------

@@ -40,11 +40,7 @@ import { t } from '@/labels';
 
 import { ShareProfileButton } from '../components/ShareProfileButton';
 import { ProfileThumbnailCircle } from '../components/ProfileThumbnailCircle';
-
-// Static import — no API call in phase 12.
-import dummyprofileJson from '../../../../assets/dummyprofile.json';
-import type { DummyOwnProfile } from '@/types/DummyOwnProfile';
-const dummyprofile = dummyprofileJson as unknown as DummyOwnProfile;
+import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 
@@ -76,6 +72,7 @@ const ENGAGEMENT_BOOST = 1;
 export function MenuHomeScreen(): React.ReactElement {
   const navigation = useNavigation<MenuHomeNav>();
   const insets = useSafeAreaInsets();
+  const { profile } = useOwnProfile();
 
   const handleAvatarPress = useCallback(() => {
     navigation.navigate('MyProfileScreen', { initialTab: 'preview' });
@@ -87,13 +84,15 @@ export function MenuHomeScreen(): React.ReactElement {
 
   const noop = useCallback(() => {}, []);
 
-  const avatarUri = dummyprofile.photos?.[0] ?? dummyprofile.photo_url ?? '';
-  const fullName = `${dummyprofile.first_name} ${dummyprofile.last_name}`;
-  const isVerified = dummyprofile.faceSelfieUri != null;
+  const avatarUri = profile?.photo_url ?? '';
+  const firstName = profile?.first_name ?? '';
+  const lastName = profile?.last_name ?? '';
+  const fullName = `${firstName} ${lastName}`.trim() || t('myProfile.nameFallback');
+  const isVerified = profile?.profile_complete_verified === true;
 
   const profileSlice = {
-    user_id: dummyprofile.user_id,
-    first_name: dummyprofile.first_name,
+    user_id: profile?.user_id ?? '',
+    first_name: profile?.first_name ?? null,
   };
 
   return (

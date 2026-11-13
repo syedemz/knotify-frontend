@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/theme";
 import { LanguageProvider } from "@/state/i18n/LanguageProvider";
 import { QueryProvider } from "@/state/query/QueryProvider";
 import { AuthProvider } from "@/state/auth/AuthProvider";
+import { OwnProfileProvider } from "@/state/ownProfile/OwnProfileProvider";
 // TODO(mock-only): remove when real backend + JWT claim decode ship
 import { OnboardingCompletionProvider } from "@/state/onboardingCompletion/OnboardingCompletionProvider";
 // TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship
@@ -118,6 +119,7 @@ export default function App() {
           <LanguageProvider>
             <QueryProvider>
               <AuthProvider>
+                <OwnProfileProvider>
                 {/* TODO(mock-only): remove OnboardingCompletionProvider when real backend + JWT claim decode ship */}
                 <OnboardingCompletionProvider>
                   {/* TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship */}
@@ -133,6 +135,7 @@ export default function App() {
                     </BookmarksProvider>
                   </FriendshipProvider>
                 </OnboardingCompletionProvider>
+                </OwnProfileProvider>
               </AuthProvider>
             </QueryProvider>
           </LanguageProvider>
