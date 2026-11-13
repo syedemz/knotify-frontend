@@ -11,7 +11,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_MODE": "mock"
+        "EXPO_PUBLIC_API_MODE": "live"
       }
     },
     "preview": {
@@ -20,7 +20,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_MODE": "mock"
+        "EXPO_PUBLIC_API_MODE": "live"
       }
     },
     "production": {

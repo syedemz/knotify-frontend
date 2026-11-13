@@ -34,6 +34,7 @@ import { t } from "@/labels";
 import { useAuth } from "@/state/auth/AuthProvider";
 // TODO(mock-only): remove when real backend + JWT claim decode ship
 import { useOnboardingCompletion } from "@/state/onboardingCompletion/OnboardingCompletionProvider";
+import { env } from "@/config/env";
 
 import { OnboardingStack } from "./OnboardingStack";
 import { AppTabs } from "./AppTabs";
@@ -70,15 +71,16 @@ export function RootNavigator(): React.JSX.Element {
   // TODO(mock-only): remove when real backend + JWT claim decode ship
   const onboardingCompletion = useOnboardingCompletion();
 
-  // Destructure as `mockOnboardingComplete` per PRD naming convention
-  // (matches `env.isMockAuth` naming pattern — local name is mock-explicit).
-  // TODO(mock-only): remove when real backend + JWT claim decode ship
-  const mockOnboardingComplete = onboardingCompletion.complete;
+  // Mock-only bypass: only consulted when `env.isMockAuth` is true. In real
+  // mode the OnboardingCompletionProvider is still mounted (for test
+  // ergonomics) but its state is ignored — `profileComplete` from the real
+  // JWT claim is the single source of truth.
+  // TODO(mock-only): remove the whole `mockBypass`/`mockLoading` section when
+  // the mock scaffolding is removed.
+  const mockBypass = env.isMockAuth && onboardingCompletion.complete;
+  const mockLoading = env.isMockAuth && onboardingCompletion.loading;
 
-  // Show loading splash while auth is resolving OR while the mock completion
-  // flag is being read from secure-store (prevents flicker on cold launch).
-  // TODO(mock-only): remove `|| onboardingCompletion.loading` when real backend ships
-  if (status === "loading" || onboardingCompletion.loading) {
+  if (status === "loading" || mockLoading) {
     return (
       <View style={styles.splash}>
         <LoadingState message={t("common.loading")} />
@@ -92,11 +94,7 @@ export function RootNavigator(): React.JSX.Element {
   }
 
   // status === 'authenticated'
-  // Additive check: `!mockOnboardingComplete` bypasses the profileComplete gate
-  // when the mock-only completion flag is set. Delete this condition when the
-  // real backend ships and profileComplete is driven by a real JWT claim.
-  // TODO(mock-only): remove `&& !mockOnboardingComplete` when real backend ships
-  if (!profileComplete && !mockOnboardingComplete) {
+  if (!profileComplete && !mockBypass) {
     return <OnboardingStack />;
   }
 

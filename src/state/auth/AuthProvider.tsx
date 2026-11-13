@@ -97,6 +97,43 @@ export interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// ── JWT claim decode ──────────────────────────────────────────────────────
+
+/**
+ * Decodes the `custom:profile_complete` claim from a Cognito ID token.
+ *
+ * Accepts the claim as either a boolean `true` or the string `"true"`
+ * (Cognito custom attributes are typed as string in some configurations).
+ * Any decode failure — malformed token, missing payload, invalid base64,
+ * missing claim — returns `false`. Callers must treat `false` as "safe
+ * default": the user re-enters onboarding.
+ *
+ * No external dependencies — base64url decode is done inline against the
+ * global `atob()` which is available in Hermes.
+ *
+ * @param idToken - Raw JWT from Cognito (three dot-separated segments).
+ * @returns `true` only when the claim is explicitly `true` or `"true"`.
+ */
+function decodeProfileCompleteClaim(idToken: string): boolean {
+  try {
+    const parts = idToken.split('.');
+    if (parts.length !== 3) return false;
+    const payload = parts[1];
+    if (payload === undefined || payload === '') return false;
+
+    // base64url → base64: swap URL-safe chars, pad to multiple of 4.
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
+    const json = globalThis.atob(padded);
+    const claims = JSON.parse(json) as Record<string, unknown>;
+
+    const raw = claims['custom:profile_complete'];
+    return raw === true || raw === 'true';
+  } catch {
+    return false;
+  }
+}
+
 // ── Provider ───────────────────────────────────────────────────────────────
 
 interface AuthProviderProps {
@@ -119,13 +156,12 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [session, setSession] = useState<SessionTokens | null>(null);
 
-  // Derive profileComplete from the ID token claim (stub until phase 2).
+  // Derive profileComplete from the `custom:profile_complete` claim in the
+  // ID token. Decode failure (malformed token, missing claim) falls back to
+  // `false` — the user re-enters onboarding, which is always safe.
   const profileComplete = useMemo<boolean>(() => {
     if (!session) return false;
-    // TODO(phase-2): Decode `custom:profile_complete` from session.idToken JWT
-    // once the backend populates this claim after onboarding completion.
-    // For now, the claim is absent, so we default to false.
-    return false;
+    return decodeProfileCompleteClaim(session.idToken);
   }, [session]);
 
   // ── Silent refresh ────────────────────────────────────────────────────────

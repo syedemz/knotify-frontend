@@ -112,6 +112,41 @@ jest.mock('@/state/onboardingCompletion/OnboardingCompletionProvider', () => ({
   }),
 }));
 
+// ── AuthProvider mock ─────────────────────────────────────────────────────────
+
+const mockAuthRefresh = jest.fn();
+
+jest.mock('@/state/auth/AuthProvider', () => ({
+  useAuth: () => ({
+    status: 'authenticated',
+    session: { accessToken: 'a', idToken: 'i' },
+    profileComplete: false,
+    signIn: jest.fn(),
+    signOut: jest.fn(),
+    refresh: mockAuthRefresh,
+  }),
+}));
+
+// ── env mock — control isMockAuth per test block ──────────────────────────────
+
+const mockEnvState = {
+  isMockAuth: true,
+};
+
+jest.mock('@/config/env', () => ({
+  env: new Proxy({} as Record<string, unknown>, {
+    get(_target, prop) {
+      if (prop === 'isMockAuth') return mockEnvState.isMockAuth;
+      // Fields used elsewhere in the import chain fall back to harmless defaults.
+      if (prop === 'isMock') return false;
+      if (prop === 'apiBaseUrl') return 'https://example.invalid/v1';
+      if (prop === 'apiAuthHeader') return 'Authorization';
+      if (prop === 'apiTokenPrefix') return 'Bearer';
+      return undefined;
+    },
+  }),
+}));
+
 // ── useOnboardingDraft mock ───────────────────────────────────────────────────
 
 const mockGetDraft = jest.fn();
@@ -198,7 +233,10 @@ beforeEach(() => {
   mockRequest.mockResolvedValue({ success: true });
   mockMarkComplete.mockResolvedValue(undefined);
   mockSetItemAsync.mockResolvedValue(undefined);
+  mockAuthRefresh.mockResolvedValue(undefined);
   mockClear.mockReturnValue(undefined);
+  // Existing AC (b)–(f) assume the mock-only submit path. Default to true.
+  mockEnvState.isMockAuth = true;
 });
 
 // ── AC (a): initial render ────────────────────────────────────────────────────
@@ -405,5 +443,95 @@ describe('Page32ConfirmSelfieScreen — AC (g): Retake calls goBack', () => {
     fireEvent.press(screen.getByTestId('retake-button'));
 
     expect(nav.goBack).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── AC (h): real-mode submit path (env.isMockAuth === false) ─────────────────
+
+describe('Page32ConfirmSelfieScreen — AC (h): real-mode submit calls auth.refresh, skips mock writes', () => {
+  beforeEach(() => {
+    mockEnvState.isMockAuth = false;
+  });
+
+  it('given Continue tap in real mode, then PATCH /profile/me is called', async () => {
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('continue-button'));
+    });
+
+    await waitFor(() => {
+      expect(mockRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'PATCH', path: '/profile/me' }),
+      );
+    });
+  });
+
+  it('given Continue success in real mode, then auth.refresh is called', async () => {
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('continue-button'));
+    });
+
+    await waitFor(() => {
+      expect(mockAuthRefresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('given Continue success in real mode, then dummy.profile is NOT written', async () => {
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('continue-button'));
+    });
+
+    await waitFor(() => {
+      expect(mockAuthRefresh).toHaveBeenCalled();
+    });
+
+    expect(mockSetItemAsync).not.toHaveBeenCalledWith('dummy.profile', expect.any(String));
+  });
+
+  it('given Continue success in real mode, then markComplete is NOT called', async () => {
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('continue-button'));
+    });
+
+    await waitFor(() => {
+      expect(mockAuthRefresh).toHaveBeenCalled();
+    });
+
+    expect(mockMarkComplete).not.toHaveBeenCalled();
+  });
+
+  it('given Continue success in real mode, then clear() is called after refresh', async () => {
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('continue-button'));
+    });
+
+    await waitFor(() => {
+      expect(mockClear).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('given auth.refresh throws in real mode, then clear() is NOT called and retry is shown', async () => {
+    mockAuthRefresh.mockRejectedValueOnce(new Error('refresh failed'));
+
+    renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('continue-button'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('retry-submit-button')).toBeTruthy();
+    });
+
+    expect(mockClear).not.toHaveBeenCalled();
   });
 });

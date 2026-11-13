@@ -133,10 +133,18 @@ export function Page31FaceCaptureScreen({ navigation }: Props): React.JSX.Elemen
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
-    const faces = detectFaces(frame);
-    // Simplified oval check: assume any detected face is "inside" the oval.
-    // Real bounds-check tracked in context.md follow-ups.
-    onFrameJS(faces.length > 0);
+    try {
+      const faces = detectFaces(frame);
+      // Simplified oval check: assume any detected face is "inside" the oval.
+      // Real bounds-check tracked in context.md follow-ups.
+      onFrameJS(faces.length > 0);
+    } catch {
+      // Camera lifecycle race: frames queued before `takePhoto()` / unmount
+      // finish running after the native session has already closed and
+      // `detectFaces()` throws "Camera is closed". These are benign — the
+      // capture already succeeded and navigation is in flight. Swallow so
+      // the uncaught-promise handler stops surfacing them.
+    }
   }, [onFrameJS, detectFaces]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
