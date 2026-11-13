@@ -250,7 +250,17 @@ async function refreshSession(): Promise<SessionTokens | null> {
   // `forceRefresh: true` instructs Amplify to bypass its in-memory cache and
   // issue a new token request to Cognito.
   const session = await fetchAuthSession({ forceRefresh: true });
-  return tokensFromSession(session);
+  const tokens = tokensFromSession(session);
+  // Persist refreshed tokens so httpClient reads the new access/id token on
+  // the next request. Without this, callers that invoke refresh explicitly
+  // (e.g. after profile completion flips custom:profile_complete=true) would
+  // continue to send the stale token from sign-in time, and the backend would
+  // 403 via @require_profile_complete.
+  if (tokens !== null) {
+    await secureStorage.setAccessToken(tokens.accessToken);
+    await secureStorage.setIdToken(tokens.idToken);
+  }
+  return tokens;
 }
 
 // ── Mock helpers ──────────────────────────────────────────────────────────
