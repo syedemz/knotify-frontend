@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-27 (phase 14 complete; phase 15 + 17 PRDs rewritten)
+last_updated: 2026-08-27 (phase 15 complete)
 
 phases:
 
@@ -91,7 +91,7 @@ phases:
   title: Friend requests + chat UI shell
   file: implementationplan/phase-15-friend-requests-and-chat-shell.md
   ready: true
-  done: false
+  done: true
 
 - phase: 16
   title: Friends

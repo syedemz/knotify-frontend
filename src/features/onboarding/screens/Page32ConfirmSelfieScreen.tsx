@@ -44,8 +44,10 @@ import { useOnboardingDraft } from '@/features/onboarding/hooks/useOnboardingDra
 import { buildPatchBody } from '@/features/onboarding/buildPatchBody';
 import { generateUsername } from '@/Helper/usernameHelper';
 import { useOnboardingCompletion } from '@/state/onboardingCompletion/OnboardingCompletionProvider';
+import { useAuth } from '@/state/auth/AuthProvider';
 import { request } from '@/services/api/httpClient';
 import { SecureStorageKey } from '@/services/auth/secureStorage';
+import { env } from '@/config/env';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,9 +65,10 @@ type SubmitState = 'idle' | 'submitting' | 'retrying' | 'error';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-// TODO(mock-only): replace with real backend call when shipping. The 5-step
-// sequence, 409 retry, and dummy.profile snapshot all go away — see
-// context.md → "Before shipping".
+// The 5-step sequence, 409 retry, and dummy.profile snapshot in the mock-only
+// branch below go away when the mock scaffolding is torn down — see
+// context.md → "Before shipping". Real mode submits the PATCH, then refreshes
+// the Cognito session to pick up the updated `custom:profile_complete` claim.
 export function Page32ConfirmSelfieScreen({ navigation, route }: Props): React.JSX.Element {
   const { faceSelfieUri } = route.params;
 
@@ -74,6 +77,7 @@ export function Page32ConfirmSelfieScreen({ navigation, route }: Props): React.J
 
   const { getDraft, update, clear } = useOnboardingDraft();
   const mockOnboardingCompletion = useOnboardingCompletion();
+  const auth = useAuth();
 
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -83,8 +87,8 @@ export function Page32ConfirmSelfieScreen({ navigation, route }: Props): React.J
   // ── Submit sequence ──────────────────────────────────────────────────────────
 
   /**
-   * Executes the 5-step mock-only submit sequence. Aborts on any thrown step,
-   * preserving the draft for retry.
+   * Executes the submit sequence. Aborts on any thrown step, preserving the
+   * draft for retry. Mock vs real branch gated by `env.isMockAuth`.
    */
   const executeSubmit = useCallback(async (isRetry: boolean): Promise<void> => {
     const draft = getDraft();
@@ -99,20 +103,31 @@ export function Page32ConfirmSelfieScreen({ navigation, route }: Props): React.J
       body: patchBody,
     });
 
-    // Step 3: snapshot to secure-store (MUST happen before step 4).
-    await SecureStore.setItemAsync(
-      SecureStorageKey.dummyProfile,
-      JSON.stringify(patchBody),
-    );
+    if (env.isMockAuth) {
+      // Mock-only Step 3: snapshot the PATCH body so the mock GET /profile/me
+      // handler can echo it back after sign-in.
+      await SecureStore.setItemAsync(
+        SecureStorageKey.dummyProfile,
+        JSON.stringify(patchBody),
+      );
 
-    // Step 4: markComplete — owns BOTH the secure-store write AND the in-memory flip.
-    await mockOnboardingCompletion.markComplete();
+      // Mock-only Step 4: flip the OnboardingCompletionProvider flag so
+      // RootNavigator's mock bypass routes to AppTabs.
+      await mockOnboardingCompletion.markComplete();
+    } else {
+      // Real mode: the backend set `custom:profile_complete=true` on Cognito
+      // during the PATCH. Force-refresh the session so the ID token with the
+      // new claim lands in AuthProvider — profileComplete flips to true and
+      // RootNavigator re-renders AppTabs state-driven.
+      await auth.refresh();
+    }
 
-    // Step 5: clear the draft (only after steps 3 + 4 succeed).
+    // Final step: clear the draft (only after the branch-specific work succeeded).
     clear();
-    // State-driven navigation: markComplete() triggers RootNavigator re-render
-    // which swaps in AppTabs. No navigation.navigate() call needed.
-  }, [getDraft, mockOnboardingCompletion, clear]);
+    // State-driven navigation: either markComplete() (mock) or auth.refresh()
+    // (real) triggers RootNavigator re-render which swaps in AppTabs. No
+    // navigation.navigate() call needed.
+  }, [getDraft, mockOnboardingCompletion, auth, clear]);
 
   const handleContinue = useCallback(async (): Promise<void> => {
     if (isSubmitting) return;

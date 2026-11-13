@@ -107,13 +107,95 @@ describe("AuthProvider silent-refresh happy path", () => {
     });
   });
 
-  it("given successful refresh, when profileComplete is read, then it is false (stub until phase 2)", async () => {
+  it("given a non-JWT idToken, when profileComplete is read, then it is false (decode failure → safe default)", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
       expect(result.current.status).toBe("authenticated");
     });
 
+    // MOCK_TOKENS.idToken is "id-token-xyz" — not a valid JWT. Decode fails
+    // gracefully and returns false (user re-enters onboarding = safe default).
+    expect(result.current.profileComplete).toBe(false);
+  });
+});
+
+// ── JWT claim decode (custom:profile_complete) ────────────────────────────
+
+/**
+ * Builds a mock JWT with the given payload object. Signature is a fixed
+ * placeholder — the decoder only parses the middle segment.
+ */
+function makeJwt(payload: Record<string, unknown>): string {
+  const toBase64Url = (s: string): string => {
+    // globalThis.btoa is available in Node 16+ and in Hermes.
+    const b64 = (globalThis as unknown as { btoa: (v: string) => string }).btoa(s);
+    return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  };
+  const header = toBase64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const body = toBase64Url(JSON.stringify(payload));
+  return `${header}.${body}.signature`;
+}
+
+describe("AuthProvider profileComplete JWT claim decode", () => {
+  it("given claim is boolean true, when profileComplete is read, then it is true", async () => {
+    mockRefreshSession.mockResolvedValue({
+      accessToken: "access",
+      idToken: makeJwt({ "custom:profile_complete": true, sub: "u1" }),
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    expect(result.current.profileComplete).toBe(true);
+  });
+
+  it("given claim is string 'true', when profileComplete is read, then it is true (Cognito custom attrs are stringly typed)", async () => {
+    mockRefreshSession.mockResolvedValue({
+      accessToken: "access",
+      idToken: makeJwt({ "custom:profile_complete": "true", sub: "u1" }),
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    expect(result.current.profileComplete).toBe(true);
+  });
+
+  it("given claim is string 'false', when profileComplete is read, then it is false", async () => {
+    mockRefreshSession.mockResolvedValue({
+      accessToken: "access",
+      idToken: makeJwt({ "custom:profile_complete": "false", sub: "u1" }),
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    expect(result.current.profileComplete).toBe(false);
+  });
+
+  it("given claim is absent, when profileComplete is read, then it is false", async () => {
+    mockRefreshSession.mockResolvedValue({
+      accessToken: "access",
+      idToken: makeJwt({ sub: "u1", iat: 1700000000 }),
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    expect(result.current.profileComplete).toBe(false);
+  });
+
+  it("given a malformed token (not 3 segments), when profileComplete is read, then it is false", async () => {
+    mockRefreshSession.mockResolvedValue({
+      accessToken: "access",
+      idToken: "not.a.valid.jwt.with.too.many.dots",
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    expect(result.current.profileComplete).toBe(false);
+  });
+
+  it("given a token with non-JSON payload, when profileComplete is read, then it is false", async () => {
+    // "aGVsbG8" is base64url for "hello" — valid base64 but not JSON.
+    mockRefreshSession.mockResolvedValue({
+      accessToken: "access",
+      idToken: "header.aGVsbG8.sig",
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
     expect(result.current.profileComplete).toBe(false);
   });
 });

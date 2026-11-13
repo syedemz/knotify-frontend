@@ -188,6 +188,21 @@ jest.mock(
   }),
 );
 
+// Control env.isMockAuth per test block. Default to `true` so existing
+// mock-mode assertions behave as before; real-mode tests override to false.
+const mockEnvState = {
+  isMockAuth: true,
+};
+
+jest.mock("@/config/env", () => ({
+  env: new Proxy({} as Record<string, unknown>, {
+    get(_target, prop) {
+      if (prop === "isMockAuth") return mockEnvState.isMockAuth;
+      return undefined;
+    },
+  }),
+}));
+
 // ── Imports under test (after mocks) ─────────────────────────────────────────
 
 import { RootNavigator } from "@/navigation/RootNavigator";
@@ -223,6 +238,8 @@ beforeEach(() => {
   // TODO(mock-only): reset when real backend + JWT claim decode ship
   mockOnboardingCompletionState.loading = false;
   mockOnboardingCompletionState.complete = false;
+  // Default to mock-mode so existing assertions behave as before.
+  mockEnvState.isMockAuth = true;
 });
 
 // ── (a) unauthenticated → OnboardingStack (updated story 2.3) ────────────────
@@ -385,6 +402,50 @@ describe(
       expect(queryByText("AUTH_STACK")).toBeNull();
       expect(queryByText("ONBOARDING_STACK")).toBeNull();
       expect(queryByText(t("nav.tabs.marriage"))).toBeNull();
+    });
+  },
+);
+
+// ── (b4) real-mode — mockOnboardingComplete is ignored ──────────────────────
+
+describe(
+  "given env.isMockAuth === false (real backend) + profileComplete === false + mockOnboardingComplete === true",
+  () => {
+    beforeEach(() => {
+      mockEnvState.isMockAuth = false;
+      mockAuthState.status = "authenticated";
+      mockAuthState.profileComplete = false;
+      mockOnboardingCompletionState.complete = true;
+      mockOnboardingCompletionState.loading = false;
+    });
+
+    it("when RootNavigator renders, then OnboardingStack is mounted (real JWT drives gate, mock bypass inert)", () => {
+      const { queryByText } = renderRoot();
+
+      expect(queryByText("ONBOARDING_STACK")).not.toBeNull();
+      expect(queryByText(t("nav.tabs.marriage"))).toBeNull();
+    });
+  },
+);
+
+// ── (b5) real-mode — onboardingCompletion.loading is ignored ─────────────────
+
+describe(
+  "given env.isMockAuth === false (real backend) + onboardingCompletion.loading === true",
+  () => {
+    beforeEach(() => {
+      mockEnvState.isMockAuth = false;
+      mockAuthState.status = "authenticated";
+      mockAuthState.profileComplete = true;
+      mockOnboardingCompletionState.complete = false;
+      mockOnboardingCompletionState.loading = true;
+    });
+
+    it("when RootNavigator renders, then AppTabs is mounted (mock loading state ignored in real mode)", () => {
+      const { queryByText } = renderRoot();
+
+      expect(queryByText(t("nav.tabs.marriage"))).not.toBeNull();
+      expect(queryByText(t("common.loading"))).toBeNull();
     });
   },
 );
