@@ -43,7 +43,7 @@ describe('PhotoBlockSection', () => {
   describe('(c) boundary — exactly 2 photos shows', () => {
     it('renders when exactly 2 photos are present', () => {
       const profile = buildProfile({
-        photos: ['assets/male/Male1.png', 'assets/male/Male2.png'],
+        photos: ['assets/male/Male1.png', 'assets/female/Female3.png'],
       });
       renderSection(<PhotoBlockSection profile={profile} />);
       expect(screen.getByTestId('photo-block-section')).toBeTruthy();
