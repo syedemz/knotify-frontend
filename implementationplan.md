@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-27 (phase 15 complete)
+last_updated: 2026-11-13 (real backend wiring + login path + real own-profile shipped; phase 16 Friends not yet ready)
 
 phases:
 
