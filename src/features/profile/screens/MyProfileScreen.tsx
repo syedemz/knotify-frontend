@@ -52,6 +52,7 @@ import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 
 import { ShareProfileButton } from '../components/ShareProfileButton';
 import { DevTriggersPanel } from '../components/DevTriggersPanel';
+import { AppearanceSection } from '../components/AppearanceSection';
 import { IncomingRequestModal } from '@/features/friendRequests/components/IncomingRequestModal';
 import { RequestAcceptedModal } from '@/features/friendRequests/components/RequestAcceptedModal';
 import { MEHVISH_USER_ID } from '@/state/chat/ChatProvider';
@@ -375,6 +376,9 @@ export function MyProfileScreen(): React.ReactElement {
               testID="dev-trigger-accepted-btn"
             />
           </DevTriggersPanel>
+
+          {/* Appearance — light / dark / system theme selector */}
+          <AppearanceSection />
         </ScrollView>
       )}
 

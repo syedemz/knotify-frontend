@@ -2,29 +2,32 @@ import React, { createContext, useContext, useState, useMemo } from "react";
 import { useColorScheme } from "react-native";
 import { lightTheme, darkTheme, Theme } from "./theme";
 
+export type ThemeMode = "light" | "dark" | "system";
+
 type ThemeContextValue = {
   theme: Theme;
+  /** The user's current override — `"system"` means follow the OS color scheme. */
+  mode: ThemeMode;
   toggleTheme: () => void;
-  setMode: (mode: "light" | "dark" | "system") => void;
+  setMode: (mode: ThemeMode) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
-  const [override, setOverride] = useState<"light" | "dark" | "system">(
-    "system",
-  );
-  const mode = override === "system" ? (systemScheme ?? "light") : override;
-  const theme = mode === "dark" ? darkTheme : lightTheme;
+  const [override, setOverride] = useState<ThemeMode>("system");
+  const resolvedScheme = override === "system" ? (systemScheme ?? "light") : override;
+  const theme = resolvedScheme === "dark" ? darkTheme : lightTheme;
 
   const value = useMemo(
     () => ({
       theme,
+      mode: override,
       toggleTheme: () => setOverride(theme.mode === "dark" ? "light" : "dark"),
       setMode: setOverride,
     }),
-    [theme],
+    [theme, override],
   );
 
   return (
@@ -55,5 +58,5 @@ export function useThemeControls() {
   const ctx = useContext(ThemeContext);
   if (!ctx)
     throw new Error("useThemeControls must be used within ThemeProvider");
-  return { toggleTheme: ctx.toggleTheme, setMode: ctx.setMode };
+  return { mode: ctx.mode, toggleTheme: ctx.toggleTheme, setMode: ctx.setMode };
 }
