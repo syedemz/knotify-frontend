@@ -119,8 +119,8 @@ export const fullProfile: TestProfile = {
   preferences: { personalityTraits: ['Adventurous', 'Family-oriented'] },
   deleted_at: null,
 
-  // DummyOverlay fields
-  photos: ['assets/male/Male1.png', 'assets/male/Male2.png'],
+  // DummyOverlay fields — both paths must be registered in dummyPhotoRegistry.
+  photos: ['assets/male/Male1.png', 'assets/female/Female3.png'],
   faceSelfieUri: 'assets/male/Male1.png',
   siblings: [
     {
