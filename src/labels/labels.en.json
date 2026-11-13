@@ -7,7 +7,22 @@
   },
   "auth": {
     "login": {
-      "title": "Log in"
+      "title": "Log in",
+      "subtitle": "Sign in to continue to your account.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Your password",
+      "submitButton": "Sign in",
+      "errors": {
+        "invalidEmail": "Please enter a valid email address.",
+        "notAuthorized": "Incorrect email or password.",
+        "userNotFound": "No account found for that email.",
+        "userNotConfirmed": "Please confirm your account first — check your inbox for the code.",
+        "passwordResetRequired": "You need to reset your password to sign in.",
+        "network": "We couldn't reach the server. Please try again.",
+        "generic": "Something went wrong. Please try again."
+      }
     },
     "forgotPassword": {
       "title": "Forgot password"
@@ -45,7 +60,9 @@
     "welcome": {
       "title": "Knotify",
       "continueEmail": "Continue with email",
-      "continueGoogle": "Continue with Google"
+      "continueGoogle": "Continue with Google",
+      "returningUserPrompt": "Already have an account?",
+      "logInLink": "Log in"
     },
     "language": {
       "sheetTitle": "Language",
@@ -556,7 +573,11 @@
       "title": "Coming soon",
       "description": "Profile editing is coming in a later phase"
     },
-    "close": "Close profile"
+    "close": "Close profile",
+    "nameFallback": "Your profile",
+    "errors": {
+      "loadFailed": "We couldn't load your profile. Please try again."
+    }
   },
   "otherProfile": {
     "back": "Go back",

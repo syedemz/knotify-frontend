@@ -361,4 +361,15 @@ describe("Page01WelcomeScreen — navigation", () => {
       fireEvent.press(googleBtn);
     }).not.toThrow();
   });
+
+  it("given 'Log in' link tapped, then navigate('LoginScreen') is called", async () => {
+    const nav = mockNavigation();
+    renderScreen(nav);
+    const loginLink = screen.getByTestId("welcome-log-in-link");
+    await act(async () => {
+      fireEvent.press(loginLink);
+    });
+    expect(nav.navigate).toHaveBeenCalledTimes(1);
+    expect(nav.navigate).toHaveBeenCalledWith("LoginScreen");
+  });
 });

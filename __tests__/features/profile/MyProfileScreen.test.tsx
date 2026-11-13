@@ -30,6 +30,21 @@ const mockQuratProfile = require('../../../assets/dummyqurat.json') as {
   current_residence_city: string;
 };
 
+// ── OwnProfileProvider mock ───────────────────────────────────────────────────
+// MyProfileScreen now reads the user's own profile via useOwnProfile().
+// Mock it with the dummyprofile fixture so all sections render as before.
+
+const mockOwnProfileFixture = require('../../../assets/dummyprofile.json');
+
+jest.mock('@/state/ownProfile/OwnProfileProvider', () => ({
+  useOwnProfile: () => ({
+    profile: mockOwnProfileFixture,
+    status: 'ready' as const,
+    error: null,
+    refresh: jest.fn(),
+  }),
+}));
+
 jest.mock('@/state/friendship/FriendshipProvider', () => ({
   useFriendship: () => ({
     acceptRequest: jest.fn(),

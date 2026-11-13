@@ -51,6 +51,7 @@ import { ExploreStack } from './ExploreStack';
 import { ChatStack } from './ChatStack';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
+import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import type { AppTabsParamList } from './types';
 
 // ---------------------------------------------------------------------------
@@ -113,19 +114,9 @@ function MenuTabIcon({ source, color, size }: MenuTabIconProps): React.JSX.Eleme
 
 const Tab = createBottomTabNavigator<AppTabsParamList>();
 
-// Resolve the avatar source for the Menu tab icon at module load. The
-// dummy profile's first photo path (a bundled asset like
-// "assets/male/Male1.png") is looked up in the shared photo registry so
-// Metro's asset resolver can serve the real bundled file — passing the
-// raw string through `<Image source={{ uri }}>` renders nothing on device.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const dummyprofile = require('../../assets/dummyprofile.json') as {
-  photos?: string[];
-  photo_url?: string;
-};
-const menuAvatarPath: string | undefined =
-  dummyprofile.photos?.[0] ?? dummyprofile.photo_url;
-const menuAvatarSource = resolveDummyPhoto(menuAvatarPath);
+// Menu tab avatar is resolved per-render from the real own-profile (see
+// AppTabs body). The old module-level dummyprofile.json lookup was removed
+// when the real backend wiring landed — see context.md "Recent changes".
 
 /**
  * Custom tab bar. Wraps the default `BottomTabBar` in an `Animated.View`
@@ -219,6 +210,13 @@ const styles = {
  * @see {@link AppTabsParamList} for typed navigation.
  */
 export function AppTabs(): React.JSX.Element {
+  // Menu tab avatar comes from the real own-profile when available. When
+  // `photo_url` is null (phase-12 photo upload backend still placeholder),
+  // `resolveDummyPhoto` returns `undefined` → `MenuTabIcon` falls back to the
+  // Menu lucide icon.
+  const { profile } = useOwnProfile();
+  const menuAvatarSource = resolveDummyPhoto(profile?.photo_url ?? undefined);
+
   return (
     <Tab.Navigator
       screenOptions={{ headerShown: false }}

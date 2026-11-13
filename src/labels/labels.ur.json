@@ -7,7 +7,22 @@
   },
   "auth": {
     "login": {
-      "title": "لاگ ان کریں"
+      "title": "لاگ ان کریں",
+      "subtitle": "اپنے اکاؤنٹ میں جاری رکھنے کے لیے سائن ان کریں۔",
+      "emailLabel": "ای میل",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "پاس ورڈ",
+      "passwordPlaceholder": "آپ کا پاس ورڈ",
+      "submitButton": "سائن ان کریں",
+      "errors": {
+        "invalidEmail": "براہ کرم ایک درست ای میل پتہ درج کریں۔",
+        "notAuthorized": "ای میل یا پاس ورڈ غلط ہے۔",
+        "userNotFound": "اس ای میل سے کوئی اکاؤنٹ نہیں ملا۔",
+        "userNotConfirmed": "پہلے اپنے اکاؤنٹ کی تصدیق کریں — اپنے ان باکس میں کوڈ چیک کریں۔",
+        "passwordResetRequired": "سائن ان کرنے کے لیے آپ کو اپنا پاس ورڈ دوبارہ سیٹ کرنا ہوگا۔",
+        "network": "ہم سرور تک نہیں پہنچ سکے۔ براہ کرم دوبارہ کوشش کریں۔",
+        "generic": "کچھ غلط ہو گیا۔ براہ کرم دوبارہ کوشش کریں۔"
+      }
     },
     "forgotPassword": {
       "title": "پاس ورڈ بھول گئے"
@@ -45,7 +60,9 @@
     "welcome": {
       "title": "نوٹیفائی",
       "continueEmail": "ای میل سے جاری رکھیں",
-      "continueGoogle": "گوگل سے جاری رکھیں"
+      "continueGoogle": "گوگل سے جاری رکھیں",
+      "returningUserPrompt": "پہلے سے اکاؤنٹ ہے؟",
+      "logInLink": "لاگ ان کریں"
     },
     "language": {
       "sheetTitle": "زبان",
@@ -556,7 +573,11 @@
       "title": "جلد آ رہا ہے",
       "description": "پروفائل ترمیم بعد کے مرحلے میں آ رہی ہے"
     },
-    "close": "پروفائل بند کریں"
+    "close": "پروفائل بند کریں",
+    "nameFallback": "آپ کی پروفائل",
+    "errors": {
+      "loadFailed": "ہم آپ کی پروفائل لوڈ نہیں کر سکے۔ براہ کرم دوبارہ کوشش کریں۔"
+    }
   },
   "otherProfile": {
     "back": "واپس جائیں",

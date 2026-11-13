@@ -80,6 +80,10 @@ export function Page01WelcomeScreen({ navigation }: Props): React.JSX.Element {
     // no-op
   }, []);
 
+  const handleLogIn = useCallback(() => {
+    navigation.navigate("LoginScreen");
+  }, [navigation]);
+
   return (
     <ScreenBackground source={images.onboarding.background} safe>
       <Column flex>
@@ -111,7 +115,7 @@ export function Page01WelcomeScreen({ navigation }: Props): React.JSX.Element {
           </Heading>
         </Column>
 
-        {/* Bottom: CTA buttons */}
+        {/* Bottom: CTA buttons + returning-user login link */}
         <Box paddingX="lg" paddingBottom="xxl">
           <Column gap="md">
             <Button
@@ -124,6 +128,20 @@ export function Page01WelcomeScreen({ navigation }: Props): React.JSX.Element {
               onPress={handleContinueGoogle}
               variant="ghost"
             />
+            <Row justify="center" gap="xs" align="center">
+              <Text variant="body.sm" color="inverse">
+                {t("onboarding.welcome.returningUserPrompt")}
+              </Text>
+              <TouchableArea
+                onPress={handleLogIn}
+                accessibilityLabel={t("onboarding.welcome.logInLink")}
+                testID="welcome-log-in-link"
+              >
+                <Text variant="label.md" color="inverse">
+                  {t("onboarding.welcome.logInLink")}
+                </Text>
+              </TouchableArea>
+            </Row>
           </Column>
         </Box>
       </Column>

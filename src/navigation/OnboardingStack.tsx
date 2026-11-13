@@ -54,6 +54,7 @@ import { Page29PhoneScreen as Page29PhoneScreenImpl } from "@/features/onboardin
 import { Page30FaceIntroScreen as Page30FaceIntroScreenImpl } from "@/features/onboarding/screens/Page30FaceIntroScreen";
 import { Page31FaceCaptureScreen as Page31FaceCaptureScreenImpl } from "@/features/onboarding/screens/Page31FaceCaptureScreen";
 import { Page32ConfirmSelfieScreen as Page32ConfirmSelfieScreenImpl } from "@/features/onboarding/screens/Page32ConfirmSelfieScreen";
+import { LoginScreen } from "@/features/auth/screens/LoginScreen";
 
 import type { OnboardingStackParamList } from "./types";
 
@@ -222,6 +223,8 @@ function OnboardingStackNavigator(): React.JSX.Element | null {
       <Stack.Screen name="Page30FaceVerifyIntroScreen" component={Page30FaceVerifyIntroScreen} />
       <Stack.Screen name="Page31FaceCaptureScreen" component={Page31FaceCaptureScreen} />
       <Stack.Screen name="Page32ConfirmSelfieScreen" component={Page32ConfirmSelfieScreen} />
+      {/* Returning-user login path — pushed from Page 1 "Log in" link. */}
+      <Stack.Screen name="LoginScreen" component={LoginScreen} />
     </Stack.Navigator>
   );
 }
