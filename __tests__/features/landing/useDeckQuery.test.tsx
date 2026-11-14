@@ -47,6 +47,8 @@ function makeProfile(user_id: string, first_name: string): DeckProfile {
     job_title: 'Software Engineer',
     username: 'test_user',
     profile_complete_verified: true,
+    marital_status: 'Never Married',
+    marriage_time: '4-12 months',
   };
 }
 

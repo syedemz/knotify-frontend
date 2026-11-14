@@ -49,6 +49,7 @@ export interface CandidateHeroProfile {
   // types (DummyFullProfile — `T | null | undefined`) satisfy this interface
   // without a cast. All guards below use `!= null` (loose) to catch both.
   readonly first_name: string | null | undefined;
+  readonly last_name?: string | null | undefined;
   readonly age: number | null | undefined;
   readonly current_residence_city: string | null | undefined;
   readonly current_residence_country: string | null | undefined;
@@ -160,7 +161,7 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
         {/* Name + age + verified tick */}
         <View style={styles.nameRow}>
           <RNText style={styles.name} testID="candidate-hero-name">
-            {profile.first_name ?? ''}
+            {[profile.first_name, profile.last_name].filter(Boolean).join(' ')}
             {profile.age != null ? `, ${profile.age}` : ''}
           </RNText>
           {hasVerified && (

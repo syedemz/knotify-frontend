@@ -176,13 +176,13 @@ function toUiDeck(backend: DeckProfile): DummyDeckProfile {
     job_title: backend.job_title,
     username: backend.username,
     profile_complete_verified: backend.profile_complete_verified,
+    marital_status: backend.marital_status,
+    marriage_time: backend.marriage_time,
     // Frontend-extension fields — not served by deck_view yet. ?? defaults
     // kick in only when the spread didn't provide a value (real backend).
     photos: b.photos ?? [],
     faceSelfieUri: b.faceSelfieUri ?? null,
-    marital_status: b.marital_status ?? null,
     has_children: b.has_children ?? null,
-    marriage_time: b.marriage_time ?? null,
     meet_time: b.meet_time ?? null,
     professional_category: b.professional_category ?? null,
     employer_name: b.employer_name ?? null,
