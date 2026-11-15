@@ -19,6 +19,7 @@ import type {
 } from '@/types/api/UserProfile';
 import type { DeckProfile, DeckResponse } from '@/types/api/DeckProfile';
 import type { Friend } from '@/types/api/Friend';
+import type { FriendRequest } from '@/types/api/FriendRequest';
 
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -81,4 +82,46 @@ export const friendsApi = {
    */
   list: (): Promise<readonly Friend[]> =>
     request<readonly Friend[]>({ method: 'GET', path: '/friends' }),
+} as const;
+
+// ── Friend requests ───────────────────────────────────────────────────────────
+
+/**
+ * Typed helpers for `GET /friend-requests` per architecture §11.2.8.
+ *
+ * Both methods hit the same endpoint with a `direction` query parameter.
+ * Mutation endpoints (POST, DELETE) are added in story 16.FR2.
+ */
+export const friendRequestsApi = {
+  /**
+   * `GET /friend-requests?direction=incoming` — fetch pending friend requests
+   * sent to the signed-in user.
+   *
+   * Returns an array of {@link FriendRequest} rows. The endpoint requires a
+   * valid session JWT.
+   *
+   * @returns An array of incoming {@link FriendRequest} rows (may be empty).
+   */
+  listIncoming: (): Promise<readonly FriendRequest[]> =>
+    request<readonly FriendRequest[]>({
+      method: 'GET',
+      path: '/friend-requests',
+      query: { direction: 'incoming' },
+    }),
+
+  /**
+   * `GET /friend-requests?direction=outgoing` — fetch pending friend requests
+   * sent by the signed-in user.
+   *
+   * Returns an array of {@link FriendRequest} rows. The endpoint requires a
+   * valid session JWT.
+   *
+   * @returns An array of outgoing {@link FriendRequest} rows (may be empty).
+   */
+  listOutgoing: (): Promise<readonly FriendRequest[]> =>
+    request<readonly FriendRequest[]>({
+      method: 'GET',
+      path: '/friend-requests',
+      query: { direction: 'outgoing' },
+    }),
 } as const;
