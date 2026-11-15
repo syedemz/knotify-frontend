@@ -1,15 +1,18 @@
 /**
- * Frontend view type for a single row of `deck_view`.
+ * Frontend view type for a single row served by `GET /match/deck`.
  *
- * Mirrors the 16 columns the backend `deck_view` exposes today — authority
- * is `knotify-backend/db-schema.json → views.deck_view.columns`. If a future
- * migration adds columns, add them here AND to the db-schema.json type guard
- * in the same PR.
+ * Mirrors the 16 fields the backend `_DECK_RESULT_COLS` ships today
+ * (sourced from an 18-column `deck_view` materialized view as of
+ * knotify-backend migration 0020). Authority is
+ * `knotify-backend/db-schema.json → views.deck_view.columns` for the view
+ * shape, and `knotify-backend/infrastructure/src/functions/match/handler.py`
+ * `_DECK_RESULT_COLS` for the response shape. If a future migration adds
+ * columns that are also included in the SELECT, add them here in the same PR.
  *
  * **Do NOT confuse with `DummyDeckProfile`.** `DummyDeckProfile` is a
- * superset with ~20 frontend-extension fields (photos, faceSelfieUri,
- * marital_status, education/employment blocks, `__dummy_display_only`) used
- * by phase-13 fixtures. `DeckProfile` is the strict backend shape.
+ * superset with frontend-extension fields (photos, faceSelfieUri,
+ * education/employment blocks, `__dummy_display_only`) used by phase-13
+ * fixtures. `DeckProfile` is the strict backend shape.
  *
  * @module types/api/DeckProfile
  */
@@ -78,4 +81,19 @@ export interface DeckProfile {
    * profiles in the deck).
    */
   readonly profile_complete_verified: boolean;
+
+  /**
+   * Marital status text — e.g. `"Never Married"`, `"Divorced"`,
+   * `"Widowed"`. Collected during onboarding; `requiredForCompletion` on
+   * `public.users` so deck rows always carry a value.
+   */
+  readonly marital_status: string;
+
+  /**
+   * Marriage-timeline preference text — e.g. `"4-12 months"`,
+   * `"1-2 years"`. Backfilled by backend migration 0012 so this field is
+   * never NULL for deck rows; `"Not Provided"` is the default when the
+   * user didn't pick a specific timeline.
+   */
+  readonly marriage_time: string;
 }

@@ -95,7 +95,7 @@ export function HeroBlock({ profile, viewer }: HeroBlockProps): React.ReactEleme
         {/* Name + age + verified tick */}
         <View style={styles.nameRow}>
           <RNText style={styles.name}>
-            {profile.first_name ?? ''}
+            {[profile.first_name, profile.last_name].filter(Boolean).join(' ')}
             {profile.age !== null ? `, ${profile.age}` : ''}
           </RNText>
           {hasVerified && (
