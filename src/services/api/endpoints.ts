@@ -4,7 +4,7 @@
  * Centralises the `method` + `path` pair for each backend route so callers
  * don't hand-type HTTP paths. Each helper is a thin wrapper over
  * {@link request} from `./httpClient`; typing comes from the `UserProfile` /
- * `UserProfileWritable` shapes in `src/types/api/`.
+ * `UserProfileWritable` / `Friend` shapes in `src/types/api/`.
  *
  * Backend config authority: `knotify-backend/backend-config.json` →
  * `restApi.routes`.
@@ -18,6 +18,7 @@ import type {
   UserProfileWritable,
 } from '@/types/api/UserProfile';
 import type { DeckProfile, DeckResponse } from '@/types/api/DeckProfile';
+import type { Friend } from '@/types/api/Friend';
 
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -58,4 +59,26 @@ export const matchApi = {
    */
   getDeck: (): Promise<DeckResponse> =>
     request<DeckResponse>({ method: 'GET', path: '/match/deck' }),
+} as const;
+
+// ── Friends ──────────────────────────────────────────────────────────────────
+
+/**
+ * Typed helpers for `/friends/*` endpoints.
+ *
+ * The backend normalises the `user_a`/`user_b` canonicalization server-side;
+ * the client always receives the counterpart's profile — never the raw
+ * friendship row (see architecture §11.7).
+ */
+export const friendsApi = {
+  /**
+   * `GET /friends` — fetch the signed-in user's accepted friends list.
+   *
+   * Returns an array of {@link Friend} items. Each item is the counterpart
+   * user's full profile. The endpoint requires a valid session JWT.
+   *
+   * @returns An array of {@link Friend} profiles (may be empty).
+   */
+  list: (): Promise<readonly Friend[]> =>
+    request<readonly Friend[]>({ method: 'GET', path: '/friends' }),
 } as const;
