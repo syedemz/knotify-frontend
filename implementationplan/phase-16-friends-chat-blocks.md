@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.1 complete — friendsApi.list + useFriendsQuery + Friend type shipped)
+last_updated: 2026-11-16 (story 16.FR1 complete — FriendRequest type + friendRequestsApi + useIncomingRequestsQuery + useOutgoingRequestsQuery shipped)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -217,7 +217,7 @@ stories:
   - id: 16.FR1
     title: Friend-request REST endpoints + queries (real backend)
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 146
     depends_on: []
     acceptance_criteria:
