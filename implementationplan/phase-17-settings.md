@@ -1,6 +1,6 @@
 phase: 17
-title: Settings - notifications, theme, language, account deletion
-last_updated: 2026-11-15 (renumbered from original phase 19 on plan restructure)
+title: Settings + deep-link scaffolding - notifications, theme, language, account deletion, all app deep-links
+last_updated: 2026-11-15 (brainstorm-driven update — absorbed chat + profile deep-link scope from phase 16 per BLOCKING 6; story 17.5 expanded to own the whole linking bootstrap)
 
 context_summary: |
   Phase 17 is the final **thin** post-onboarding phase per §11.2.8. Renumbered on
@@ -9,9 +9,24 @@ context_summary: |
   settings hub, notification preferences + push token registration (folded in per
   §11.2.8 cross-phase decision), theme toggle, language toggle (which triggers
   `I18nManager.forceRTL` + `Updates.reloadAsync()` per §17.26), and account
-  deletion with the polling flow per §17.19. Deep-link routes
-  `knotify://settings/notifications` and `knotify://settings/account` are
-  registered here. Visual layout is deferred to /implement-phase brainstorm.
+  deletion with the polling flow per §17.19.
+
+  **Deep-link scope absorbed from phase 16 (post-brainstorm decision 2026-11-15).**
+  Phase 16 originally owned a single chat deep-link story (ex-16.7,
+  `knotify://chat/room/:roomId`). The phase-16 brainstorm surfaced that
+  `src/navigation/linking.ts` currently exports `{ prefixes: [], config: { screens: {} } }`
+  — there is NO functional linking config yet. Wiring one deep-link means
+  bootstrapping the whole thing: the `knotify://` prefix, the full nested route
+  table through the authenticated tab hierarchy (AppTabs → each tab's nested
+  stack), AND resolving the pre-existing `knotify://profile/:userId` share links
+  emitted by `buildShareMessage.ts` (phase 12) which nothing currently resolves.
+  Rather than inflate phase 16 with a second scaffolding concern, the entire
+  deep-link scope is consolidated here. Story 17.5 (originally "Settings
+  deep-link route registration") is expanded to own the whole bootstrap: chat +
+  profile + settings routes, cold-start + warm-start, in one shot.
+
+  Visual layout for every screen in this phase is deferred to /implement-phase
+  brainstorm.
 
 stories:
   - id: 17.1
@@ -64,12 +79,23 @@ stories:
     notes: "Ex-19.4."
 
   - id: 17.5
-    title: Settings deep-link route registration
+    title: Deep-link scaffolding + all route registration (chat + profile + settings)
     agent: frontenddeveloper
     done: false
     depends_on: [17.2, 17.4]
     acceptance_criteria:
-      - `knotify://settings/notifications` resolves to `NotificationSettingsScreen`; `knotify://settings/account` resolves to `AccountDeletionScreen`.
-      - Both routes work cold-start (link opened while app was not running) and warm-start.
-      - Deep-link test covers cold-start and warm-start for both routes.
-    notes: "Ex-19.5."
+      - `src/navigation/linking.ts` is rewritten end-to-end. `prefixes` includes `['knotify://']` (and an https universal-link prefix placeholder commented out pending App Store / Play Store domain verification — add as a `TODO(universal-link)` comment rather than a working entry).
+      - Nested `config.screens` mirrors the authenticated navigator shape — `AppTabs → Chat → ChatStack → ChatRoomScreen`, `AppTabs → Explore → ExploreStack → OtherProfileScreen`, `AppTabs → Menu → MenuStack → SettingsScreen → NotificationSettingsScreen | AccountDeletionScreen`.
+      - `knotify://chat/room/:roomId` resolves to `ChatRoomScreen` with `roomId` typed through `ChatStackParamList` (phase 16 switched the param from `friendUserId` to `roomId`).
+      - `knotify://profile/:userId` resolves to `OtherProfileScreen` in the Explore stack with `userId` typed through `ExploreStackParamList`. This picks up the share links emitted by `src/features/profile/buildShareMessage.ts` (phase 12) which previously had no resolver.
+      - `knotify://settings/notifications` resolves to `NotificationSettingsScreen`.
+      - `knotify://settings/account` resolves to `AccountDeletionScreen`.
+      - All four routes work cold-start (link opened while the app was not running) and warm-start (link opened while the app is already running).
+      - Cold-start behaviour correctly lands on the target screen AFTER the auth gate — unauthenticated users see `AuthStack`, then land on the deep-link target once `RootNavigator` swaps in `AppTabs`. Add `getInitialState` plumbing if React Navigation's default doesn't cover this out-of-the-box.
+      - Deep-link test covers cold-start and warm-start for every route; also covers the unauthenticated → authenticated → deep-link-target flow.
+    notes: |
+      Ex-19.5 + absorbed ex-16.7 (originally scoped to phase 16, moved here per
+      phase-16 brainstorm 2026-11-15 BLOCKING 6). Also owns the
+      `knotify://profile/:userId` resolver for the pre-existing share links.
+      Visual layout deferred (deep-link resolution is a navigation concern, not a
+      visual one).

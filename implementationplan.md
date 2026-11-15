@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-11-15 (phases 16/17/18 merged into phase 16; original phase 19 renumbered to phase 17)
+last_updated: 2026-11-15 (phase 16 PRD rewritten per brainstorm — added 16.FR1-3 + 16.CH1-2, dropped ex-16.7 deep-link story to phase 17; phase 17 story 17.5 expanded to own full deep-link bootstrap)
 
 phases:
 
@@ -96,11 +96,11 @@ phases:
 - phase: 16
   title: Friend requests, friends, chat backend, blocks (real backend wiring)
   file: implementationplan/phase-16-friends-chat-blocks.md
-  ready: false
+  ready: true
   done: false
 
 - phase: 17
-  title: Settings - notifications, theme, language, account deletion
+  title: Settings + deep-link scaffolding - notifications, theme, language, account deletion, all app deep-links
   file: implementationplan/phase-17-settings.md
   ready: false
   done: false

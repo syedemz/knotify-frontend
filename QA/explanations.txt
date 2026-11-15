@@ -1,617 +1,569 @@
 ================================================================================
-PHASE 15 BRAINSTORM — LAYMAN EXPLANATION OF THE PROBLEMS FOUND
+PHASE 16 BRAINSTORM — PLAIN-LANGUAGE EXPLANATIONS
 ================================================================================
 
-Before I dispatch anyone to write phase-15 code, I re-read the PRD and
-cross-checked every claim in it against the code that already shipped in
-phases 12, 13, and 14. I found 2 blockers (things that will make the
-developer's day-one work non-testable or crash the app), 5 medium
-sharpens (things the developer will resolve one way or another during
-implementation, but the resolution should be picked NOW to save
-back-and-forth), and 4 small notes. Each item below is written plainly
-with an analogy where useful. At the end of each item are the fix options
-so you can pick one — or write your own.
+Written: 2026-11-15
+Companion to: phasebrainstorms/phase-16-friends-chat-blocks-brainstorm.md
 
-Vocabulary refresher (skip if you already know it):
+What this file is: the brainstorm file lists 10 "blocking" problems and 4
+"advisory" problems with the phase 16 plan. This file explains each one the
+way I'd explain it to a non-engineer friend over coffee. Each section has:
 
-  - "PRD"        = the phase-15 plan file at
-                   implementationplan/phase-15-friend-requests-and-chat-shell.md
-  - "story"      = one numbered task inside that plan (15.1 through 15.7)
-  - "AC"         = "acceptance criteria" — the checklist inside each story
-                   that says "this story is done when X and Y and Z are true"
-  - "provider"   = a React context holding shared state. We already have
-                   AuthProvider, FriendshipProvider, BookmarksProvider, etc.
-                   Phase 15 adds ChatProvider. Every screen in the app can
-                   read from it without prop-drilling.
-  - "AsyncStorage" = React Native's plain key/value disk store (like
-                   localStorage in a browser). Sent friend requests and
-                   chat history live here so they survive app restarts.
-  - "modal"      = a dialog box that pops up over the current screen with
-                   a dimmed backdrop behind it. Phase 15 adds two of them:
-                   IncomingRequestModal (someone sent me a request) and
-                   RequestAcceptedModal (someone accepted a request I sent).
-  - "pendingToast" = a small state slot on FriendshipProvider that stores
-                   a message to be shown as a snackbar the next time
-                   ExploreHomeScreen focuses. It's how phase 13 solved
-                   the "show a toast on a screen we just navigated away
-                   from" problem.
-  - "hook"       = a React function starting with `use` (useState,
-                   useEffect, useChatHistory). React has strict rules:
-                   hooks must be called at the top of a component, in
-                   the same order every render, NEVER inside a loop or
-                   inside a callback like FlatList's renderItem.
-  - "FlatList"   = React Native's efficient list component. You give it
-                   an array of data and a `renderItem` function that
-                   returns JSX for one row. It only renders visible
-                   rows for performance.
-  - "testID"     = a string you attach to a component so tests can find
-                   it. Like adding `id="submit-btn"` in HTML for tests
-                   to hook into.
-  - "DevTriggersPanel" = a temporary UI shown on the MyProfile Edit tab
-                   in phase 15 with two buttons that manually pop the
-                   two new modals for testing. The whole panel is
-                   grep-tagged `TODO(mock-only)` and gets deleted in
-                   phase 17 when real GraphQL subscriptions replace the
-                   dev buttons.
-
+    1. What's the problem?
+    2. Analogy (where it helps)
+    3. Why it matters
+    4. Options on the table
+    5. The one I'd pick, and why
 
 ================================================================================
-BLOCKER 1 — The IncomingRequestModal can Accept/Decline a request, but
-            no snackbar will ever fire on the screen you're actually
-            looking at.
+PART A — BLOCKING PROBLEMS (fix these before dispatching the phase)
 ================================================================================
 
-WHAT THE PRD SAYS (story 15.6)
+--------------------------------------------------------------------------------
+BLOCKING 1 — The friend-request plumbing nobody drew on the blueprint
+--------------------------------------------------------------------------------
 
-The IncomingRequestModal is a dialog that pops up when someone sends me
-a friend request. It shows the sender's avatar, name, and city, with
-Accept and Decline buttons. The AC says:
+The problem:
+    Phase 16 is supposed to connect the app to the real backend for everything
+    friend-related: sending friend requests, accepting them, declining them,
+    cancelling them. But if you read the 10 stories in the plan, NOT ONE of
+    them actually says "write the code that talks to the friend-request
+    endpoints." The plan says "build the Friends list," "build the chat
+    backend," "build Blocks" — but the actual accept/decline/send/cancel
+    plumbing is just... missing. The plan's own author even wrote a note at
+    the top saying "the brainstorm must add stories for this" — so this is a
+    known hole that was deferred to right now.
 
-  - The modal itself calls `acceptRequest(userId)` or `declineRequest(userId)`
-    on FriendshipProvider.
-  - Then the modal calls `onClose()` to disappear.
-  - "Snackbar surfacing is the host's responsibility (via existing
-    `FriendshipProvider.pendingToast` handoff or a local snackbar on the
-    host screen)."
-  - New labels are declared:
-      friendRequests.incoming.acceptedToast   ("You are now friends with X")
-      friendRequests.incoming.declinedToast   ("Request declined")
+Analogy:
+    Imagine someone handing you blueprints for a house. The plans show you
+    the kitchen, the bathroom, the front porch — all beautifully drawn. But
+    there's no plan for the plumbing. The architect's note says "the plumber
+    will figure it out when they show up." That's where we are. The buttons
+    exist (Accept, Decline, Send Request), the screens exist, but the pipes
+    that carry those actions to the backend were never drawn.
 
-In phase 15 the trigger for the modal is a temporary button on the
-MyProfileScreen Edit tab.
+Why it matters:
+    Without this, every button we add in later stories is cosmetic. Tapping
+    "Accept" would do nothing real — it'd update a mock in local memory and
+    forget everything on app restart. The subsequent chat + modal stories all
+    assume these mutations work, so they'd fail or stall when dispatched.
 
-WHY THIS IS A PROBLEM
+Options:
+    A. Add three new stories (16.FR1, 16.FR2, 16.FR3) covering the REST
+       endpoints, the mutation hooks, and rewiring the modals + tearing out
+       the mock FriendshipProvider.
+    B. Try to cram all of that into story 16.1 or 16.8 as "notes" and hope
+       the subagent figures it out.
+    C. Punt friend-request wiring to phase 17 and just do friends list +
+       chat + blocks in phase 16.
 
-Think of `pendingToast` as a sticky note the FriendshipProvider leaves on
-the fridge. Right now, only ExploreHomeScreen reads the fridge when it
-walks into the kitchen (that is, when Explore is focused). Phase 13.4
-built this pattern for a specific case: on OtherProfileScreen (which
-lives inside the Explore tab), when you tap Decline, we `goBack()` you
-to Explore immediately, and Explore reads the sticky note on focus and
-shows the toast.
+Recommended: A.
+    Option B is a trap — stories are already large; stuffing more in makes
+    the subagent's job ambiguous and causes partial ships. Option C sounds
+    appealing but breaks phase 16's core promise (the PRD title itself says
+    "Friend requests, friends, chat backend, blocks") and leaves users in a
+    worse state than today (because we'd rip out the mock before the real
+    thing exists). Add the three stories. Phase stays coherent.
 
-In phase 15, the modal opens on MyProfileScreen — which lives in the
-Menu tab, NOT Explore. After you tap Accept:
+ANSWER: Option A
 
-  1. Modal calls `acceptRequest(userId)` — friendship state updated.  ✓
-  2. Modal calls `onClose()` — modal disappears.                       ✓
-  3. You're still on MyProfileScreen. ExploreHomeScreen never gets
-     focused. The sticky note stays on the fridge, untouched.          ✗
-  4. Toast never fires. Two labels (`acceptedToast`, `declinedToast`)
-     exist but no code path renders them.
+--------------------------------------------------------------------------------
+BLOCKING 2 — The plan references a tool we don't use
+--------------------------------------------------------------------------------
 
-The AC is non-testable as written: it declares toast labels but points
-at a mechanism (pendingToast) that doesn't reach the current screen.
+The problem:
+    Several stories in the plan say "add a handler to services/api/mocks/
+    handlers.ts" and reference a library called MSW (Mock Service Worker).
+    But MSW was ripped out of this project months ago because it doesn't
+    work on React Native's JavaScript engine (Hermes). The actual mock
+    system is a different file called mockRequest.ts. So the plan is
+    describing a kitchen appliance that was donated to charity last year.
 
-ANALOGY
+Analogy:
+    Your plan says "use the microwave to reheat the leftovers." But the
+    microwave broke six months ago and you now use the toaster oven. A
+    helper reading the recipe will stand in your kitchen confused, looking
+    for a microwave that isn't there.
 
-Imagine you finish a job at your desk and hit a "done" button. The
-building's confetti-cannon system is only wired to fire in the lobby.
-You're still upstairs at your desk. The confetti fires, but you don't
-see it. The "confetti fired successfully" checkbox is technically
-ticked, but the user experience missed the point entirely.
+Why it matters:
+    A subagent reading the PRD would create files that don't fit, or spend
+    time trying to find/install MSW, or worse — ship code that doesn't run.
+    Cheap to fix, expensive to leave in.
 
-FIX OPTIONS
+Options:
+    A. Edit every PRD mention of MSW or handlers.ts to say "extend
+       mockRequest.ts" instead.
+    B. Reinstall MSW and make the plan accurate.
+    C. Leave it alone and hope the subagent notices.
 
-  (a) Local Snackbar on MyProfileScreen driven directly.
-      Mount a Snackbar component on MyProfileScreen with local
-      useState. When the modal fires Accept/Decline, the host passes
-      the result back and MyProfileScreen shows its own snackbar. Skip
-      pendingToast for this surface entirely.
-      + Simple. Cleanly scoped to the screen the user is on.
-      - MyProfileScreen grows a local snackbar; small state added.
+Recommended: A.
+    MSW was removed for a real reason (incompatible with Hermes). Bringing
+    it back is a lot of work for no benefit. Option C is lazy — the mock
+    layer touches almost every story, so the subagent WILL stumble. Option
+    A is a 10-minute edit.
 
-  (b) Modal accepts callbacks (onAccept, onDecline) — host owns everything.
-      Change the modal from "presentation-only that calls
-      acceptRequest/declineRequest itself" to "presentation-only that
-      fires onAccept(userId) / onDecline(userId) callbacks the host
-      wired". Host then calls acceptRequest + shows local snackbar.
-      This matches the shape of the RequestAcceptedModal in story 15.7,
-      which uses onSayHi (already a host-owned callback).
-      + Modal stays presentation-only. Consistent with 15.7. Host owns
-        both the persistence AND the toast — one place, one flow.
-      - 15.6 AC needs an edit: move the acceptRequest/declineRequest
-        invocation from the modal into the host.
+ANSWER: Option A, and please remember we not mocking anything now, we are now building against a real backend
 
-  (c) Broaden pendingToast consumers.
-      Also mount a useEffect on MyProfileScreen that consumes
-      pendingToast on focus. Same pattern as ExploreHomeScreen.
-      + Reuses existing provider surface.
-      - Two consumers means state churn is easier to double-consume or
-        drop. Adds a subtle race with tab-switch focus events.
+--------------------------------------------------------------------------------
+BLOCKING 3 — Chat in mock mode has no mock to run against
+--------------------------------------------------------------------------------
 
-  MY RECOMMENDATION: (b). The modal is already declared "presentation-
-  only" in the AC — passing user actions up through callbacks makes the
-  modal a pure UI component and matches 15.7's shape.
+The problem:
+    The app has a "mock mode" for developing without the real backend. REST
+    calls get intercepted and return fake data. But chat uses a DIFFERENT
+    protocol (AppSync / WebSockets), and no story in the plan creates the
+    fake version of AppSync. So the moment someone turns on mock mode and
+    opens a chat, there's nothing to connect to — the chat screen would hang.
 
-  ANSWER: okay go with option b
+Analogy:
+    You've built a flight simulator so pilots can practice without renting a
+    real plane. The cockpit is simulated, the runways are simulated — but
+    the air traffic control radios are still trying to reach the real tower.
+    When the trainee picks up the radio, they get silence.
 
+Why it matters:
+    If chat only works against the real cloud, then every developer on this
+    project needs real AWS credentials just to look at the chat UI. That's
+    slow, expensive, and blocks offline development.
+
+Options:
+    A. Add a new story (16.M1) to build a fake AppSync client that emits
+       scripted events from a fixture file. Separate flag "isMockAppsync"
+       so you can mix real/fake freely.
+    B. Expand story 16.3 to include the mock client alongside the real one.
+    C. Declare mock mode = "REST only, chat always real." Developers need
+       AWS creds to touch chat.
+
+Recommended: A.
+    Option B overloads one story with two unrelated things (real client
+    AND fake client) — that story becomes a mini-phase on its own. Option C
+    punishes everyone who wants to iterate on chat UI. A clean "16.M1 —
+    build the mock chat client" story that story 16.4's hook tests can lean
+    on is the simplest path.
+
+ANSWER: dont we still have a real appsync on the backend for real chat functionality, if not please let me know , then we need to build it, as far as i know
+it has already been built , i can provide temporary credentials for you to check
+
+--------------------------------------------------------------------------------
+BLOCKING 4 — Two libraries fighting over the same light switch
+--------------------------------------------------------------------------------
+
+The problem:
+    The AWS Amplify library (which we use for login AND chat) gets
+    "configured" once at app start. The login code already does this.
+    Phase 16 needs to also tell Amplify how to configure CHAT. But the
+    login code has a guard that says "if you've already been configured,
+    don't do it again" — so the chat-configure call would be silently
+    skipped. Also, the plan says the AppSync code lives at services/api/
+    but on disk it's actually at services/graphql/. Small path drift, but
+    worth catching before a subagent creates a duplicate file in the wrong
+    place.
+
+Analogy:
+    Imagine a thermostat that can be set once per day. Your spouse already
+    set it to 70°F this morning for the living room. You come home and try
+    to set it to 68°F for the bedroom, but the thermostat says "sorry,
+    already set today." You need either a thermostat that accepts multiple
+    zones, or a shared ritual where whoever sets it first sets it for
+    EVERY room at once.
+
+Why it matters:
+    If the second configure call is silently skipped, chat would fail to
+    connect and the error message would be confusing ("endpoint not
+    configured" with no hint why).
+
+Options:
+    A. Refactor the configure logic into one shared module that both login
+       and chat contribute to. Called exactly once at startup with the full
+       config for both.
+    B. Call Amplify.configure twice and trust Amplify v6's documented
+       "merge, don't overwrite" behavior.
+    C. Have the chat module reset the guard and reconfigure from scratch.
+
+Recommended: A.
+    It's the cleanest. Option B relies on behavior that needs verification
+    in Amplify's docs AND could change in a patch release. Option C is
+    fragile — any future "configurable thing" would need the same reset
+    dance. Also fix the path: use services/graphql/ (where the stub already
+    is), update the PRD AC to match.
+
+ANSWER: Option A
+
+--------------------------------------------------------------------------------
+BLOCKING 5 — Which ID gets passed around: user ID or room ID?
+--------------------------------------------------------------------------------
+
+The problem:
+    When you open a chat today, the code passes along the other person's
+    user ID ("friendUserId") and the chat screen figures out which room to
+    show. But the real backend uses "room IDs" — a separate identifier for
+    each conversation. Which one should the app use going forward?
+
+    The plan says "decide during story time" — but THREE different stories
+    (the chat list, the chat room, the deep-link) each need to know the
+    answer. If each story's subagent picks independently, you'd end up with
+    inconsistent decisions and have to redo one of them.
+
+Analogy:
+    You're running a hotel. Should guests ask for rooms by "Mr. Smith's
+    room" or "Room 204"? Either works, but if the front desk uses names and
+    the housekeeping staff uses numbers and the booking system uses a mix,
+    you get chaos. Pick one convention and stick with it before you print
+    the signs.
+
+Why it matters:
+    If you don't decide now, you end up refactoring in the middle of the
+    phase after one subagent chose names and another chose numbers.
+
+Options:
+    A. Switch to room IDs everywhere. Update the chat screen's address bar
+       to expect a room ID, and have the "open chat with user" helper do
+       the user-ID-to-room-ID lookup behind the scenes.
+    B. Keep user IDs in the app and have the deep-link code reverse-lookup
+       room IDs → user IDs when needed.
+    C. Accept both and let each screen decide.
+
+Recommended: A.
+    This is how the real backend speaks. The user-ID path is an artifact of
+    the mock world where "one friend = one chat room, automatically." Using
+    room IDs now is a cleaner mental model, and the "open chat with user"
+    helper already exists (openChatRoom.ts) and can hide the lookup inside.
+    Only one screen changes type signatures. Option B keeps lipstick on the
+    pig. Option C is how you get bugs.
+
+ANSWER: Go with option A
+
+--------------------------------------------------------------------------------
+BLOCKING 6 — The deep-link scaffolding is a shell, not a foundation
+--------------------------------------------------------------------------------
+
+The problem:
+    "Deep links" let you open the app to a specific place from outside — tap
+    a link in a push notification, land directly in a chat room. The current
+    deep-link config file is literally empty: no URL prefixes, no route map.
+    The phase 16 story says "add one deep-link for chat rooms" — but that's
+    like saying "add one hallway" to a house with no walls. You have to
+    build the walls (the URL prefix "knotify://" and the overall route
+    table) at the same time.
+
+    There's also a loose end: elsewhere in the app, the "share profile"
+    button generates knotify://profile/<user_id> links, but no code resolves
+    them. Phase 16 might as well wire that up too since the scaffolding
+    effort is the same.
+
+Analogy:
+    You're putting up a mailbox in a vacant lot. "Add a mailbox" is three
+    minutes of work — but first you need an address, a driveway, and a
+    road. Building just the mailbox makes no sense until the lot has a
+    street number.
+
+Why it matters:
+    A subagent given "add one deep link" might add just that one and leave
+    the config half-built, meaning chat links work and profile links don't
+    — with no explanation in the code of why.
+
+Options:
+    A. Rescope story 16.7 to bootstrap the whole deep-link config end-to-
+       end: prefixes, nested route map, both chat AND profile links.
+    B. Leave 16.7 narrow, accept that profile share links stay broken this
+       phase.
+    C. Add a separate story just for deep-link scaffolding, keep 16.7 to
+       chat only.
+
+Recommended: A.
+    The scaffolding effort is identical whether you wire one route or two.
+    Shipping a half-working deep-link system is worse than shipping either
+    nothing or the full thing. Option C is fine but creates unnecessary
+    story-count inflation.
+
+ANSWER: We will deep links in a different phase, add it to phase 17 prd for now and skip this one phase 16
+
+--------------------------------------------------------------------------------
+BLOCKING 7 — The modal buttons lose information
+--------------------------------------------------------------------------------
+
+The problem:
+    When a friend request arrives, a modal pops up with "Accept" and
+    "Decline" buttons. Today, tapping Accept fires a callback that includes
+    the SENDER'S user ID. But the real backend needs the REQUEST'S ID (each
+    friend request has its own unique identifier, separate from who sent
+    it). So the modal is literally not passing along the piece of info the
+    backend will demand.
+
+    Similarly, the "Request Accepted" modal's "Say hi" button passes NOTHING
+    at all — the current code works only because the host screen hardcodes
+    Mehvish as the one person this modal ever displays for.
+
+Analogy:
+    The waiter brings your receipt and asks if you want to tip. You say
+    "yes, 20%." But the waiter only writes down "yes, 20%" — not WHICH
+    table or WHICH order. In today's test setup there's only ever one
+    table, so nobody noticed the omission. But the real restaurant has 40
+    tables.
+
+Why it matters:
+    When real subscription events start flowing in, "Accept" calls would
+    either fail entirely (backend demands request_id) or accept the WRONG
+    request. And "Say hi" would always navigate to Mehvish regardless of
+    who actually accepted.
+
+Options:
+    A. Change the modal callbacks to carry the full information: Accept
+       passes (userId, requestId); SayHi passes (acceptorUserId). Hosts
+       update accordingly. Covered by story 16.FR3.
+    B. Have the host look up the missing info by cross-referencing other
+       state.
+    C. Hardcode something and hope for the best.
+
+Recommended: A.
+    Option B spreads knowledge about request shape across many hosts; the
+    modal already has the data in scope, so passing it is one-line changes.
+    Option C is how you get bug reports where the wrong person gets friended.
+
+ANSWER: Option A
+
+--------------------------------------------------------------------------------
+BLOCKING 8 — Promising status icons we can't actually deliver
+--------------------------------------------------------------------------------
+
+The problem:
+    The plan says chat bubbles should show the three WhatsApp-style status
+    ticks: sent (one check), delivered (two checks grey), read (two checks
+    blue). To make these real, you need THREE separate real-time
+    subscriptions from the server — one for new messages, one for delivery
+    receipts, one for read receipts. The plan only wires up ONE of them
+    (new messages). So the AC is promising something we literally don't
+    have the data for.
+
+Analogy:
+    You open a restaurant and the menu says "Guaranteed in under 30
+    minutes." But you forgot to put clocks in the kitchen. You might DELIVER
+    food fast, but you can't honestly promise or verify the guarantee.
+
+Why it matters:
+    A subagent reading this AC will either (a) fake the status icons by
+    guessing from client-side state (misleading UI), or (b) scope-creep and
+    try to add the missing subscriptions mid-phase, blowing out the budget.
+
+Options:
+    A. Rewrite the AC: "sent ticks show for every sent bubble; delivered/
+       read ticks are stubbed and tracked separately as a future story."
+    B. Expand the phase to wire up all three subscriptions.
+    C. Drop the status icons entirely until the full feature lands.
+
+Recommended: A.
+    Option B triples the chat scope — it's a legitimate follow-up but not
+    now. Option C makes the UI feel incomplete. Option A is honest: the
+    bubble shows "sent" (a truthful statement), and the richer indicators
+    get their own phase later. Users won't miss what they never saw.
+
+ANSWER: both option A and B, do option A for now so that we can test chatting and then Option B add more stories to phase 16 which have expanded scope for all 3 subscriptions,
+all chat functions should be done in phase 16
+
+--------------------------------------------------------------------------------
+BLOCKING 9 — The cleanup check doesn't cover enough ground
+--------------------------------------------------------------------------------
+
+The problem:
+    Throughout the codebase, mock/fake code is tagged with a special
+    comment (TODO(mock-only)) so we can grep to find leftovers. Story 16.5
+    has a check at the end: "make sure no mock comments remain in the chat
+    folders." Fine for chat — but there are a LOT of mock comments in the
+    friendship folder too, and those ALSO need to be cleaned up this phase.
+    The check as-written would pass even if the friendship mocks are
+    half-torn-out.
+
+Analogy:
+    You're moving out of an apartment and the landlord's final checklist
+    says "make sure the living room is empty." You pass the check — but
+    you left all your furniture in the bedroom. Deposit lost.
+
+Why it matters:
+    Mock code left behind after real code lands is confusing at best and
+    a source of bugs at worst (two code paths do the same thing differently).
+    The grep check is the automated enforcement — if it's too narrow, the
+    enforcement is theater.
+
+Options:
+    A. Expand the grep scope to cover friendship + friendRequests folders
+       too. Add it as a phase-level AC (either on 16.5 or on the new
+       16.FR3).
+    B. Keep the check narrow and trust code review to catch leftovers.
+    C. Drop the check entirely.
+
+Recommended: A.
+    Takes 30 seconds to fix, prevents an entire class of subtle bugs. Option
+    B relies on human memory; humans forget. Option C surrenders the gain.
+ANSWER: Option A
+
+--------------------------------------------------------------------------------
+BLOCKING 10 — Two stories racing to edit the same file
+--------------------------------------------------------------------------------
+
+The problem:
+    Story 16.5 DELETES the old chat data provider. Story 16.6 REWIRES the
+    chat screen to use something else. Both stories say they depend on
+    story 16.4, but neither says they depend on EACH OTHER. If the
+    subagent runs 16.6 before 16.5, the chat screen still imports the old
+    provider — but 16.6 is supposed to remove that import. If 16.6 runs
+    AFTER 16.5, the chat screen briefly can't compile (the old provider was
+    just deleted, but 16.6 hasn't replaced the import yet).
+
+Analogy:
+    Two roommates. One is scheduled to toss out the old couch, the other
+    is scheduled to bring in the new couch. Nobody said who goes first. If
+    the old couch leaves on Monday and the new one shows up Friday, you
+    sit on the floor all week. If they bump into each other at the door,
+    you have two couches and no room.
+
+Why it matters:
+    The subagent that runs second will encounter a broken file and either
+    stall or improvise — neither is great.
+
+Options:
+    A. Make story 16.6 explicitly depend on 16.5. Old couch out first,
+       then new couch in.
+    B. Merge 16.5 and 16.6 into one bigger story so the whole swap is
+       atomic.
+    C. Leave the dependency implicit and trust the subagent.
+
+Recommended: A.
+    Smallest edit (one line in the PRD) with clearest effect. Option B is
+    fine but produces a larger single story that's harder to review. Option
+    C is how you get the "worked on my first try, broken on the second run"
+    class of bug.
+
+ANSWER: Option A
 
 ================================================================================
-BLOCKER 2 — The ChatListScreen would call a hook inside a FlatList's
-            renderItem — React will throw at runtime.
+PART B — ADVISORY ITEMS (worth noting, not blocking)
 ================================================================================
 
-WHAT THE PRD SAYS (story 15.4)
+--------------------------------------------------------------------------------
+ADVISORY 11 — The real-time listener doesn't have a home yet
+--------------------------------------------------------------------------------
 
-ChatListScreen shows a WhatsApp-style list of friends. Each row shows:
+The problem:
+    Story 16.8 says "mount a subscription listener at the root of AppTabs
+    (or some shared root)." But no listener component exists yet, and the
+    plan doesn't say what it should be called, where exactly it should
+    mount, or how it should hold modal state. A subagent would have to
+    invent the pattern on the fly.
 
-  - the friend's avatar (left)
-  - name + last-message preview (middle)
-  - timestamp (right)
+Analogy:
+    The blueprint says "install a doorbell somewhere near the front door."
+    OK — but on the door frame? Next to the mailbox? At shoulder height or
+    chest height? Does it need its own wiring run or share the porch
+    light's? Not blocking, but worth specifying before the electrician
+    shows up.
 
-The AC says: "Last-message preview is derived per-row from
-`useChatHistory(friend.user_id).messages` — if messages array is
-non-empty, show `messages[messages.length - 1].text`."
+Why it matters:
+    If it's not specified, two different subagents reading the same PRD
+    would invent two different placements and the code review turns into a
+    design argument.
 
-Which means: for every friend in the FlatList, we look up their chat
-history via `useChatHistory(friendId)` and use the last message.
+Options:
+    A. Add a one-paragraph note to the PRD naming the component (e.g.
+       FriendRequestSubscriptionListener), its mount point (just above
+       Tab.Navigator inside AppTabs), and its state model (local useState,
+       or a dedicated context).
+    B. Leave it to the subagent.
 
-WHY THIS IS A PROBLEM
+Recommended: A. 20 seconds of PRD text saves 20 minutes of review debate.
 
-React has one very strict rule: hooks (any function starting with `use`)
-must be called AT THE TOP LEVEL of a component, in the same order every
-render. They CANNOT be called inside a callback that only runs on demand
-— like FlatList's `renderItem`.
+ANSWER: Option A
 
-If you write:
+--------------------------------------------------------------------------------
+ADVISORY 12 — The chat-room overflow menu is a no-op; now it needs a "Block"
+--------------------------------------------------------------------------------
 
-    <FlatList
-      data={friends}
-      renderItem={({ item }) => {
-        const { messages } = useChatHistory(item.user_id);  // ← ILLEGAL
-        return <Row lastMessage={messages[messages.length-1]?.text} />;
-      }}
-    />
+The problem:
+    The triple-dot menu in the top-right corner of a chat room is wired to
+    a function that just logs to the console. Story 16.10 says "add a Block
+    action in the overflow menu" but the overflow menu doesn't functionally
+    exist yet. Is the subagent supposed to build a full menu framework? Or
+    just a single-item action sheet?
 
-React will throw "Rendered more hooks than during the previous render"
-or "Invalid hook call" the moment FlatList decides to render 3 rows
-instead of 4 (when a friend goes offline, when the list scrolls, etc.).
-It's a crash, not a warning.
+Analogy:
+    You ask a contractor to "hang a coat on the hook." Fine — but there's
+    no hook yet. Should they install a single simple hook, or a 4-prong
+    rack, or a closet? Specify or get a surprise.
 
-ANALOGY
+Why it matters:
+    Over-scoping leads to lost time. Under-scoping leaves a menu button
+    that's still mostly broken.
 
-Imagine a restaurant where the chef can only take orders from a
-specific position behind the counter — one at a time, in the order
-customers walked in. If the chef starts taking orders while walking
-around the dining room (from FlatList's renderItem), the whole system
-falls apart because the kitchen loses track of which order came first.
-React tracks hooks the same way: it counts hooks per component render
-and expects the same count in the same order every single time.
+Options:
+    A. Add an AC: "single-item action sheet for this phase; full menu is
+       deferred."
+    B. Leave undefined and get what the subagent chooses.
 
-FIX
+Recommended: A.
 
-Extract each row into its own component — `ChatListRow`. Then the hook
-is at the top of ChatListRow, called exactly once per row instance:
+ANSWER: Option A
 
-    // src/features/chat/components/ChatListRow.tsx
-    function ChatListRow({ friend, onPress }) {
-      const { messages } = useChatHistory(friend.user_id);
-      const last = messages[messages.length - 1];
-      return <Row ... />;
-    }
+--------------------------------------------------------------------------------
+ADVISORY 13 — Context.md checklist has stale items
+--------------------------------------------------------------------------------
 
-    // In ChatListScreen:
-    <FlatList
-      data={friends}
-      renderItem={({ item }) => (
-        <ChatListRow friend={item} onPress={() => nav(...)} />
-      )}
-    />
+The problem:
+    The project's long-running "Before shipping" checklist in context.md
+    has an item (#1) that was actually completed months ago — the code it
+    mentions has been written. Nobody updated the checklist.
 
-This is not a scope change — the same code, moved into a properly-
-scoped component. But the AC doesn't spell it out, and a subagent
-following the AC literally will inline the hook and hit the crash on
-the first test run.
+Analogy:
+    Your fridge still has a sticky note that says "buy milk" from last
+    week. You bought milk. The note's just outdated.
 
-FIX OPTIONS
+Why it matters:
+    Not now, but at phase-completion time it's worth sweeping the checklist
+    and striking done items. Keeps future readers from re-doing work.
 
-  (a) Add one line to 15.4 AC.
-      Amend AC to say: "Row is a standalone component `ChatListRow` at
-      `src/features/chat/components/ChatListRow.tsx` — the
-      `useChatHistory` call lives at the top of that component, not
-      inside `renderItem`."
-      + Explicit, zero ambiguity. Subagent will not inline.
-      - Requires a small PRD edit.
+Options:
+    A. At phase 16 completion, do a quick pass over context.md "Before
+       shipping" and mark completed items.
+    B. Ignore.
 
-  (b) Leave the AC as-is, trust the subagent to extract the component.
-      + No PRD edit.
-      - Non-trivial risk the subagent inlines the hook and only catches
-        the bug when tests fail. Wastes a dispatch cycle.
+Recommended: A, scheduled for phase-completion handoff.
 
-  MY RECOMMENDATION: (a). Non-negotiable React rule; better to lock it
-  in the AC than let it become a "why is my test crashing" round-trip.
+ANSWER: Option A
 
-  ANSWER: okay go with option a, ofcourse it has to be a separate component, we have a rule remember, reusable components
+--------------------------------------------------------------------------------
+ADVISORY 14 — A stale note in the assistant's memory about a broken branch
+--------------------------------------------------------------------------------
 
+The problem:
+    The AI assistant has a note in persistent memory saying "a branch
+    called feat/real-deck-from-backend has broken code that needs fixing."
+    That branch's work was actually shipped through a DIFFERENT branch and
+    merged last week. The old note is now misleading.
 
+Analogy:
+    Your car's dashboard still shows a tire pressure warning, but you
+    actually pumped up the tire last month — the sensor just didn't reset.
+    Harmless now but could confuse the next person who glances at the
+    dashboard.
+
+Why it matters:
+    Low — won't affect phase 16 execution. But could cause a future session
+    to try to "fix" code that's already fixed.
+
+Options:
+    A. Delete the stale memory entry.
+    B. Leave it.
+
+Recommended: A. Cheap to do, prevents future confusion.
+ANSWER: Option A
 ================================================================================
-SHARPEN 1 — The "cross-tab nav fixture test" in 15.5 doesn't say what
-             kind of test to write.
-================================================================================
-
-WHAT THE PRD SAYS (story 15.5)
-
-At the bottom of story 15.5 (ChatRoomScreen), the last AC line reads:
-
-  "Add a fixture test that constructs the nested navigate call and
-   asserts the params flow through."
-
-This is to prove that story 15.7's `onSayHi` handler can call
-`navigation.navigate('Chat', { screen: 'ChatRoomScreen', params: { friendUserId } })`
-from inside the Menu stack (where MyProfileScreen lives) and land on
-ChatRoomScreen in the Chat stack with the correct params.
-
-WHY IT NEEDS SHARPENING
-
-There are two very different ways to write this test:
-
-  1. Unit test with a spy: `const nav = { navigate: jest.fn() };`
-     — trivial to write, but only tests that the callback fires with
-     the right arguments. It does NOT verify that the navigation
-     actually works end-to-end (the params could still be malformed
-     for the real navigator, and you'd never know).
-
-  2. Integration test with a real NavigationContainer scaffold: build
-     a tiny app tree with a real Tab.Navigator + two Stack.Navigators,
-     press a stub button that fires the nested navigate call, and
-     assert that the target screen renders with the correct params.
-     Phase 14 uses this exact pattern in
-     __tests__/navigation/MenuStack.test.tsx and
-     __tests__/features/bookmarks/ExploreStack.test.tsx.
-
-ANALOGY
-
-"Add a test that proves the doorbell works" — do you (1) fake the
-doorbell and check that pressing the button plays a MP3 file, or
-(2) actually wire the button to a real doorbell and listen for a ring?
-Both are valid, but they answer different questions.
-
-FIX OPTIONS
-
-  (a) Real-navigator scaffold (matches phase 14 pattern).
-      + Actually verifies the nested navigation. Reuses an established
-        test pattern in the repo.
-      - Slightly heavier test setup.
-
-  (b) Spy on navigation.navigate.
-      + Fast to write. Zero setup.
-      - Does not verify that the nested params structure is correct
-        for the real navigator.
-
-  MY RECOMMENDATION: (a). Phase 14 already has the pattern boilerplate
-  copy-paste-ready. Verifies the real behaviour.
-  
-  ANSWER: okay go with option a
-
-
-================================================================================
-SHARPEN 2 — 15.2 says "roughly 18 seed messages" but 15.3's test
-             appears to require exactly 18.
+BOTTOM LINE
 ================================================================================
 
-WHAT THE PRD SAYS
-
-  Story 15.2 (seed JSON):    "roughly 18 seed messages"
-  Story 15.3 (hook tests):   "first mount for Mehvish seeds 18 messages"
-
-WHY THIS IS A PROBLEM
-
-Story 15.3's test will presumably assert
-`expect(result.current.messages.length).toBe(18)`. If story 15.2 ships
-17 or 19 messages because "roughly" left it open, story 15.3's test
-fails until someone rewrites either the JSON or the test. Small
-mismatch, easy fix, but worth locking now.
-
-FIX OPTIONS
-
-  (a) Lock 15.2 to exactly 18.
-      Reword: "Add exactly 18 seed messages."
-      + Test in 15.3 stays as-written. Deterministic.
-      - No downside worth naming.
-
-  (b) Reword 15.3's assertion to `>= 15`.
-      + Flexible.
-      - Loses precision for no real gain.
-
-  MY RECOMMENDATION: (a). Pick a number and stick to it.
-
-  ANSWER: okay go with option a
-
-
-================================================================================
-SHARPEN 3 — The `.md` sidecar next to the seed JSON is a new convention.
-             We already have a repo pattern for annotating fixtures.
-================================================================================
-
-WHAT THE PRD SAYS (story 15.2)
-
-The seed JSON's timestamps span "the last 3-4 days (relative to a
-hard-coded base date so tests are stable)". JSON has no comments —
-where does the base date get documented? The PRD says:
-
-  "document the base date in a companion README fragment or an
-   accompanying `.md` sidecar next to the JSON since JSON has no
-   comments"
-
-WHY IT NEEDS SHARPENING
-
-Phase 12 solved the exact same problem in a different way: it stashed
-metadata INSIDE the JSON in a specially-named block. Look at
-`assets/dummyprofile.json` — it has a `__mutability_notes` field at
-the top that explains editing rules. That pattern is already an
-established convention in this codebase.
-
-Adding a `.md` sidecar next to the JSON is a new convention no other
-fixture in the repo uses. It creates a maintenance burden ("when I
-edit chatMehvish.json, do I need to update the sidecar too?") and a
-discoverability burden ("does this JSON have a sidecar? where?").
-
-ANALOGY
-
-You're writing a note on a package. You could scribble the shipping
-instructions on the box itself (existing pattern) or attach a
-Post-it note stuck to the outside that could fall off (proposed
-`.md` sidecar). Both work, but the in-box option is what everyone
-else in the warehouse already does.
-
-FIX OPTIONS
-
-  (a) Put the base date INSIDE chatMehvish.json under a `_meta` block.
-      { "_meta": {
-          "base_timestamp_ms": 1756944000000,
-          "description": "Base date for stable test timestamps."
-        },
-        "messages": [ ... ]
-      }
-      + Consistent with __mutability_notes precedent from phase 12.
-      + Zero risk of the sidecar going missing.
-      - Storage helper has to skip the `_meta` key when parsing (or
-        the seed reader has to grab `.messages` instead of the root).
-
-  (b) `.md` sidecar as the PRD currently suggests.
-      + No JSON schema change.
-      - New convention. Two files to keep in sync.
-
-  MY RECOMMENDATION: (a). Aligns with existing repo pattern. Storage
-  helper reads `.messages`, tests only care about actual message data.
-
-  ANSWER: okay go with option a, but we dont know what timestamps backend may use, so we may have to change this later, keep that in mind
-
-
-================================================================================
-SHARPEN 4 — MessageBubble test assertions on styles could be flaky.
-================================================================================
-
-WHAT THE PRD SAYS (story 15.5)
-
-Sent messages sit on the right with theme.colors.accent.primary background;
-received messages sit on the left with theme.colors.bg.surface. The AC
-for tests says:
-
-  "sent messages have `alignSelf: flex-end` and
-   `theme.colors.accent.primary` background (assert via style prop or
-   testID + rendered style)"
-
-WHY IT NEEDS SHARPENING
-
-React Native Testing Library flattens style props unpredictably. A
-component like:
-
-    <View style={[styles.bubble, { alignSelf: 'flex-end' }, extraStyle]} />
-
-can render as `props.style === Array<[{}, {}, {}]>` or as a merged
-`{}` depending on which internal flattener runs. Tests that read
-literal style values often break when a maintainer refactors the
-style composition — the runtime behaviour is unchanged, but the test
-suddenly sees an array instead of an object.
-
-ANALOGY
-
-Testing the alignment of a sent message by inspecting its raw CSS is
-like verifying "this car is red" by measuring the wavelength of light
-reflecting off its bumper — technically correct but wildly brittle.
-Better to check "this car has a `sent-message` label on its door".
-
-FIX OPTIONS
-
-  (a) Semantic testIDs.
-      Give MessageBubble a `testID` that reflects its semantic role:
-      `bubble-sent` for sender==='me', `bubble-received` for
-      sender==='friend'. Tests query for the right testID; they don't
-      touch style props.
-      + Fast, resilient to internal style refactors, clear intent.
-      - No downside.
-
-  (b) Literal style prop assertions.
-      + Directly verifies the visual outcome.
-      - Flaky. Breaks on internal refactors that don't change UX.
-
-  MY RECOMMENDATION: (a). testIDs already used everywhere in the repo;
-  keep this consistent.
-
-  ANSWER: okay go with option a
-
-
-================================================================================
-SHARPEN 5 — DevTriggersPanel design in 15.6 should be slot-based so 15.7
-             can append without editing 15.6's file.
-================================================================================
-
-WHAT THE PRD SAYS
-
-Story 15.6 creates the DevTriggersPanel component with ONE trigger
-button (the IncomingRequestModal button, using Qurat as the fixture).
-Story 15.7 says:
-
-  "Add the second button 'Trigger RequestAcceptedModal (Mehvish)' to
-   the `DevTriggersPanel` created in 15.6."
-
-Story 15.6 also says: "design the panel so 15.7 only has to append."
-
-WHY IT NEEDS SHARPENING
-
-There are two ways to "append":
-
-  1. If the panel hard-codes one button in its JSX, story 15.7 has to
-     open the file created in story 15.6 and edit it.
-  2. If the panel accepts children (a slot), story 15.7 just adds a
-     second `<TriggerButton />` sibling in MyProfileScreen's JSX
-     without touching DevTriggersPanel.tsx.
-
-The second option is cleaner for the story boundary and makes 15.7's
-diff strictly additive.
-
-ANALOGY
-
-Story 15.6 is building a bulletin board. Story 15.7 wants to pin a
-second flyer. Option 1: story 15.7 rips the board off the wall,
-adds a slot for the new flyer, re-hangs it. Option 2: story 15.6
-built the board with a pinboard surface from day one; story 15.7
-just pins the flyer.
-
-FIX OPTIONS
-
-  (a) DevTriggersPanel accepts children (slot).
-      Panel renders: section heading + description + {children}.
-      MyProfileScreen composes both buttons as siblings inside the
-      panel. 15.6 ships with one child button. 15.7 appends a second.
-      + Clean append, no cross-story file edits.
-      - Slightly more component surface (accepts children prop).
-
-  (b) Panel hard-codes button(s) internally.
-      + Simpler component.
-      - 15.7 has to edit 15.6's file.
-
-  MY RECOMMENDATION: (a). Small design nudge, big cleanliness win.
-  ANSWER: okay go with option a
-
-
-================================================================================
-NOTE 1 — `theme.colors.text.link` doesn't exist. Delete the "or accent
-          .primary" hedge and just say accent.primary.
-================================================================================
-
-Story 15.6 AC says the "View full profile" text link uses:
-
-  "Text variant `label.sm` colour `text.link` (or `accent.primary` if
-   no link token)"
-
-I checked the theme file — there is no `text.link` token. The subagent
-will end up picking `accent.primary` regardless. Just tighten the AC to
-"colour `accent.primary`" and remove the hedge. Zero decision cost.
-
-
-================================================================================
-NOTE 2 — BGDark.jpg `require()` path verified.
-================================================================================
-
-Story 15.5 uses `require('../../../../assets/chat/bgDark.jpg')` from
-`src/features/chat/screens/ChatRoomScreen.tsx`. Counting the `../`s:
-
-  src/features/chat/screens/ChatRoomScreen.tsx
-  → ../                (screens/)
-  → ../../             (chat/)
-  → ../../../          (features/)
-  → ../../../../       (src/) — no, this is project root
-  → then assets/chat/bgDark.jpg
-
-Correct as-written. No action needed.
-
-
-================================================================================
-NOTE 3 — Mehvish already-a-friend fixture mismatch for the
-          RequestAcceptedModal dev trigger.
-================================================================================
-
-Story 15.7's dev-trigger button uses Mehvish as the fixture for
-"someone accepted my request" — but Mehvish is already a friend in
-`assets/dummyfriendships.json`. In production, this event fires when
-someone who WAS NOT a friend becomes one. So there's a mild semantic
-mismatch during dev testing.
-
-The PRD notes acknowledge this and explain the trade-off: using Mehvish
-gives us a full profile AND a real chat history, so "Say hi" lands on a
-populated ChatRoomScreen — the happy path we want to see during dev
-testing.
-
-Swapping to Qurat is possible but adds fixture churn: she'd have to be
-removed from `assets/dummyrequests.json` first, adding two more edits
-for a mock-only surface.
-
-I recommend accepting the mismatch as-noted. But flagging it so you can
-overrule me if you want.
-
-ANSWER: keep mehvish, this is just for testing, wont be like this in production
-
-
-================================================================================
-NOTE 4 — Everything else in the PRD checks out.
-================================================================================
-
-  - BGDark.jpg source file verified present at
-    C:\Users\syede\Claude-Master\animations\images\BGDark.jpg.
-  - The two `TODO(mock-only)` callsites the PRD expects to modify —
-    MarriageLandingScreen.tsx:307 and BookmarkDeckViewScreen.tsx:136 —
-    match the PRD's expected wording verbatim.
-  - Provider-tree order specified in the PRD (BookmarksProvider →
-    ChatProvider → NavigationContainer) is consistent with the phase
-    14 App.tsx layout.
-  - Story dependency graph is acyclic and topologically clean:
-      15.1 depends on nothing.
-      15.2 depends on nothing.
-      15.3 depends on 15.2.
-      15.4 depends on 15.3.
-      15.5 depends on 15.4.
-      15.6 depends on 15.1.
-      15.7 depends on 15.5 + 15.6.
-    Serial dispatch order: 15.1 → 15.2 → 15.3 → 15.4 → 15.5 → 15.6 → 15.7.
-  - No scope drift into phases 16/17. The teardown checklist in the
-    PRD's `teardown_additions:` block is coherent.
-
-
-================================================================================
-DECISION SUMMARY
-================================================================================
-
-Please pick a fix for each of these (or write your own answer):
-
-  B1 [15.6]  How does the Accept/Decline snackbar reach the user on
-             MyProfileScreen?           → (a) / (b) / (c) / your own
-  B2 [15.4]  Explicit `ChatListRow` component in the AC?
-                                        → (a) / (b) / your own
-  S1 [15.5]  Cross-tab nav test flavour → (a) / (b) / your own
-  S2 [15.2]  Lock 18 or reword 15.3?    → (a) / (b) / your own
-  S3 [15.2]  Base timestamp storage     → (a) / (b) / your own
-  S4 [15.5]  MessageBubble test tactic  → (a) / (b) / your own
-  S5 [15.6]  DevTriggersPanel shape     → (a) / (b) / your own
-
-Once you pick, I'll update the PRD, append a "post-answers" section to
-phasebrainstorms/phase-15-friend-requests-and-chat-shell-brainstorm.md
-recording the decisions, and we can either:
-
-  (i)  re-run /implement-phase 15 (fresh brainstorm cycle picks up the
-       updated PRD and moves on), or
-  (ii) proceed straight to Step 1 (create tracking issues + dispatch).
-
-Say the word.
+If we dispatch the plan as-written, blocking items 1, 4, 5 will stall the
+subagents immediately. Items 2, 3, 6, 10 will cause partial or inconsistent
+ships. Items 7, 8, 9 will create bugs that surface later. None of these are
+hard to fix in the PRD — total editing effort is probably 30-45 minutes.
+Dispatching first and fixing later costs multiples of that in subagent
+retries and cleanup PRs.
+
+The strong recommendation is: address the gaps in the PRD, then re-run
+/implement-phase 16.
