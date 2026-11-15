@@ -87,10 +87,10 @@ export const friendsApi = {
 // ── Friend requests ───────────────────────────────────────────────────────────
 
 /**
- * Typed helpers for `GET /friend-requests` per architecture §11.2.8.
+ * Typed helpers for `/friend-requests/*` endpoints per architecture §11.2.8.
  *
- * Both methods hit the same endpoint with a `direction` query parameter.
- * Mutation endpoints (POST, DELETE) are added in story 16.FR2.
+ * GET methods use a `direction` query parameter.
+ * Mutation methods (POST / DELETE) added in story 16.FR2.
  */
 export const friendRequestsApi = {
   /**
@@ -123,5 +123,66 @@ export const friendRequestsApi = {
       method: 'GET',
       path: '/friend-requests',
       query: { direction: 'outgoing' },
+    }),
+
+  /**
+   * `POST /friend-requests` — send a new friend request to the given user.
+   *
+   * Returns the newly-created {@link FriendRequest} row. Throws
+   * {@link ApiError} with `status === 409` when a request to that user is
+   * already pending (the callsite checks `ApiError.code` and renders an
+   * "already sent" affordance instead of an error banner per §11.2.8).
+   *
+   * @param toUserId - `user_id` of the target recipient.
+   * @returns The created {@link FriendRequest} row.
+   */
+  send: (toUserId: string): Promise<FriendRequest> =>
+    request<FriendRequest>({
+      method: 'POST',
+      path: '/friend-requests',
+      body: { to_user_id: toUserId },
+    }),
+
+  /**
+   * `POST /friend-requests/{id}/accept` — accept an incoming friend request.
+   *
+   * Returns the updated {@link FriendRequest} row (status becomes `'accepted'`).
+   *
+   * @param requestId - The `request_id` of the request to accept.
+   * @returns The updated {@link FriendRequest} row.
+   */
+  accept: (requestId: string): Promise<FriendRequest> =>
+    request<FriendRequest>({
+      method: 'POST',
+      path: `/friend-requests/${requestId}/accept`,
+    }),
+
+  /**
+   * `POST /friend-requests/{id}/decline` — decline an incoming friend request.
+   *
+   * Returns the updated {@link FriendRequest} row (status becomes `'declined'`).
+   *
+   * @param requestId - The `request_id` of the request to decline.
+   * @returns The updated {@link FriendRequest} row.
+   */
+  decline: (requestId: string): Promise<FriendRequest> =>
+    request<FriendRequest>({
+      method: 'POST',
+      path: `/friend-requests/${requestId}/decline`,
+    }),
+
+  /**
+   * `DELETE /friend-requests/{id}` — cancel an outgoing friend request that
+   * the signed-in user sent.
+   *
+   * Returns the updated {@link FriendRequest} row (status becomes `'cancelled'`).
+   *
+   * @param requestId - The `request_id` of the outgoing request to cancel.
+   * @returns The updated {@link FriendRequest} row.
+   */
+  cancel: (requestId: string): Promise<FriendRequest> =>
+    request<FriendRequest>({
+      method: 'DELETE',
+      path: `/friend-requests/${requestId}`,
     }),
 } as const;

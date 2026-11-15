@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.FR1 complete — FriendRequest type + friendRequestsApi + useIncomingRequestsQuery + useOutgoingRequestsQuery shipped)
+last_updated: 2026-11-16 (story 16.FR2 complete — useSendFriendRequestMutation + useAcceptFriendRequestMutation + useDeclineFriendRequestMutation + useCancelOutgoingRequestMutation + endpoints.ts send/accept/decline/cancel methods shipped)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -230,7 +230,7 @@ stories:
   - id: 16.FR2
     title: Friend-request mutation hooks + cross-cache invalidation
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 147
     depends_on: [16.FR1]
     acceptance_criteria:
