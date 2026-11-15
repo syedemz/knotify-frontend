@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-08-27 (phase 15 complete)
+last_updated: 2026-11-15 (phases 16/17/18 merged into phase 16; original phase 19 renumbered to phase 17)
 
 phases:
 
@@ -94,25 +94,13 @@ phases:
   done: true
 
 - phase: 16
-  title: Friends
-  file: implementationplan/phase-16-friends.md
+  title: Friend requests, friends, chat backend, blocks (real backend wiring)
+  file: implementationplan/phase-16-friends-chat-blocks.md
   ready: false
   done: false
 
 - phase: 17
-  title: Chat - AppSync backend wiring (rooms + realtime messages)
-  file: implementationplan/phase-17-chat.md
-  ready: false
-  done: false
-
-- phase: 18
-  title: Blocks
-  file: implementationplan/phase-18-blocks.md
-  ready: false
-  done: false
-
-- phase: 19
-  title: Settings - notifications, theme, language, push registration, account deletion
-  file: implementationplan/phase-19-settings.md
+  title: Settings - notifications, theme, language, account deletion
+  file: implementationplan/phase-17-settings.md
   ready: false
   done: false

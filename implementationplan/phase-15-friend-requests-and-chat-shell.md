@@ -1,6 +1,12 @@
 phase: 15
 title: Friend requests + chat UI shell
-last_updated: 2026-08-27 (phase 15 complete — story 15.7 shipped)
+last_updated: 2026-11-15 (cross-refs re-targeted — original phases 16 Friends,
+  17 Chat, and 18 Blocks were clubbed into a single merged phase 16 on
+  2026-11-15. Wherever this PRD says "phase 16" in reference to follow-up
+  backend wiring below, it means the merged phase; the old separate phase-17
+  story IDs 17.3 / 17.4 / 17.5 now live as 16.5 / 16.6 / 16.7 in the merged
+  phase. Historical phase-complete tag `phase-15-complete` points at the
+  original merge into development; what this phase shipped has NOT changed.)
 
 context_summary: |
   Phase 15 was originally scoped as a thin backend-first phase (REST + MSW + React Query
@@ -26,21 +32,21 @@ context_summary: |
      stay fixture-driven (unchanged from phase 13).
 
   2. **Two new event-triggered modals** for surfacing request lifecycle events that
-     will (in phase 17) be driven by AppSync GraphQL subscriptions:
+     will (in phase 16) be driven by AppSync GraphQL subscriptions:
 
      - `IncomingRequestModal` — pops when someone sends me a friend request.
      - `RequestAcceptedModal` — pops when someone accepts a request I sent.
 
      Both modals are dev-triggered for phase 15 via two temporary buttons on the
      `MyProfileScreen` Edit-tab shell (currently a "Coming soon" `EmptyState`). Both
-     are grep-tagged `TODO(mock-only)`; phase 17 wires them to real subscription events
+     are grep-tagged `TODO(mock-only)`; phase 16 wires them to real subscription events
      and removes the dev triggers alongside the Edit-shell placeholder.
 
   3. **Chat UI shell** built end-to-end against an AsyncStorage-backed mock chat history:
 
      - `ChatHistoryStorage` AsyncStorage helper (per-friend key, JSON-shaped messages,
        add/update/delete/clear methods matching the surface a real backend + optimistic
-       cache will hit in phase 17).
+       cache will hit in phase 16).
      - Seed JSON `assets/dummychat/chatMehvish.json` (~18 messages between me and
        Mehvish). Hydrated into AsyncStorage on first read if the key is empty.
      - `ChatProvider` + `useChatHistory(friendUserId)` hook — mirrors the shape of
@@ -66,12 +72,12 @@ context_summary: |
   Teardown checklist added to context.md before shipping (see `teardown_additions`
   block below).
 
-  This phase overlaps with the original phase-17 scope. Phase 17 is patched in the
+  This phase overlaps with the original phase-16 scope. Phase 16 is patched in the
   same commit to reflect the shifted responsibilities:
-    - 17.3 (RoomsListScreen) — "wire real Rooms query to the existing `ChatListScreen`"
-    - 17.4 (RoomScreen) — "wire real messages query + subscription to the existing
+    - 16.5 (RoomsListScreen, ex-17.3) — "wire real Rooms query to the existing `ChatListScreen`"
+    - 16.6 (RoomScreen, ex-17.4) — "wire real messages query + subscription to the existing
       `ChatRoomScreen`; replace `useChatHistory` mock with `useMessagesQuery`"
-    - 17.5 (deep-link) — unchanged; deep-link target is `ChatRoomScreen`.
+    - 16.7 (deep-link, ex-17.5) — unchanged; deep-link target is `ChatRoomScreen`.
 
 teardown_additions: |
   Add to context.md before shipping when phase 15 lands:
@@ -82,7 +88,7 @@ teardown_additions: |
      tests. Wipe AsyncStorage key `dummy.requests.outgoing` on next launch.
   2. **Delete the `sendRequest` / `outgoingRequestIds` / `hasOutgoingRequest` surface
      from `FriendshipProvider`** — replace with real `useSendRequestMutation` per
-     phase-17 scope (or the real REST endpoint if backend split lands there).
+     phase-16 scope (or the real REST endpoint if backend split lands there).
   3. **Delete the two dev-trigger buttons** on `MyProfileScreen` Edit tab (the
      `DevTriggersPanel` component + its labels under `menu.myProfile.editTab.devTriggers.*`).
      The Edit tab returns to a real "Coming soon" or the real edit UX.
@@ -91,7 +97,7 @@ teardown_additions: |
      components themselves stay — only their trigger source changes.
   5. **Delete `src/features/chat/storage/chatHistoryStorage.ts`** and
      `assets/dummychat/chatMehvish.json`. Replace `useChatHistory` in `ChatProvider`
-     with the real `useMessagesQuery` + `useOnMessageAddedSubscription` from phase 17.
+     with the real `useMessagesQuery` + `useOnMessageAddedSubscription` from phase 16.
      The screen components (`ChatListScreen`, `ChatRoomScreen`) stay untouched — only
      their data source swaps.
   6. **Keep `assets/chat/bgDark.jpg`** — it's a real UI asset, not mock-only.
@@ -153,14 +159,14 @@ stories:
     acceptance_criteria:
       - Copy `C:\Users\syede\Claude-Master\animations\images\BGDark.jpg` into the project at `assets/chat/bgDark.jpg`. Create the `assets/chat/` directory if it does not exist. Verify with `ls assets/chat/`. Do NOT reference the source path anywhere in code — the file must be self-contained inside the project.
       - Add `src/types/ChatMessage.ts` exporting `interface ChatMessage { readonly id: string; readonly sender: 'me' | 'friend'; readonly text: string; readonly timestamp: number; readonly status: 'sent' | 'delivered' | 'read'; readonly editedAt?: number; }`. Timestamps are unix milliseconds. `id` is a locally-generated string (`crypto.randomUUID()` if available at runtime, else fallback to a `${Date.now()}-${Math.random().toString(36).slice(2)}` shape — mock-only anyway).
-      - Add `assets/dummychat/chatMehvish.json` with **exactly 18** seed messages between me and Mehvish. Mix of `sender - 'me'` and `sender - 'friend'` in a natural conversation. JSON shape - top-level object `{ "_meta": { "base_timestamp_ms": <number>, "description": "Base date for stable test timestamps." }, "messages": [ ... ] }`. The `_meta` block documents the base date IN the JSON (matches the `__mutability_notes` precedent in `assets/dummyprofile.json` — no `.md` sidecar). Storage / provider code reads `.messages`, not the root. Message timestamps span the last 3-4 days relative to `_meta.base_timestamp_ms`. Cover status states - at least one `'sent'`, one `'delivered'`, and multiple `'read'`. Include at least one message with `editedAt` set (proves the update path). Content is matrimonial-context small talk (introductions, work, weekend plans, meeting up) — keep it PG-rated. Note - when phase 17 wires the real backend, whichever timestamp format the backend uses will replace this `_meta` block. That's fine — the mock lives inside this fixture only.
+      - Add `assets/dummychat/chatMehvish.json` with **exactly 18** seed messages between me and Mehvish. Mix of `sender - 'me'` and `sender - 'friend'` in a natural conversation. JSON shape - top-level object `{ "_meta": { "base_timestamp_ms": <number>, "description": "Base date for stable test timestamps." }, "messages": [ ... ] }`. The `_meta` block documents the base date IN the JSON (matches the `__mutability_notes` precedent in `assets/dummyprofile.json` — no `.md` sidecar). Storage / provider code reads `.messages`, not the root. Message timestamps span the last 3-4 days relative to `_meta.base_timestamp_ms`. Cover status states - at least one `'sent'`, one `'delivered'`, and multiple `'read'`. Include at least one message with `editedAt` set (proves the update path). Content is matrimonial-context small talk (introductions, work, weekend plans, meeting up) — keep it PG-rated. Note - when phase 16 wires the real backend, whichever timestamp format the backend uses will replace this `_meta` block. That's fine — the mock lives inside this fixture only.
       - Add `src/features/chat/storage/chatHistoryStorage.ts` (zero React imports; mirror shape of `bookmarksStorage.ts`). Exports - `CHAT_HISTORY_KEY_PREFIX = 'dummy.chat.'`, `chatHistoryKey(friendUserId: string): string` (returns prefix + friendUserId), `getHistory(friendUserId: string): Promise<ChatMessage[]>`, `saveHistory(friendUserId: string, messages: ChatMessage[]): Promise<void>`, `appendMessage(friendUserId: string, message: ChatMessage): Promise<void>` (dedupes on `message.id`), `updateMessage(friendUserId: string, messageId: string, patch: Partial<Omit<ChatMessage, 'id'>>): Promise<void>` (no-op if id not found; `console.warn` on miss), `deleteMessage(friendUserId: string, messageId: string): Promise<void>` (hard delete — removes from array; idempotent), `clearHistory(friendUserId: string): Promise<void>`. Fail-open JSON parse. Grep-tag `TODO(mock-only): remove when real messages endpoint ships`.
       - Storage helper is NOT responsible for seed hydration. Seed hydration lives in the provider (story 15.3) so tests can decouple the two.
       - Bundled-asset routing for BGDark - do NOT add an entry to `src/assets/dummyPhotoRegistry.ts`. That registry is for user-photo lookups keyed by profile paths. Import BGDark directly at the `ChatRoomScreen` call site via `require('../../../../assets/chat/bgDark.jpg')` (relative path validated against actual file layout). Document this choice in a short header comment above the require.
       - Tests - `chatHistoryStorage.test.ts` covers roundtrip (save then get), key uniqueness (write friend A, read friend B returns empty), append idempotent by id, update patches only provided fields and preserves others, update no-op on missing id, delete removes exactly one message, delete idempotent on missing id, clear wipes, fail-open on corrupt JSON. `chatHistoryFixtures.test.ts` verifies the seed JSON parses to a valid `ChatMessage[]`, spans the expected timestamp range, has at least one `editedAt`, has at least one of each status.
     notes: |
       Deleted messages are hard-removed for mock simplicity. If the real backend uses
-      soft delete (`deleted: true` marker), phase 17 flips this behaviour when swapping
+      soft delete (`deleted: true` marker), phase 16 flips this behaviour when swapping
       the mock provider for the real hook. Not a phase-15 concern.
     tracking_issue: 128
 
@@ -181,7 +187,7 @@ stories:
     notes: |
       `loading` is true only during the initial hydration read for that friend. Once the
       in-memory mirror is populated it stays false. This is a mock — no re-fetch semantics.
-      Phase 17 replaces this hook wholesale.
+      Phase 16 replaces this hook wholesale.
     tracking_issue: 129
 
   - id: 15.4
@@ -225,7 +231,7 @@ stories:
       - Tests - renders friend name in header with `numberOfLines={1}`; renders Mehvish's 18 seed messages in the thread; sent messages queryable by `testID='bubble-sent'` and received messages queryable by `testID='bubble-received'` (semantic testID asserts sender-branch; do NOT assert literal style values — RNTL flattens styles unpredictably); empty input shows Mic icon (no Send icon rendered); typing a character shows Send icon (no Mic icon); tapping Send with non-empty input calls `sendMessage` with the trimmed text and clears the input; tapping the triple-dot button hits the no-op and does not crash (testID `chat-room-menu-btn` present); missing friend (getFullProfile returns null) renders EmptyState with no composer or header; back button calls `navigation.goBack()`; `editedAt` suffix renders "edited" tag; message status icons render for sent / delivered / read states.
     notes: |
       No message read-receipt bookkeeping in phase 15. Seed statuses are static; user-sent
-      messages start at 'sent' and stay there. Phase 17 wires real delivery / read
+      messages start at 'sent' and stay there. Phase 16 wires real delivery / read
       receipts via subscription.
 
       Composer height auto-grows with content up to about 4 lines then scrolls internally.
@@ -244,12 +250,12 @@ stories:
       - Card content (in order) - avatar circle (about 96px) via `resolveDummyPhoto(profile.photos[0] ?? profile.photo_url)`; `Heading` variant `heading.md` centered `${profile.first_name} ${profile.last_name}`; subtitle `Text` variant `label.sm` colour `text.secondary` centered - `${age} · ${city}` with the same null guards used in `BookmarkCard`; optional AboutMe teaser (`Text` variant `body.sm`, `numberOfLines={2}`, only rendered if `profile.about_me` is non-empty); `Row` with Accept (variant `primary`) + Decline (variant `ghost`) side by side, equal flex; and a View-full-profile `TouchableArea` at the bottom rendering `Text` variant `label.sm` colour `accent.primary` — onPress calls `onClose()` then `navigation.navigate('Explore', { screen: 'OtherProfileScreen', params: { userId: profile.user_id, source: 'request' } })`.
       - Modal handlers - Accept calls `onAccept(profile.user_id)` + `onClose()`. Decline calls `onDecline(profile.user_id)` + `onClose()`. Backdrop tap calls `onClose()` (no request action fired). The modal does NOT invoke `acceptRequest` / `declineRequest` or render a snackbar — those responsibilities belong to the host.
       - Host wiring on `MyProfileScreen` - the screen mounts a local `Snackbar` (feature-local `useState<string | null>` visible / message) and passes `onAccept={(userId) => { acceptRequest(userId); setSnackbar(t('friendRequests.incoming.acceptedToast', { firstName: profile.first_name })); }}` and `onDecline={(userId) => { declineRequest(userId); setSnackbar(t('friendRequests.incoming.declinedToast')); }}` into the modal. `acceptRequest` / `declineRequest` come from `useFriendship()` on the host. The snackbar auto-dismisses after ~3s per existing Snackbar behaviour. `pendingToast` is NOT touched by this surface.
-      - Replace the "Coming soon" `EmptyState` on `MyProfileScreen` Edit tab with `DevTriggersPanel` at `src/features/profile/components/DevTriggersPanel.tsx`. **Panel is slot-based**: props are `{ readonly title?: string; readonly description?: string; readonly children: React.ReactNode }`. Panel renders a section heading `Text` variant `label.sm` (defaults to "Dev triggers — remove before ship") + a brief description + `{children}` inside a Column with appropriate spacing. All trigger buttons are composed AS CHILDREN by `MyProfileScreen`, not by the panel itself. Grep-tag the component file with `TODO(mock-only): remove when subscription-driven modal triggers ship in phase 17`. Story 15.7 appends its trigger button as a second child sibling — zero edits to `DevTriggersPanel.tsx` required from 15.7.
+      - Replace the "Coming soon" `EmptyState` on `MyProfileScreen` Edit tab with `DevTriggersPanel` at `src/features/profile/components/DevTriggersPanel.tsx`. **Panel is slot-based**: props are `{ readonly title?: string; readonly description?: string; readonly children: React.ReactNode }`. Panel renders a section heading `Text` variant `label.sm` (defaults to "Dev triggers — remove before ship") + a brief description + `{children}` inside a Column with appropriate spacing. All trigger buttons are composed AS CHILDREN by `MyProfileScreen`, not by the panel itself. Grep-tag the component file with `TODO(mock-only): remove when subscription-driven modal triggers ship in phase 16`. Story 15.7 appends its trigger button as a second child sibling — zero edits to `DevTriggersPanel.tsx` required from 15.7.
       - MyProfileScreen composes the first child as a `Button` with label from `menu.myProfile.editTab.devTriggers.incomingButtonLabel`. Its onPress - resolves Qurat's `DummyFullProfile` via `getFullProfile(QURAT_USER_ID)` where `const QURAT_USER_ID = require('../../../../assets/dummyqurat.json').user_id` is defined at the top of `MyProfileScreen.tsx` (one source of truth per fixture). Sets local `useState` to open the modal. `IncomingRequestModal` mounts on the `MyProfileScreen` at the screen level (not inside the panel) so it renders above the whole screen.
       - Labels - `friendRequests.incoming.title`, `friendRequests.incoming.subtitle`, `friendRequests.incoming.acceptLabel`, `friendRequests.incoming.declineLabel`, `friendRequests.incoming.viewFullProfileLabel`, `friendRequests.incoming.acceptedToast` (interpolated first-name), `friendRequests.incoming.declinedToast`, plus `menu.myProfile.editTab.devTriggers.sectionHeading`, `menu.myProfile.editTab.devTriggers.sectionDescription`, `menu.myProfile.editTab.devTriggers.incomingButtonLabel` — all added to EN + UR with full parity.
       - Tests - `IncomingRequestModal.test.tsx` covers - renders profile fields correctly; tapping Accept calls `onAccept(profile.user_id)` + `onClose`; tapping Decline calls `onDecline(profile.user_id)` + `onClose`; tapping View-full-profile calls navigation + `onClose`; backdrop press calls `onClose` only (no `onAccept` / `onDecline` firing); renders nothing when `profile` is null; `visible={false}` renders nothing. `DevTriggersPanel.test.tsx` covers - renders section heading + description + arbitrary children (pass a fixture child and assert it's rendered); title prop overrides default heading. `MyProfileScreen.editTab.test.tsx` (or extended existing MyProfileScreen suite) - the Incoming trigger button is rendered inside the panel; initial state is closed; tapping the trigger opens the modal; Accept path invokes `acceptRequest` on the mocked `FriendshipProvider` AND renders the interpolated `friendRequests.incoming.acceptedToast` snackbar with Qurat's first name; Decline path invokes `declineRequest` AND renders `friendRequests.incoming.declinedToast`.
     notes: |
-      This is the surface phase 17 will wire to the real `onFriendRequestReceived`
+      This is the surface phase 16 will wire to the real `onFriendRequestReceived`
       subscription event. The modal component stays untouched at teardown — only its
       trigger source changes (from dev button to subscription callback).
 
@@ -288,19 +294,19 @@ stories:
       is cosmetic.
     tracking_issue: 133
 
-# Deferred to phase 17 (called out here to prevent re-scoping drift):
+# Deferred to phase 16 (called out here to prevent re-scoping drift):
 #
 # The original phase-15 scope (backend endpoints + MSW + React Query
-# cross-cache invalidation) is deferred to phase 17 where AppSync + real
-# subscriptions land. Phase 17 stories 17.3 and 17.4 are being edited in the
+# cross-cache invalidation) is deferred to phase 16 where AppSync + real
+# subscriptions land. Phase 16 stories 16.5 and 16.6 (ex-17.3 and ex-17.4) are being edited in the
 # same commit as this rewrite to reflect the shifted UI ownership:
 #
-#   - 17.3 (RoomsListScreen) becomes "wire real Rooms query + last-message
+#   - 16.5 (RoomsListScreen, ex-17.3) becomes "wire real Rooms query + last-message
 #     subscription to the existing ChatListScreen shipped in phase 15."
-#   - 17.4 (RoomScreen) becomes "wire real messages query + onMessageAdded
+#   - 16.6 (RoomScreen, ex-17.4) becomes "wire real messages query + onMessageAdded
 #     subscription to the existing ChatRoomScreen shipped in phase 15;
 #     replace useChatHistory mock with useMessagesQuery + optimistic send."
-#   - 17.5 (deep-link) unchanged; target is ChatRoomScreen.
+#   - 16.7 (deep-link, ex-17.5) unchanged; target is ChatRoomScreen.
 #
 # Phase 16 (Friends endpoint) is untouched by this rewrite — it wires a real
 # GET /friends query to feed FriendshipProvider.friends, but the UI surface
