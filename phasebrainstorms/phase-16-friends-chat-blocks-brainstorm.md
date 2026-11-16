@@ -343,3 +343,41 @@ Inputs: current `implementationplan/phase-16-friends-chat-blocks.md` (post-Round
 
 **proceed.** Round 1 and Round 2 already caught everything structural. Round 3 is a clean dispatch. The three dispatch-brief notes above should be included verbatim in the briefs for stories 16.FR3, 16.5, 16.2, and 16.FR2 respectively.
 
+---
+
+## 2026-11-16 01:24 brainstorm (Round 4 — autonomous resume audit)
+
+Inputs: current state of `implementationplan/phase-16-friends-chat-blocks.md`, git log, open PR #159.
+
+**Purpose.** Final audit before autonomous dispatch resumes. User is away; wake-up scheduled 30 min after token-window reset. All 11 remaining stories (16.FR3, 16.2, 16.3, 16.4, 16.5, 16.6, 16.CH1, 16.CH2, 16.8, 16.9, 16.10) to be dispatched serially without further user prompts.
+
+**Verdict.** **Proceed as-is.** No new drift since Round 3; prior rounds covered every structural concern.
+
+### CONFIRMED since Round 3
+
+- `16.1`, `16.FR1`, `16.FR2` shipped on `feat/phase-16-friends-chat-blocks`. All tracking issues (145, 146, 147) closed.
+- PR #159 is open against `development`; it will absorb the remaining 11 stories' commits.
+- All 11 remaining tracking issues (148–158) created with correct `tracking_issue` mapping in the PRD.
+- No merges to `development` since 2026-11-15 `b99dcb0` "house keeping" — no new drift to reconcile.
+
+### DISPATCH ORDER (topological, one at a time, strict serial per engineering principles)
+
+Available immediately (no outstanding deps):
+1. **16.3** — AppSync client + Amplify config refactor. Highest downstream unblock (gates 16.4/16.5/16.6/16.CH1/16.CH2). Do first so any backend-config surprises surface early.
+2. **16.FR3** — Modal shape rewire + FriendshipProvider teardown. Large touch-list (~16 src + ~17 tests per Round-2 ADVISORY 22). Risky; do early before context pressure.
+3. **16.2** — FriendsListScreen thin wire. Small. Can go once 16.FR3 ships (FriendsListScreen is one of the callsites 16.FR3 rewires).
+4. **16.9** — Blocks hooks + cross-cache purge. Small, independent.
+
+Blocked chain (unblocks as deps resolve):
+5. **16.4** (deps [16.3]) — Chat hooks + shape adapter.
+6. **16.5** (deps [16.4]) — ChatListScreen + roomId route-param switch + mock chat delete.
+7. **16.6** (deps [16.5]) — ChatRoomScreen real wiring.
+8. **16.CH1** (deps [16.6]) — Read receipts.
+9. **16.CH2** (deps [16.6]) — Typing indicator.
+10. **16.8** (deps [16.FR2, 16.FR3]) — Subscription listener + modal rewire + DevTriggersPanel teardown.
+11. **16.10** (deps [16.9]) — BlockedUsersScreen + block entry points.
+
+**Note.** 16.2 depends on 16.1 (done), NOT on 16.FR3 strictly in the PRD. However, 16.FR3 deletes `FriendshipProvider.getFullProfile` and ships `useProfileQuery` which 16.2's `ListRow`-tap-to-OtherProfileScreen path will indirectly benefit from. 16.2 can dispatch in parallel with 16.FR3 (strict-serial rule prevents parallel execution anyway); dispatch 16.2 immediately after 16.FR3 so OtherProfileScreen is already on `useProfileQuery` by the time 16.2's row-tap tests are written.
+
+### PROCEED.
+
