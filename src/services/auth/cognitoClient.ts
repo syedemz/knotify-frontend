@@ -5,13 +5,14 @@
  * interactions (sign-up, sign-in, sign-out, token refresh) go through
  * `cognitoClient`.
  *
- * Amplify is configured lazily on the first call via `ensureConfigured()` so
- * that `env` is fully resolved before any network call is made.
+ * Amplify is configured lazily on the first call via `ensureAmplifyConfigured()`
+ * from the shared `amplifyConfig` module. That module owns the single
+ * `Amplify.configure(...)` call covering both Auth and API (AppSync) in one
+ * shot — see `src/services/amplify/amplifyConfig.ts`.
  *
  * @module services/auth/cognitoClient
  */
 
-import { Amplify } from 'aws-amplify';
 import {
   signUp as amplifySignUp,
   confirmSignUp as amplifyConfirmSignUp,
@@ -24,31 +25,8 @@ import {
 } from 'aws-amplify/auth';
 
 import { env } from '@/config/env';
+import { ensureAmplifyConfigured } from '@/services/amplify/amplifyConfig';
 import { secureStorage } from './secureStorage';
-
-// ── Amplify configuration ─────────────────────────────────────────────────
-
-let _amplifyConfigured = false;
-
-/**
- * Configures Amplify with Cognito credentials from `env` if not already done.
- *
- * Called at the top of every public method to ensure the singleton is
- * configured before use. Idempotent. Skipped in mock mode.
- */
-function ensureConfigured(): void {
-  if (env.isMockAuth) return;
-  if (_amplifyConfigured) return;
-  Amplify.configure({
-    Auth: {
-      Cognito: {
-        userPoolId: env.cognitoUserPoolId,
-        userPoolClientId: env.cognitoAppClientId,
-      },
-    },
-  });
-  _amplifyConfigured = true;
-}
 
 // ── Public API types ──────────────────────────────────────────────────────
 
@@ -133,7 +111,7 @@ async function signUp(input: SignUpInput): Promise<SignUpOutput> {
       },
     } as unknown as SignUpOutput;
   }
-  ensureConfigured();
+  ensureAmplifyConfigured();
   return amplifySignUp({
     username: input.username,
     password: input.password,
@@ -162,7 +140,7 @@ async function confirmSignUp(input: ConfirmSignUpInput): Promise<ConfirmSignUpOu
       nextStep: { signUpStep: 'DONE' },
     } as unknown as ConfirmSignUpOutput;
   }
-  ensureConfigured();
+  ensureAmplifyConfigured();
   return amplifyConfirmSignUp({
     username: input.username,
     confirmationCode: input.code,
@@ -190,7 +168,7 @@ async function signIn(input: SignInInput): Promise<SignInOutput> {
       nextStep: { signInStep: 'DONE' },
     } as unknown as SignInOutput;
   }
-  ensureConfigured();
+  ensureAmplifyConfigured();
   const output = await amplifySignIn({
     username: input.username,
     password: input.password,
@@ -223,7 +201,7 @@ async function signOut(): Promise<void> {
     await secureStorage.clearAuthTokens();
     return;
   }
-  ensureConfigured();
+  ensureAmplifyConfigured();
   await amplifySignOut();
   await secureStorage.clearAuthTokens();
 }
@@ -246,7 +224,7 @@ async function refreshSession(): Promise<SessionTokens | null> {
     if (existing === null) return null;
     return makeMockTokens('mock-user');
   }
-  ensureConfigured();
+  ensureAmplifyConfigured();
   // `forceRefresh: true` instructs Amplify to bypass its in-memory cache and
   // issue a new token request to Cognito.
   const session = await fetchAuthSession({ forceRefresh: true });

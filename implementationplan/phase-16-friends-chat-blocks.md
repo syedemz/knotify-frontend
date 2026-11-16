@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.FR2 complete — useSendFriendRequestMutation + useAcceptFriendRequestMutation + useDeclineFriendRequestMutation + useCancelOutgoingRequestMutation + endpoints.ts send/accept/decline/cancel methods shipped)
+last_updated: 2026-11-16 (story 16.3 complete — shared Amplify config module + AppSync client + GraphQL types shipped)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -273,7 +273,7 @@ stories:
   - id: 16.3
     title: AppSync client + Amplify GraphQL wiring + shared Amplify config refactor
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 150
     depends_on: []
     acceptance_criteria:
