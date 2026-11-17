@@ -1,7 +1,7 @@
 /**
  * Core message type for the chat feature.
  *
- * Used by {@link chatHistoryStorage}, {@link ChatProvider}, {@link ChatRoomScreen},
+ * Used by {@link ChatRoomScreen}, {@link MessageBubble}, shape adapters,
  * and all related test fixtures.
  *
  * **Id generation (mock-only).** In a real implementation message ids come from

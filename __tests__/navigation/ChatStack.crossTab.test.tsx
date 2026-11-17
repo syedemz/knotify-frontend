@@ -1,14 +1,18 @@
 /**
  * Cross-tab navigation integration test for `ChatStack` (story 15.5 — S1).
  *
+ * Story 16.5: route param switched from `friendUserId` to `roomId` per PRD
+ * Round-1 BLOCKING 5. The navigate call now passes `{ roomId }`.
+ *
  * Verifies that a component inside the Menu stack can navigate cross-tab to
  * `ChatRoomScreen` using the nested param form:
  *
- *   `navigation.navigate('Chat', { screen: 'ChatRoomScreen', params: { friendUserId } })`
+ *   `navigation.navigate('Chat', { screen: 'ChatRoomScreen', params: { roomId } })`
  *
- * This is the exact call `RequestAcceptedModal.onSayHi` makes in story 15.7.
- * Validating it here ensures the type surface and NavigationContainer wiring
- * are correct end-to-end through the actual navigators — no jest.fn() spy.
+ * This is the call that `useOpenChatRoom` (and therefore `RequestAcceptedModal.onSayHi`)
+ * makes after story 16.5. Validating it here ensures the type surface and
+ * NavigationContainer wiring are correct end-to-end through the actual
+ * navigators — no jest.fn() spy.
  *
  * Strategy (per S1 spec):
  * - Real `NavigationContainer` + real `createBottomTabNavigator` with two tabs:
@@ -17,9 +21,9 @@
  *   is exercised.
  * - A custom Menu stack (single screen: `MenuCrossTabScreen`) whose stub renders
  *   a "Say Hi" button. Pressing it fires the exact nested navigate call.
- * - The ChatRoomScreen stub renders the received `friendUserId` param as text.
+ * - The ChatRoomScreen stub renders the received `roomId` param as text.
  * - Test presses the button and asserts the Chat stub renders with the expected
- *   `friendUserId` — NO jest.fn() spy.
+ *   `roomId` — NO jest.fn() spy.
  *
  * Following the `MenuStack.test.tsx` / `ExploreStack.test.tsx` boilerplate
  * pattern verbatim where possible.
@@ -44,7 +48,7 @@ jest.mock('@/features/chat/screens/ChatListScreen', () => {
   };
 });
 
-// ChatRoomScreen stub: reads `friendUserId` from route params and renders it.
+// ChatRoomScreen stub: reads `roomId` from route params and renders it.
 jest.mock('@/features/chat/screens/ChatRoomScreen', () => {
   const RN = require('react-native') as typeof import('react-native');
   const Rct = require('react') as typeof import('react');
@@ -52,16 +56,16 @@ jest.mock('@/features/chat/screens/ChatRoomScreen', () => {
   return {
     ChatRoomScreen: function StubChatRoomScreen() {
       const route = Nav.useRoute<any>();
-      const friendUserId: string =
-        (route.params as { friendUserId?: string } | undefined)?.friendUserId ?? '';
+      const roomId: string =
+        (route.params as { roomId?: string } | undefined)?.roomId ?? '';
       return Rct.createElement(
         RN.View,
         { testID: 'stub-chat-room-screen' },
         Rct.createElement(RN.Text, null, 'CHAT_ROOM'),
         Rct.createElement(
           RN.Text,
-          { testID: 'stub-chat-room-friend-id' },
-          friendUserId,
+          { testID: 'stub-chat-room-room-id' },
+          roomId,
         ),
       );
     },
@@ -206,8 +210,8 @@ import { ChatStack } from '@/navigation/ChatStack';
 
 // ── Test constants ────────────────────────────────────────────────────────────
 
-/** The friendUserId the Menu stub passes in the cross-tab navigate call. */
-const TEST_FRIEND_ID = 'mehvish-cross-tab-test-id';
+/** The roomId the Menu stub passes in the cross-tab navigate call. */
+const TEST_ROOM_ID = 'room-cross-tab-test-001';
 
 // ── Test-local "Menu" stub stack ──────────────────────────────────────────────
 //
@@ -233,7 +237,7 @@ function MenuCrossTabScreen(): React.ReactElement {
         onPress={() =>
           navigation.navigate('Chat', {
             screen: 'ChatRoomScreen',
-            params: { friendUserId: TEST_FRIEND_ID },
+            params: { roomId: TEST_ROOM_ID },
           })
         }
       >
@@ -288,7 +292,7 @@ describe('ChatStack cross-tab navigation (S1 — story 15.5)', () => {
   );
 
   it(
-    'given a Menu-stack screen fires navigate("Chat", { screen: "ChatRoomScreen", params: { friendUserId } }), then ChatRoomScreen renders with the expected friendUserId param',
+    'given a Menu-stack screen fires navigate("Chat", { screen: "ChatRoomScreen", params: { roomId } }), then ChatRoomScreen renders with the expected roomId param',
     async () => {
       const { findByText, findByTestId, getByTestId } = render(<TestApp />);
 
@@ -313,10 +317,10 @@ describe('ChatStack cross-tab navigation (S1 — story 15.5)', () => {
       // The ChatRoomScreen stub should now be rendered on the Chat tab.
       await findByText('CHAT_ROOM');
 
-      // Assert the friendUserId param arrived correctly (end-to-end through the
+      // Assert the roomId param arrived correctly (end-to-end through the
       // real navigator — NO jest.fn() spy used for this assertion).
-      const friendIdEl = getByTestId('stub-chat-room-friend-id');
-      expect(friendIdEl.props.children).toBe(TEST_FRIEND_ID);
+      const roomIdEl = getByTestId('stub-chat-room-room-id');
+      expect(roomIdEl.props.children).toBe(TEST_ROOM_ID);
     },
   );
 });

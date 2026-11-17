@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.4 complete — chat feature hooks + shape adapter: ROOMS_QUERY_KEY/messagesQueryKey + useRoomsQuery/useMessagesQuery/useCreateOrGetRoomMutation/useSendMessageMutation/useOnMessageInRoomSubscription + shapeAdapters.ts adaptMessageToChatMessage/makeOptimisticChatMessage + ChatMessage.status extended with 'sending' + 41 new tests)
+last_updated: 2026-11-16 (story 16.5 complete — ChatListScreen real Rooms query wiring + roomId route param + mock chat delete: replaced useFriendsQuery with useRoomsQuery, switched ChatStackParamList.ChatRoomScreen param to roomId, rewrote openChatRoom.ts to use useCreateOrGetRoomMutation, rewrote ChatListRow to ChatRoom+useProfileQuery, rewrote ChatRoomScreen to use useMessagesQuery+useSendMessageMutation, deleted ChatProvider.tsx+chatHistoryStorage.ts+chatMehvish.json+their tests, removed ChatProvider from App.tsx, updated all 4 test suites + ChatStack.crossTab.test + ChatMessage.ts, grep gate passes)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -310,7 +310,7 @@ stories:
   - id: 16.5
     title: Wire real Rooms query into ChatListScreen + switch route param to roomId + delete mock chat
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 152
     depends_on: [16.4]
     acceptance_criteria:

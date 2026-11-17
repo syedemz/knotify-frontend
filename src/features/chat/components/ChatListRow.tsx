@@ -1,17 +1,20 @@
 /**
  * ChatListRow — a single row in the Chat list screen.
  *
- * Renders one friend's avatar, name, and last-message preview alongside a
- * formatted timestamp. The `useChatHistory` hook is called at the TOP LEVEL
- * of this component (not inside `renderItem`) to satisfy the Rules of Hooks.
- * `ChatListScreen.renderItem` returns `<ChatListRow friend={item} onPress={...} />`
- * — the hook never appears inside a render callback.
+ * Story 16.5: rewired from `DummyFullProfile + useChatHistory` to `ChatRoom +
+ * useProfileQuery`. Renders the counterpart's avatar + name + last-message
+ * preview + formatted timestamp sourced directly from the `ChatRoom` record
+ * (no secondary message fetch needed for the list view).
  *
- * **Loading behaviour:** while the initial AsyncStorage hydration is in-flight,
- * the preview text falls back to the "No messages yet" label rather than
- * rendering a skeleton. This keeps the component stateless with respect to
- * loading UI and avoids layout-shift jank — hydration is fast (< 20 ms for
- * a mock store) so the brief fallback is imperceptible in practice.
+ * The counterpart `user_id` is derived from `ChatRoom.userA` / `ChatRoom.userB`
+ * — whichever is NOT `currentUserId`. Display name and avatar come from
+ * `useProfileQuery(counterpartUserId)` keyed at `['profile', userId]`.
+ *
+ * Preview text and timestamp come from `ChatRoom.lastMessagePreview` and
+ * `ChatRoom.lastMessageAt` top-level fields (the real-schema anchors per the
+ * phase-16 PRD — there is no nested `latestMessage` object on `ChatRoom`).
+ *
+ * No `useChatHistory` or AsyncStorage dependency remains.
  *
  * @module features/chat/components/ChatListRow
  */
@@ -20,13 +23,12 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Heading, Text, TouchableArea } from '@/components';
 import { t } from '@/labels';
-import { useChatHistory } from '@/state/chat/ChatProvider';
+import { useProfileQuery } from '@/features/profile/api';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
 import { formatChatTimestamp } from '@/features/chat/formatChatTimestamp';
 import { useTheme } from '@/theme';
 import type { Theme } from '@/theme/theme';
-import type { DummyFullProfile } from '@/types/DummyFullProfile';
-import type { ChatMessage } from '@/types/ChatMessage';
+import type { ChatRoom } from '@/services/graphql/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,8 +36,14 @@ import type { ChatMessage } from '@/types/ChatMessage';
  * Props for {@link ChatListRow}.
  */
 export interface ChatListRowProps {
-  /** The friend whose conversation thread this row represents. */
-  readonly friend: DummyFullProfile;
+  /** The chat room this row represents. */
+  readonly room: ChatRoom;
+  /**
+   * The signed-in user's `user_id`.
+   *
+   * Used to derive the counterpart `user_id` from `ChatRoom.userA`/`userB`.
+   */
+  readonly currentUserId: string;
   /** Called when the row is pressed. The parent supplies the navigate call. */
   readonly onPress: () => void;
 }
@@ -43,59 +51,57 @@ export interface ChatListRowProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 /**
- * A tappable row in the chat friend list.
+ * A tappable row in the chat room list.
  *
- * Displays a 48-px avatar on the left, a name + last-message preview column
- * in the centre (flex 1), and a formatted timestamp on the right.
+ * Displays a 48-px avatar on the left, a counterpart name + last-message
+ * preview in the centre (flex 1), and a formatted timestamp on the right.
  *
- * The `useChatHistory(friend.user_id)` hook MUST live at the top level of this
- * component — calling hooks inside `FlatList.renderItem` violates the Rules of
- * Hooks and causes a runtime error.
+ * Derives the counterpart `user_id` by comparing `room.userA` and `room.userB`
+ * against `currentUserId`. Resolves display name and avatar via
+ * `useProfileQuery(counterpartUserId)`.
  *
  * @param props - {@link ChatListRowProps}
  */
-export function ChatListRow({ friend, onPress }: ChatListRowProps): React.ReactElement {
+export function ChatListRow({ room, currentUserId, onPress }: ChatListRowProps): React.ReactElement {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // Hooks must be at the top level — never inside renderItem.
-  const { messages, loading } = useChatHistory(friend.user_id);
+  // Derive counterpart user_id: whichever of userA/userB is not the signed-in user.
+  const counterpartUserId = room.userA === currentUserId ? room.userB : room.userA;
 
-  const photoPath = friend.photos?.[0] ?? friend.photo_url ?? '';
-  const fullName = `${friend.first_name} ${friend.last_name}`;
+  const profileQuery = useProfileQuery(counterpartUserId);
+  const profile = profileQuery.data ?? null;
+
+  const photoPath = profile?.photo_url ?? '';
+  const firstName = profile?.first_name ?? '';
+  const lastName = profile?.last_name ?? '';
+  const fullName = firstName.length > 0 || lastName.length > 0
+    ? `${firstName} ${lastName}`.trim()
+    : counterpartUserId;
 
   const accessibilityLabel = t('chat.list.rowAccessibility')
-    .replace('{firstName}', friend.first_name ?? '')
-    .replace('{lastName}', friend.last_name ?? '');
+    .replace('{firstName}', firstName)
+    .replace('{lastName}', lastName);
 
-  // Last-message preview logic:
-  // - non-empty messages array → last message text (truncated by numberOfLines)
-  // - loading (hydration in-flight) → "No messages yet" fallback label
-  // - empty (hydrated but no messages) → "No messages yet" fallback label
-  // Both the loading and empty cases use the same label. Hydration is fast
-  // (< 20 ms on the mock store), so the brief fallback text is imperceptible.
-  const lastMessage: ChatMessage | undefined =
-    !loading && messages.length > 0 ? messages[messages.length - 1] : undefined;
-  const previewText = lastMessage !== undefined
-    ? lastMessage.text
-    : t('chat.list.noMessagesYet');
+  // Last-message preview: use the top-level ChatRoom fields per real-schema anchors.
+  const previewText = room.lastMessagePreview ?? t('chat.list.noMessagesYet');
 
-  const timestampLabel = lastMessage !== undefined
-    ? formatChatTimestamp(lastMessage.timestamp)
+  const timestampLabel = room.lastMessageAt !== null
+    ? formatChatTimestamp(new Date(room.lastMessageAt).getTime())
     : '';
 
   return (
     <TouchableArea
       onPress={onPress}
       accessibilityLabel={accessibilityLabel}
-      testID={`chat-list-row-${friend.user_id}`}
+      testID={`chat-list-row-${room.roomId}`}
     >
       <View style={styles.row}>
         <ProfileThumbnailCircle
           uri={photoPath}
           size={48}
           accessibilityLabel={fullName}
-          testID={`chat-list-avatar-${friend.user_id}`}
+          testID={`chat-list-avatar-${room.roomId}`}
         />
 
         {/* Centre column — flex:1 to fill space between avatar and timestamp */}

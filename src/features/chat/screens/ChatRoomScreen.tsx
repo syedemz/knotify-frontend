@@ -1,30 +1,18 @@
 /**
- * ChatRoomScreen — WhatsApp-style per-friend message thread.
+ * ChatRoomScreen — WhatsApp-style per-room message thread.
  *
- * Reads `friendUserId` from the route param, resolves the friend's profile via
- * `useFriendship().getFullProfile(friendUserId)`, and renders:
+ * Story 15.5: initial shell.
+ * Story 16.5 (partial): switches route param from `friendUserId` to `roomId`.
+ * Replaces `useChatHistory` with `useMessagesQuery` + `useSendMessageMutation`.
+ * Profile resolution moves from `useFriendship().getFullProfile` to deriving
+ * the counterpart `user_id` from `ChatRoom.userA`/`userB` via `useRoomsQuery`
+ * cache lookup, then calling `useProfileQuery(counterpartUserId)`.
  *
- * - A header with a back button, avatar, name, and triple-dot no-op menu button.
- * - A scrollable message thread on a tiled dark background image, with messages
- *   rendered as `MessageBubble` components in an inverted `FlatList`.
- * - A composer row with a pill-shaped `TextInput` and a circular trailing
- *   button that toggles between a Mic icon (empty input) and a Send icon
- *   (non-empty input).
- *
- * **Missing profile guard.** When `getFullProfile(friendUserId)` returns
- * `undefined` or `null` (the friend is not in the friendship registry), an
- * `EmptyState` is rendered with no header or composer.
- *
- * **KeyboardAvoidingView.** Wraps the entire screen so the composer lifts above
- * the software keyboard on both iOS (padding) and Android (height).
- *
- * **BGDark asset.** The tiled background is the project-local copy of the dark
- * chat texture. It is imported via a project-relative `require` — the external
- * source path (`animations/images/BGDark.jpg`) is intentionally not referenced.
+ * Story 16.6 finishes this screen (subscription wiring, AppState resubscribe,
+ * status-icon transitions). This story keeps the existing visual intact.
  *
  * **Rules of Hooks.** ALL hooks are declared before any conditional return.
- * Derived values that depend on the resolved `profile` are computed after all
- * hooks are done. The conditional return follows.
+ * Derived values that depend on the resolved state are computed after all hooks.
  *
  * @module features/chat/screens/ChatRoomScreen
  */
@@ -47,8 +35,10 @@ import { ArrowLeft, MoreVertical, Mic, Send } from 'lucide-react-native';
 
 import { EmptyState, LoadingState, Heading, TouchableArea } from '@/components';
 import { t } from '@/labels';
-import { useChatHistory } from '@/state/chat/ChatProvider';
+import { useMessagesQuery, useRoomsQuery, useSendMessageMutation } from '@/features/chat/api';
 import { useProfileQuery } from '@/features/profile/api';
+import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
+import { adaptMessageToChatMessage } from '@/features/chat/shapeAdapters';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
 import { useTheme } from '@/theme';
@@ -74,11 +64,16 @@ type ChatRoomNav = NativeStackNavigationProp<ChatStackParamList, 'ChatRoomScreen
 // ── Component ─────────────────────────────────────────────────────────────────
 
 /**
- * Per-friend message thread screen.
+ * Per-room message thread screen.
  *
- * Reads `friendUserId` from the route param, resolves the friend profile, and
- * renders the full WhatsApp-style thread with composer. If the profile cannot
- * be resolved, an `EmptyState` is shown instead.
+ * Reads `roomId` from the route param. Derives the counterpart user from
+ * `useRoomsQuery` cache (looking up the room by `roomId`, then taking
+ * whichever of `userA`/`userB` is not `currentUserId`). Resolves the
+ * counterpart's display profile via `useProfileQuery`. Renders the full
+ * WhatsApp-style thread with composer.
+ *
+ * Message data comes from `useMessagesQuery(roomId)`. Send goes through
+ * `useSendMessageMutation` (optimistic append + rollback).
  *
  * ALL React hooks are declared before any conditional return so the hook call
  * order is unconditional on every render (Rules of Hooks).
@@ -92,40 +87,64 @@ export function ChatRoomScreen(): React.ReactElement {
   const navigation = useNavigation<ChatRoomNav>();
   const route = useRoute<ChatRoomRoute>();
 
-  const { friendUserId } = route.params;
-  const profileQuery = useProfileQuery(friendUserId);
-  const { messages, sendMessage } = useChatHistory(friendUserId);
+  const { roomId } = route.params;
+
+  // Own profile — needed to derive counterpart user_id.
+  const { profile: ownProfile } = useOwnProfile();
+  const currentUserId = ownProfile?.user_id ?? '';
+
+  // Rooms cache lookup — find the room to derive counterpart user_id.
+  const roomsQuery = useRoomsQuery();
+  const room = useMemo(
+    () => (roomsQuery.data ?? []).find((r) => r.roomId === roomId) ?? null,
+    [roomsQuery.data, roomId],
+  );
+
+  // Counterpart user_id from the room record.
+  const counterpartUserId = useMemo(() => {
+    if (room === null || currentUserId === '') return '';
+    return room.userA === currentUserId ? room.userB : room.userA;
+  }, [room, currentUserId]);
+
+  // Profile for the counterpart (used in the header).
+  const profileQuery = useProfileQuery(counterpartUserId);
+
+  // Messages for this room.
+  const messagesQuery = useMessagesQuery(roomId);
+
+  // Send mutation (optimistic append per 16.4).
+  const sendMutation = useSendMessageMutation(currentUserId);
 
   const [composerText, setComposerText] = useState('');
 
-  // Reverse the chronological source so index 0 is the NEWEST message.
-  // Combined with `inverted={true}` on the FlatList below, RN renders
-  // index 0 at the visual bottom and later indices upward — matching the
-  // WhatsApp UX where the newest message sits right above the composer
-  // and scrolling UP reveals older history. The critical benefit: the
-  // list opens instantly at the latest message with zero scroll animation
-  // (imagine a 2000-message thread — no user should watch a "scroll from
-  // the top" animation on every open).
-  const messagesDescending = useMemo(
-    () => [...messages].reverse(),
-    [messages],
-  );
+  // Flatten pages of messages into a single array and adapt to ChatMessage.
+  // The infinite query pages are ordered oldest-first; flatten preserves that.
+  const messages: readonly ChatMessage[] = useMemo(() => {
+    if (messagesQuery.data === undefined) return [];
+    return messagesQuery.data.pages.flatMap((page) =>
+      page.items.map((msg) => adaptMessageToChatMessage(msg, currentUserId)),
+    );
+  }, [messagesQuery.data, currentUserId]);
+
+  // Reverse for the inverted FlatList (newest at index 0 = bottom of screen).
+  const messagesDescending = useMemo(() => [...messages].reverse(), [messages]);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
 
   const handleMenuPress = useCallback(() => {
-    // No-op: chat room menu is not implemented yet.
-    console.log('chat room menu — not implemented yet');
+    // No-op: chat room menu is not fully implemented in story 16.5.
+    // Story 16.10 adds the block action via a single-item action sheet.
+    console.log('chat room menu — not fully implemented yet');
   }, []);
 
   const handleSend = useCallback(async () => {
     const trimmed = composerText.trim();
     if (trimmed.length === 0) return;
-    await sendMessage(trimmed);
+    await sendMutation.mutateAsync({ content: trimmed, roomId, contentType: 'text' });
     setComposerText('');
-  }, [composerText, sendMessage]);
+  }, [composerText, roomId, sendMutation]);
 
   const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 
@@ -138,11 +157,11 @@ export function ChatRoomScreen(): React.ReactElement {
 
   const profile = profileQuery.data ?? null;
 
-  // ── Loading / missing profile guard ───────────────────────────────────────
+  // ── Loading / missing guard ───────────────────────────────────────────────
   //
   // Conditional return is AFTER all hooks — Rules of Hooks compliant.
 
-  if (profileQuery.isLoading) {
+  if (profileQuery.isLoading || roomsQuery.isLoading) {
     return (
       <View style={styles.root} testID="chat-room-loading">
         <LoadingState message={t('common.loading')} />
@@ -164,7 +183,6 @@ export function ChatRoomScreen(): React.ReactElement {
 
   // ── Derived values from resolved profile ───────────────────────────────────
 
-  // `UserProfile` does not have a `photos` array — use `photo_url` directly.
   const photoPath = profile.photo_url ?? '';
   const fullName = `${profile.first_name} ${profile.last_name}`;
   const hasText = composerText.trim().length > 0;
@@ -174,13 +192,10 @@ export function ChatRoomScreen(): React.ReactElement {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      // iOS uses 'padding' to add bottom padding equal to the keyboard
-      // height. On Android we pass `undefined` so KeyboardAvoidingView
-      // becomes a passthrough — the manifest's `windowSoftInputMode="adjustResize"`
-      // already resizes the window to make room for the keyboard. Using
-      // `behavior="height"` on Android instead causes the two to fight
-      // each other on keyboard dismiss, leaving a residual empty strip
-      // below the composer.
+      // iOS uses 'padding' to add bottom padding equal to the keyboard height.
+      // On Android we pass `undefined` so KeyboardAvoidingView becomes a
+      // passthrough — the manifest's `windowSoftInputMode="adjustResize"` already
+      // resizes the window to make room for the keyboard.
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Header ─────────────────────────────────────────────────── */}
@@ -214,7 +229,7 @@ export function ChatRoomScreen(): React.ReactElement {
           </Heading>
         </View>
 
-        {/* Triple-dot menu — no-op */}
+        {/* Triple-dot menu */}
         <TouchableArea
           onPress={handleMenuPress}
           accessibilityLabel={t('chat.room.menuAccessibility')}
@@ -240,10 +255,7 @@ export function ChatRoomScreen(): React.ReactElement {
           {/*
             Inverted list rendering the DESCENDING-order copy of `messages`
             (see `messagesDescending` useMemo above). Result: newest just
-            above the composer, oldest at the top of the scrollback —
-            standard WhatsApp/iMessage pattern. No scroll animation on
-            mount and no scroll-to-end needed on send; RN's inverted-list
-            layout pins index 0 (the newest) to the visual bottom natively.
+            above the composer, oldest at the top of the scrollback.
           */}
           <FlatList
             testID="chat-room-flatlist"
@@ -252,12 +264,6 @@ export function ChatRoomScreen(): React.ReactElement {
             renderItem={renderBubble}
             inverted={true}
             contentContainerStyle={styles.listContent}
-            // RN's default `initialNumToRender=10` would only mount the
-            // newest 10 messages on open — scrolling up to older messages
-            // would trigger virtualization mounts one page at a time.
-            // For a chat thread that's cheap: render ~30 up-front so
-            // scroll-back is instant and older messages (including any
-            // with `editedAt` suffixes) are already in the tree.
             initialNumToRender={30}
           />
         </ImageBackground>
@@ -298,7 +304,7 @@ export function ChatRoomScreen(): React.ReactElement {
         ) : (
           <TouchableArea
             onPress={() => {
-              // Mic is a no-op in phase 15 — voice messages are not implemented.
+              // Mic is a no-op in phase 15/16 — voice messages are not yet implemented.
             }}
             accessibilityLabel={t('chat.room.micAccessibility')}
             testID="chat-room-mic-btn"
