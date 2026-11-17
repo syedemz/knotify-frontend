@@ -57,6 +57,13 @@ jest.mock('@/features/friends/api', () => ({
   FRIENDS_QUERY_KEY: ['friends'] as const,
 }));
 
+// friendRequests/api.ts now imports getAppsyncClient for the subscription hook
+// (story 16.8). Stub it here to prevent the aws-amplify ESM chain from loading.
+jest.mock('@/services/graphql/appsyncClient', () => ({
+  getAppsyncClient: () => ({ graphql: jest.fn() }),
+  _resetAppsyncClientForTests: jest.fn(),
+}));
+
 // ── Imports (after mock declaration) ─────────────────────────────────────────
 
 import {

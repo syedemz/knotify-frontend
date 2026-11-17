@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.CH2 complete — typing-indicator subscription + chat-room typing row: added useOnTypingInRoomSubscription (subscription with self-event filter + onEventRef stable-ref pattern) + useSetTypingMutation (fire-and-forget) to api.ts; added chatRoom.typing label to en+ur; created TypingIndicatorRow component; wired into ChatRoomScreen with 2s idle timer + ~2s outbound throttle (useRef timestamp) + 4s auto-dismiss on inbound silence + unmount final setTyping(false); test delta +21: 44 useChatHooks tests (from 36) + 38 ChatRoomScreen tests (from 30) + 5 TypingIndicatorRow tests; 2742 → 2763 passing; tsc zero errors; eslint zero new errors)
+last_updated: 2026-11-17 (story 16.8 complete — FriendRequestSubscriptionListener + DevTriggersPanel teardown: added useOnFriendRequestUpdatedSubscription to friendRequests/api.ts; created FriendRequestSubscriptionListener component (Notification.type branch: friend_request opens IncomingRequestModal; friend_request_accepted opens RequestAcceptedModal; unknown types fall through to cache invalidation; async-profile-hydration gates modal visibility on useProfileQuery resolve; AppState resume bumps remountKey + invalidates INCOMING cache); mounted above <Tab.Navigator> in AppTabs; deleted DevTriggersPanel + its label keys + its test; AppearanceSection small touch (unrelated to 16.8 scope — see diff); 80 friendRequests tests pass incl. new FriendRequestSubscriptionListener suite; tsc zero errors; AppTabs ESM pre-existing failure unchanged)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -389,7 +389,7 @@ stories:
   - id: 16.8
     title: Subscription-driven modal triggers + FriendRequestSubscriptionListener + DevTriggersPanel teardown
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 156
     depends_on: [16.FR2, 16.FR3]
     acceptance_criteria:

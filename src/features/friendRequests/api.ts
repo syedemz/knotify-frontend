@@ -1,5 +1,6 @@
 /**
- * React Query hooks for the friend-requests feature — GET + mutation hooks.
+ * React Query hooks for the friend-requests feature — GET + mutation hooks +
+ * AppSync subscription hook.
  *
  * Wraps the `friendRequestsApi` REST helpers from
  * `src/services/api/endpoints.ts` per architecture §8.2 (REST conventions)
@@ -9,11 +10,15 @@
  * Mutation hooks (story 16.FR2): `useSendFriendRequestMutation`,
  * `useAcceptFriendRequestMutation`, `useDeclineFriendRequestMutation`,
  * `useCancelOutgoingRequestMutation`.
+ * Subscription hook (story 16.8): `useOnFriendRequestUpdatedSubscription`.
  *
  * @module features/friendRequests/api
  */
 
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getAppsyncClient } from '@/services/graphql/appsyncClient';
+import type { Notification } from '@/services/graphql/types';
 
 import { friendRequestsApi } from '@/services/api/endpoints';
 import { FRIENDS_QUERY_KEY } from '@/features/friends/api';
@@ -279,4 +284,76 @@ export function useCancelOutgoingRequestMutation() {
       void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
     },
   });
+}
+
+// ── Subscription hook ─────────────────────────────────────────────────────────
+
+const ON_FRIEND_REQUEST_UPDATED_SUBSCRIPTION = /* GraphQL */ `
+  subscription OnFriendRequestUpdated {
+    onFriendRequestUpdated {
+      type
+      payload
+      createdAt
+    }
+  }
+`;
+
+/**
+ * Subscribes to the identity-scoped `onFriendRequestUpdated: Notification`
+ * AppSync subscription and delivers incoming events to the provided callback.
+ *
+ * Uses the same `useEffect` + `.subscribe()` / `.unsubscribe()` callback-ref
+ * pattern as the chat subscription hooks (story 16.4 / 16.CH2). The callback
+ * ref avoids subscription teardown when only the callback identity changes.
+ *
+ * The subscription is established only while the hook is mounted. The caller
+ * (`FriendRequestSubscriptionListener`) is responsible for conditionally
+ * mounting the hook (i.e. only when `useAuth().status === 'authenticated'`).
+ *
+ * An optional `remountKey` parameter (default `0`) lets the caller force a
+ * re-subscribe — e.g. on `AppState` resume after the ~10-minute AppSync idle
+ * window.
+ *
+ * @param onEvent - Callback invoked for each inbound `Notification`.
+ * @param remountKey - Bump to force subscription teardown + re-establish.
+ */
+export function useOnFriendRequestUpdatedSubscription(
+  onEvent: (notification: Notification) => void,
+  remountKey: number = 0,
+): void {
+  // Stable ref to the latest callback so we avoid subscription teardown when
+  // only the callback identity changes (matches the onEventRef pattern used by
+  // useOnTypingInRoomSubscription in story 16.CH2).
+  const onEventRef = useRef(onEvent);
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  });
+
+  useEffect(() => {
+    const client = getAppsyncClient();
+
+    const sub = (
+      client.graphql({
+        query: ON_FRIEND_REQUEST_UPDATED_SUBSCRIPTION,
+      }) as unknown as {
+        subscribe: (handlers: {
+          next: (event: { data: { onFriendRequestUpdated: Notification | null } }) => void;
+          error: (err: unknown) => void;
+        }) => { unsubscribe: () => void };
+      }
+    ).subscribe({
+      next: (event) => {
+        const notification = event?.data?.onFriendRequestUpdated;
+        if (!notification) return;
+        onEventRef.current(notification);
+      },
+      error: (err: unknown) => {
+        console.warn('[useOnFriendRequestUpdatedSubscription] subscription error', err);
+      },
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
+  }, [remountKey]);
 }
