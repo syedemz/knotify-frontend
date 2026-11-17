@@ -35,10 +35,10 @@ export interface ChatRoom {
   readonly lastMessageSenderId: string | null;
   /** Message ID of the most recent message. Null when no messages yet. */
   readonly lastMessageId: string | null;
-  /** ISO-8601 creation timestamp. */
-  readonly createdAt: string;
-  /** ISO-8601 last-updated timestamp. */
-  readonly updatedAt: string;
+  /** ISO-8601 creation timestamp. Not returned by `listMyRooms` / `createOrGetRoom` — optional for fixture flexibility only. */
+  readonly createdAt?: string;
+  /** ISO-8601 last-updated timestamp. Not present on the real schema (confirmed 2026-11-17 via `listMyRooms` validation error); kept optional to permit fixtures. */
+  readonly updatedAt?: string;
 }
 
 // ── ChatRoomMembership ────────────────────────────────────────────────────
