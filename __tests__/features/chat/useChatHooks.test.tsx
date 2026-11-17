@@ -12,6 +12,16 @@
  * (f) useOnMessageInRoomSubscription — cache append on new message, dedupe
  *     when messageId already in cache, rooms cache invalidation on new message.
  *
+ * Story 16.CH1 AC coverage:
+ *
+ * (g) readReceiptsQueryKey — key shape per §7.3.
+ * (h) useOnReadReceiptSubscription — receipt updates ['readReceipts', roomId]
+ *     cache with enriched entry including lastReadMessageCreatedAt,
+ *     unsubscribe on unmount.
+ * (i) useMarkReadMutation — calls markAsRead with correct args, on success
+ *     stores enriched ReadReceiptCacheEntry, error path.
+ * (j) useReadReceiptQuery — enabled:false (no network), reads setQueryData writes.
+ *
  * Tests stub `getAppsyncClient()` via `jest.mock('@/services/graphql/appsyncClient')`.
  * No fixture files are created under `src/services/api/mocks/`.
  */
@@ -34,13 +44,18 @@ jest.mock('@/services/graphql/appsyncClient', () => ({
 import {
   ROOMS_QUERY_KEY,
   messagesQueryKey,
+  readReceiptsQueryKey,
   useRoomsQuery,
   useMessagesQuery,
   useCreateOrGetRoomMutation,
   useSendMessageMutation,
   useOnMessageInRoomSubscription,
+  useOnReadReceiptSubscription,
+  useMarkReadMutation,
+  useReadReceiptQuery,
 } from '@/features/chat/api';
-import type { ChatRoom, Message, MessageConnection } from '@/services/graphql/types';
+import type { ChatRoom, Message, MessageConnection, MessageRead } from '@/services/graphql/types';
+import type { ReadReceiptCacheEntry } from '@/features/chat/api';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -606,4 +621,418 @@ describe('useOnMessageInRoomSubscription — cache append on new message', () =>
     unmount();
     expect(unsubscribeMock).toHaveBeenCalledTimes(1);
   });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// (g) readReceiptsQueryKey
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('readReceiptsQueryKey', () => {
+  it('is exported and returns the tuple ["readReceipts", roomId] per §7.3', () => {
+    expect(readReceiptsQueryKey('room-xyz')).toEqual(['readReceipts', 'room-xyz']);
+  });
+
+  it('returns different tuples for different roomIds', () => {
+    expect(readReceiptsQueryKey('room-aaa')).not.toEqual(readReceiptsQueryKey('room-bbb'));
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// (h) useOnReadReceiptSubscription
+// ═════════════════════════════════════════════════════════════════════════════
+
+function makeMessageRead(overrides?: Partial<MessageRead>): MessageRead {
+  return {
+    roomId: ROOM_ID,
+    userId: FRIEND_USER_ID,
+    lastReadMessageId: 'msg-server-001',
+    lastReadAt: '2026-11-16T11:00:00.000Z',
+    ...overrides,
+  };
+}
+
+describe('useOnReadReceiptSubscription — receipt updates readReceipts cache', () => {
+  it(
+    'given a MessageRead event arrives, then ["readReceipts", roomId] is set with the receipt data',
+    async () => {
+      let capturedNext!: (event: { data: { onReadReceipt: MessageRead | null } }) => void;
+      const unsubscribeMock = jest.fn();
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: unsubscribeMock };
+        },
+      });
+
+      const client = makeClient();
+      renderHook(() => useOnReadReceiptSubscription(ROOM_ID), {
+        wrapper: makeWrapper(client),
+      });
+
+      const receipt = makeMessageRead({ lastReadMessageId: 'msg-known-001' });
+      act(() => {
+        capturedNext({ data: { onReadReceipt: receipt } });
+      });
+
+      await waitFor(() => {
+        const cached = client.getQueryData<ReadReceiptCacheEntry>(
+          readReceiptsQueryKey(ROOM_ID),
+        );
+        return cached !== undefined;
+      });
+
+      const cached = client.getQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(ROOM_ID),
+      );
+      expect(cached?.roomId).toBe(ROOM_ID);
+      expect(cached?.lastReadMessageId).toBe('msg-known-001');
+      expect(cached?.userId).toBe(FRIEND_USER_ID);
+    },
+  );
+
+  it(
+    'given messages are in the cache with a matching messageId, then lastReadMessageCreatedAt is set from that message',
+    async () => {
+      let capturedNext!: (event: { data: { onReadReceipt: MessageRead | null } }) => void;
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: jest.fn() };
+        },
+      });
+
+      const client = makeClient();
+      // Seed messages cache with a known message.
+      const knownMsg = makeServerMessage({
+        messageId: 'msg-read-001',
+        createdAt: '2026-11-16T10:30:00.000Z',
+      });
+      client.setQueryData(messagesQueryKey(ROOM_ID), {
+        pages: [{ items: [knownMsg], nextToken: null }],
+        pageParams: [{ nextToken: undefined }],
+      });
+
+      renderHook(() => useOnReadReceiptSubscription(ROOM_ID), {
+        wrapper: makeWrapper(client),
+      });
+
+      const receipt = makeMessageRead({ lastReadMessageId: 'msg-read-001' });
+      act(() => {
+        capturedNext({ data: { onReadReceipt: receipt } });
+      });
+
+      await waitFor(() => {
+        const cached = client.getQueryData<ReadReceiptCacheEntry>(
+          readReceiptsQueryKey(ROOM_ID),
+        );
+        return cached?.lastReadMessageCreatedAt !== undefined;
+      });
+
+      const cached = client.getQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(ROOM_ID),
+      );
+      expect(cached?.lastReadMessageCreatedAt).toBe('2026-11-16T10:30:00.000Z');
+    },
+  );
+
+  it(
+    'given messages are NOT in the cache, then lastReadMessageCreatedAt is null',
+    async () => {
+      let capturedNext!: (event: { data: { onReadReceipt: MessageRead | null } }) => void;
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: jest.fn() };
+        },
+      });
+
+      const client = makeClient();
+      // No messages seeded — cache is empty.
+
+      renderHook(() => useOnReadReceiptSubscription(ROOM_ID), {
+        wrapper: makeWrapper(client),
+      });
+
+      const receipt = makeMessageRead({ lastReadMessageId: 'msg-not-in-cache' });
+      act(() => {
+        capturedNext({ data: { onReadReceipt: receipt } });
+      });
+
+      await waitFor(() => {
+        const cached = client.getQueryData<ReadReceiptCacheEntry>(
+          readReceiptsQueryKey(ROOM_ID),
+        );
+        return cached !== undefined;
+      });
+
+      const cached = client.getQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(ROOM_ID),
+      );
+      expect(cached?.lastReadMessageCreatedAt).toBeNull();
+    },
+  );
+
+  it(
+    'given the hook unmounts, then unsubscribe is called (no leaked read-receipt subscription)',
+    () => {
+      const unsubscribeMock = jest.fn();
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (_handlers: unknown) => ({
+          unsubscribe: unsubscribeMock,
+        }),
+      });
+
+      const client = makeClient();
+      const { unmount } = renderHook(
+        () => useOnReadReceiptSubscription(ROOM_ID),
+        { wrapper: makeWrapper(client) },
+      );
+
+      expect(unsubscribeMock).not.toHaveBeenCalled();
+      unmount();
+      expect(unsubscribeMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it(
+    'given a null event payload, then the cache is NOT updated',
+    async () => {
+      let capturedNext!: (event: { data: { onReadReceipt: MessageRead | null } }) => void;
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: jest.fn() };
+        },
+      });
+
+      const client = makeClient();
+      renderHook(() => useOnReadReceiptSubscription(ROOM_ID), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        capturedNext({ data: { onReadReceipt: null } });
+      });
+
+      // Allow any async update.
+      await new Promise((res) => setTimeout(res, 50));
+
+      const cached = client.getQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(ROOM_ID),
+      );
+      // Cache should remain unpopulated.
+      expect(cached).toBeUndefined();
+    },
+  );
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// (i) useMarkReadMutation
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('useMarkReadMutation — success', () => {
+  it(
+    'given backend returns MessageRead, when mutate resolves, then isSuccess is true',
+    async () => {
+      const receipt = makeMessageRead({ lastReadMessageId: 'msg-server-001' });
+      mockGraphql.mockResolvedValueOnce({ data: { markAsRead: receipt } });
+
+      const client = makeClient();
+      const { result } = renderHook(() => useMarkReadMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ roomId: ROOM_ID, lastMessageId: 'msg-server-001' });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+    },
+  );
+
+  it(
+    'given success, then graphql is called with lastMessageId and roomId as separate args',
+    async () => {
+      const receipt = makeMessageRead();
+      mockGraphql.mockResolvedValueOnce({ data: { markAsRead: receipt } });
+
+      const client = makeClient();
+      const { result } = renderHook(() => useMarkReadMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ roomId: ROOM_ID, lastMessageId: 'msg-abc-001' });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(mockGraphql).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variables: expect.objectContaining({
+            lastMessageId: 'msg-abc-001',
+            roomId: ROOM_ID,
+          }),
+        }),
+      );
+    },
+  );
+
+  it(
+    'given success with matching message in cache, then ["readReceipts", roomId] is set with lastReadMessageCreatedAt',
+    async () => {
+      const knownCreatedAt = '2026-11-16T10:45:00.000Z';
+      const knownMsg = makeServerMessage({
+        messageId: 'msg-known-read',
+        createdAt: knownCreatedAt,
+      });
+      const receipt = makeMessageRead({ lastReadMessageId: 'msg-known-read' });
+      mockGraphql.mockResolvedValueOnce({ data: { markAsRead: receipt } });
+
+      const client = makeClient();
+      // Seed messages cache.
+      client.setQueryData(messagesQueryKey(ROOM_ID), {
+        pages: [{ items: [knownMsg], nextToken: null }],
+        pageParams: [{ nextToken: undefined }],
+      });
+
+      const { result } = renderHook(() => useMarkReadMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ roomId: ROOM_ID, lastMessageId: 'msg-known-read' });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      const cached = client.getQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(ROOM_ID),
+      );
+      expect(cached?.lastReadMessageCreatedAt).toBe(knownCreatedAt);
+      expect(cached?.lastReadMessageId).toBe('msg-known-read');
+    },
+  );
+
+  it(
+    'given success with no matching message in cache, then lastReadMessageCreatedAt is null',
+    async () => {
+      const receipt = makeMessageRead({ lastReadMessageId: 'msg-not-in-cache' });
+      mockGraphql.mockResolvedValueOnce({ data: { markAsRead: receipt } });
+
+      const client = makeClient();
+      // No messages seeded.
+
+      const { result } = renderHook(() => useMarkReadMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ roomId: ROOM_ID, lastMessageId: 'msg-not-in-cache' });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      const cached = client.getQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(ROOM_ID),
+      );
+      expect(cached?.lastReadMessageCreatedAt).toBeNull();
+    },
+  );
+});
+
+describe('useMarkReadMutation — error', () => {
+  it(
+    'given backend fails, when mutate rejects, then isError is true',
+    async () => {
+      mockGraphql.mockRejectedValueOnce(new Error('AppSync error'));
+
+      const client = makeClient();
+      const { result } = renderHook(() => useMarkReadMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ roomId: ROOM_ID, lastMessageId: 'msg-fail-001' });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true);
+      });
+
+      // On error, the readReceipts cache should remain unpopulated.
+      const cached = client.getQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(ROOM_ID),
+      );
+      expect(cached).toBeUndefined();
+    },
+  );
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// (j) useReadReceiptQuery
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('useReadReceiptQuery', () => {
+  it(
+    'given no setQueryData has been called, then data is undefined',
+    () => {
+      const client = makeClient();
+      const { result } = renderHook(() => useReadReceiptQuery(ROOM_ID), {
+        wrapper: makeWrapper(client),
+      });
+      expect(result.current.data).toBeUndefined();
+    },
+  );
+
+  it(
+    'given setQueryData has been called with a receipt entry, then data reflects the entry',
+    async () => {
+      const entry: ReadReceiptCacheEntry = {
+        roomId: ROOM_ID,
+        userId: FRIEND_USER_ID,
+        lastReadMessageId: 'msg-read-999',
+        lastReadAt: '2026-11-16T12:00:00.000Z',
+        lastReadMessageCreatedAt: '2026-11-16T11:55:00.000Z',
+      };
+
+      const client = makeClient();
+
+      const { result } = renderHook(() => useReadReceiptQuery(ROOM_ID), {
+        wrapper: makeWrapper(client),
+      });
+
+      // Seed the cache as if a subscription event fired.
+      act(() => {
+        client.setQueryData(readReceiptsQueryKey(ROOM_ID), entry);
+      });
+
+      await waitFor(() => {
+        expect(result.current.data).toBeDefined();
+      });
+
+      expect(result.current.data?.lastReadMessageId).toBe('msg-read-999');
+      expect(result.current.data?.lastReadMessageCreatedAt).toBe('2026-11-16T11:55:00.000Z');
+    },
+  );
+
+  it(
+    'given enabled:false, then no network call (graphql) is made',
+    () => {
+      const client = makeClient();
+      renderHook(() => useReadReceiptQuery(ROOM_ID), {
+        wrapper: makeWrapper(client),
+      });
+      // No graphql call should have been issued.
+      expect(mockGraphql).not.toHaveBeenCalled();
+    },
+  );
 });

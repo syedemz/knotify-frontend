@@ -9,11 +9,15 @@
  * error rollback, 'sending' → 'sent' → 'delivered' status transitions, AppState
  * resume refetch, ErrorState for messages query error.
  *
+ * Story 16.CH1: adds read-receipt subscription wiring, mark-as-read on focus,
+ * and 'read' status tick on sent bubbles.
+ *
  * Strategy: mocks out `useProfileQuery`, `useRoomsQuery`, `useMessagesQuery`,
- * `useSendMessageMutation`, `useOnMessageInRoomSubscription`, `messagesQueryKey`,
- * `useOwnProfile`, `useRoute`, `useNavigation`, `@tanstack/react-query`'s
- * `useQueryClient`, and `react-native-safe-area-context` so we can render the
- * screen in isolation.
+ * `useSendMessageMutation`, `useOnMessageInRoomSubscription`,
+ * `useOnReadReceiptSubscription`, `useReadReceiptQuery`, `useMarkReadMutation`,
+ * `messagesQueryKey`, `useOwnProfile`, `useRoute`, `useNavigation`,
+ * `@tanstack/react-query`'s `useQueryClient`, and
+ * `react-native-safe-area-context` so we can render the screen in isolation.
  *
  * AC coverage (16.5 — preserved):
  * (a) Friend name in header with numberOfLines=1 (name text visible).
@@ -26,13 +30,18 @@
  * (h) Back button calls navigation.goBack().
  * (i) Loading state shown when profileQuery.isLoading or roomsQuery.isLoading.
  *
- * AC coverage (16.6 — new):
+ * AC coverage (16.6 — preserved):
  * (j) useOnMessageInRoomSubscription is called on mount with (roomId, currentUserId, 0).
  * (k) Optimistic send: 'sending' status bubble appears before mutateAsync resolves.
  * (l) Error rollback: mutateAsync rejection is handled gracefully (no crash).
  * (m) Status icon: 'sending' → Clock, 'sent' → Check, 'delivered' → CheckCheck icons present.
  * (n) AppState resume: transitions to 'active' invalidate messages cache + bump subscriptionKey.
  * (o) ErrorState shown when messagesQuery.isError=true.
+ *
+ * AC coverage (16.CH1 — new):
+ * (p) 'delivered' → 'read' icon transition when readReceiptQuery returns a matching lastReadMessageCreatedAt.
+ * (q) useOnReadReceiptSubscription called on mount.
+ * (r) useMarkReadMutation.mutate called on focus when received messages are present.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -61,6 +70,8 @@ const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
 const ROOM_ID = 'room-test-001';
 
+const React_forMock = require('react') as typeof import('react');
+
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => ({
@@ -70,7 +81,20 @@ jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({
     params: { roomId: ROOM_ID },
   }),
+  // useFocusEffect defers via useEffect so the ref is populated by useMemo first.
+  useFocusEffect: (cb: () => (() => void) | void) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Rct = require('react') as typeof import('react');
+    Rct.useEffect(() => {
+      const cleanup = cb();
+      return cleanup ?? undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+  },
 }));
+
+// suppress unused variable warning on the hoisted require
+void React_forMock;
 
 // ── useOwnProfile mock ────────────────────────────────────────────────────────
 
@@ -134,6 +158,14 @@ const mockMutateAsync = jest.fn().mockResolvedValue({
 // ── useOnMessageInRoomSubscription mock ──────────────────────────────────────
 
 const mockUseOnMessageInRoomSubscription = jest.fn();
+const mockUseOnReadReceiptSubscription = jest.fn();
+const mockMarkReadMutate = jest.fn();
+
+type ReadReceiptQueryResult = {
+  data: { lastReadMessageCreatedAt: string | null; lastReadMessageId: string } | undefined;
+};
+
+let mockReadReceiptQueryResult: ReadReceiptQueryResult = { data: undefined };
 
 jest.mock('@/features/chat/api', () => ({
   useRoomsQuery: () => mockRoomsQueryResult,
@@ -145,6 +177,14 @@ jest.mock('@/features/chat/api', () => ({
   }),
   useOnMessageInRoomSubscription: (...args: any[]) =>
     mockUseOnMessageInRoomSubscription(...args),
+  useOnReadReceiptSubscription: (...args: any[]) =>
+    mockUseOnReadReceiptSubscription(...args),
+  useReadReceiptQuery: () => mockReadReceiptQueryResult,
+  useMarkReadMutation: () => ({
+    mutate: mockMarkReadMutate,
+    isPending: false,
+    isError: false,
+  }),
   messagesQueryKey: (roomId: string) => ['messages', roomId],
 }));
 
@@ -232,7 +272,10 @@ beforeEach(() => {
   mockNavigate.mockClear();
   mockMutateAsync.mockClear();
   mockUseOnMessageInRoomSubscription.mockClear();
+  mockUseOnReadReceiptSubscription.mockClear();
+  mockMarkReadMutate.mockClear();
   mockInvalidateQueries.mockClear();
+  mockReadReceiptQueryResult = { data: undefined };
 
   // Default: Mehvish profile resolved, two test messages
   mockProfileQueryResult = { data: mehvish, isLoading: false, isError: false };
@@ -704,6 +747,162 @@ describe('ChatRoomScreen — AC (o): ErrorState shown when messagesQuery.isError
 
       const { getByTestId } = renderScreen();
       expect(getByTestId('chat-room-error')).toBeTruthy();
+    },
+  );
+});
+
+// ── AC (p) — 16.CH1: 'delivered' → 'read' icon on inbound read receipt ────────
+
+describe('ChatRoomScreen — AC (p): delivered → read icon transition on inbound receipt', () => {
+  it(
+    'given a sent message with deliveredAt populated and readReceiptQuery returns a createdAt covering that message, then status-icon-read is shown',
+    () => {
+      const msgCreatedAt = new Date(Date.now() - 60_000).toISOString();
+      // Message sent by us, delivered, createdAt = msgCreatedAt.
+      mockMessagesQueryResult = {
+        data: {
+          pages: [{
+            items: [{
+              messageId: 'msg-sent-read-001',
+              roomId: ROOM_ID,
+              senderId: CURRENT_USER_ID,
+              content: 'Hello from me',
+              contentType: 'text',
+              createdAt: msgCreatedAt,
+              deliveredAt: new Date(Date.now() - 30_000).toISOString(),
+            }],
+            nextToken: null,
+          }],
+        },
+        isLoading: false,
+        isError: false,
+      };
+
+      // Read receipt covers this message (lastReadMessageCreatedAt >= msgCreatedAt).
+      mockReadReceiptQueryResult = {
+        data: {
+          lastReadMessageId: 'msg-sent-read-001',
+          lastReadMessageCreatedAt: msgCreatedAt, // exact match → 'read'
+        },
+      };
+
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(getByTestId('status-icon-read')).toBeTruthy();
+      expect(queryByTestId('status-icon-delivered')).toBeNull();
+    },
+  );
+
+  it(
+    'given a sent message and readReceiptQuery.data is undefined, then status is NOT read (falls back to delivered)',
+    () => {
+      const msgCreatedAt = new Date(Date.now() - 60_000).toISOString();
+      mockMessagesQueryResult = {
+        data: {
+          pages: [{
+            items: [{
+              messageId: 'msg-sent-not-read',
+              roomId: ROOM_ID,
+              senderId: CURRENT_USER_ID,
+              content: 'No receipt yet',
+              contentType: 'text',
+              createdAt: msgCreatedAt,
+              deliveredAt: new Date(Date.now() - 30_000).toISOString(),
+            }],
+            nextToken: null,
+          }],
+        },
+        isLoading: false,
+        isError: false,
+      };
+      mockReadReceiptQueryResult = { data: undefined };
+
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(getByTestId('status-icon-delivered')).toBeTruthy();
+      expect(queryByTestId('status-icon-read')).toBeNull();
+    },
+  );
+});
+
+// ── AC (q) — 16.CH1: useOnReadReceiptSubscription called on mount ─────────────
+
+describe('ChatRoomScreen — AC (q): useOnReadReceiptSubscription is called on mount', () => {
+  it(
+    'given ChatRoomScreen renders, when the component mounts, then useOnReadReceiptSubscription is called with roomId',
+    () => {
+      renderScreen();
+      expect(mockUseOnReadReceiptSubscription).toHaveBeenCalled();
+      const [calledRoomId] = mockUseOnReadReceiptSubscription.mock.calls[0] as [string];
+      expect(calledRoomId).toBe(ROOM_ID);
+    },
+  );
+});
+
+// ── AC (r) — 16.CH1: useMarkReadMutation.mutate called on focus ───────────────
+
+describe('ChatRoomScreen — AC (r): mark-as-read fires on focus when received messages present', () => {
+  it(
+    'given a received message is in the query, when ChatRoomScreen mounts (focus fires), then useMarkReadMutation.mutate is called with roomId and the latest received messageId',
+    () => {
+      const receivedMsg = {
+        messageId: 'msg-recv-focus-001',
+        roomId: ROOM_ID,
+        senderId: COUNTERPART_USER_ID,
+        content: 'Hello from friend',
+        contentType: 'text',
+        createdAt: new Date(Date.now() - 30_000).toISOString(),
+        deliveredAt: new Date().toISOString(),
+      };
+
+      mockMessagesQueryResult = {
+        data: {
+          pages: [{
+            items: [receivedMsg],
+            nextToken: null,
+          }],
+        },
+        isLoading: false,
+        isError: false,
+      };
+
+      renderScreen();
+
+      expect(mockMarkReadMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roomId: ROOM_ID,
+          lastMessageId: 'msg-recv-focus-001',
+        }),
+      );
+    },
+  );
+
+  it(
+    'given no received messages in the query, when ChatRoomScreen mounts, then useMarkReadMutation.mutate is NOT called',
+    () => {
+      // Only a sent message — no received messages.
+      mockMessagesQueryResult = {
+        data: {
+          pages: [{
+            items: [{
+              messageId: 'msg-sent-only',
+              roomId: ROOM_ID,
+              senderId: CURRENT_USER_ID,
+              content: 'Only my message',
+              contentType: 'text',
+              createdAt: new Date(Date.now() - 60_000).toISOString(),
+              deliveredAt: null,
+            }],
+            nextToken: null,
+          }],
+        },
+        isLoading: false,
+        isError: false,
+      };
+
+      renderScreen();
+
+      expect(mockMarkReadMutate).not.toHaveBeenCalled();
     },
   );
 });

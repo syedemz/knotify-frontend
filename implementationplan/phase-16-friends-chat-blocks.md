@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.6 complete — ChatRoomScreen subscription + status icons + AppState resume: added useOnMessageInRoomSubscription wiring with remountKey parameter, AppState handler for cache invalidation + subscription remount on foreground resume, ErrorState for messages query error, 'sending' Clock status icon in MessageBubble, error-safe handleSend with try/catch; test delta +16: 25 ChatRoomScreen tests + 14 MessageBubble tests; tsc zero errors; eslint zero new errors)
+last_updated: 2026-11-16 (story 16.CH1 complete — read-receipt subscription + 'read' status tick: added useOnReadReceiptSubscription + useMarkReadMutation + useReadReceiptQuery + readReceiptsQueryKey + ReadReceiptCacheEntry to api.ts; wired useOnReadReceiptSubscription + useMarkReadMutation (useFocusEffect debounce) + useReadReceiptQuery into ChatRoomScreen; messages useMemo now passes lastReadMessageCreatedAt hint to adaptMessageToChatMessage; test delta +20: 36 useChatHooks tests + 30 ChatRoomScreen tests; tsc zero errors; eslint zero new errors)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -356,7 +356,7 @@ stories:
   - id: 16.CH1
     title: Read-receipt subscription + 'read' status tick
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 154
     depends_on: [16.6]
     acceptance_criteria:

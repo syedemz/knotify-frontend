@@ -13,6 +13,11 @@
  * messages-query failures, and 'sending' → 'sent' → 'delivered' status-icon
  * transitions (the 'sending' clock lives in MessageBubble).
  *
+ * Story 16.CH1: adds read-receipt subscription (`useOnReadReceiptSubscription`),
+ * mark-as-read on focus (`useMarkReadMutation` debounced via `useFocusEffect`),
+ * and 'read' status tick — passes `lastReadMessageCreatedAt` hint to the shape
+ * adapter so sent messages that have been read show two blue ticks.
+ *
  * **Rules of Hooks.** ALL hooks are declared before any conditional return.
  * Derived values that depend on the resolved state are computed after all hooks.
  *
@@ -32,7 +37,7 @@ import {
 } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,8 +47,11 @@ import { EmptyState, ErrorState, LoadingState, Heading, TouchableArea } from '@/
 import { t } from '@/labels';
 import {
   messagesQueryKey,
+  useMarkReadMutation,
   useMessagesQuery,
   useOnMessageInRoomSubscription,
+  useOnReadReceiptSubscription,
+  useReadReceiptQuery,
   useRoomsQuery,
   useSendMessageMutation,
 } from '@/features/chat/api';
@@ -171,14 +179,77 @@ export function ChatRoomScreen(): React.ReactElement {
   // `subscriptionKey` is incremented (on AppState resume).
   useOnMessageInRoomSubscription(roomId, currentUserId, subscriptionKey);
 
+  // ── Read-receipt subscription (16.CH1) ────────────────────────────────────
+  //
+  // Subscribes to `onReadReceipt(roomId)`. On receipt, stores enriched
+  // `ReadReceiptCacheEntry` in `['readReceipts', roomId]`. Unmount tears down.
+  useOnReadReceiptSubscription(roomId);
+
+  // ── Read-receipt cache query (16.CH1) ─────────────────────────────────────
+  //
+  // Reactive read of the latest receipt stored by the subscription above.
+  // `enabled: false` — no network fetch, reads from setQueryData writes only.
+  const readReceiptQuery = useReadReceiptQuery(roomId);
+  const lastReadMessageCreatedAt = readReceiptQuery.data?.lastReadMessageCreatedAt ?? undefined;
+
+  // ── Mark-as-read on focus (16.CH1) ────────────────────────────────────────
+  //
+  // Fires `markAsRead` once per focus event (not per render). The `useRef`
+  // tracks the latest received message id so we always mark up to the
+  // most-recently-visible message, even if the focus fires before the query
+  // has fully resolved (the ref is updated separately after messages load).
+  const markReadMutation = useMarkReadMutation();
+
+  // A ref that tracks the latest *received* (from friend) message id visible
+  // in the current page window. Updated after messages resolve (see useMemo).
+  const latestReceivedMessageIdRef = useRef<string | null>(null);
+
+  // Debounced mark-as-read: fires at most once per focus event.
+  useFocusEffect(
+    useCallback(() => {
+      const latestId = latestReceivedMessageIdRef.current;
+      if (latestId !== null) {
+        markReadMutation.mutate({ roomId, lastMessageId: latestId });
+      }
+      // `markReadMutation.mutate` is stable across renders (TanStack mutation
+      // object identity is stable); `roomId` is a route param — no extra deps.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roomId]),
+  );
+
   // Flatten pages of messages into a single array and adapt to ChatMessage.
   // The infinite query pages are ordered oldest-first; flatten preserves that.
   const messages: readonly ChatMessage[] = useMemo(() => {
     if (messagesQuery.data === undefined) return [];
-    return messagesQuery.data.pages.flatMap((page) =>
-      page.items.map((msg) => adaptMessageToChatMessage(msg, currentUserId)),
+
+    // Track the latest received-message id for the mark-read focus handler.
+    // ISO-8601 string comparison is lexicographically equivalent to chronological
+    // order (the server uses UTC ISO strings), so we find the max by createdAt.
+    let latestReceivedId: string | null = null;
+    let latestReceivedCreatedAt: string | null = null;
+
+    const adapted = messagesQuery.data.pages.flatMap((page) =>
+      page.items.map((msg) => {
+        if (msg.senderId !== currentUserId) {
+          if (
+            latestReceivedCreatedAt === null ||
+            msg.createdAt > latestReceivedCreatedAt
+          ) {
+            latestReceivedId = msg.messageId;
+            latestReceivedCreatedAt = msg.createdAt;
+          }
+        }
+        return adaptMessageToChatMessage(msg, currentUserId, {
+          lastReadMessageCreatedAt,
+        });
+      }),
     );
-  }, [messagesQuery.data, currentUserId]);
+
+    // Update the ref so the focus handler always has the latest id.
+    latestReceivedMessageIdRef.current = latestReceivedId;
+
+    return adapted;
+  }, [messagesQuery.data, currentUserId, lastReadMessageCreatedAt]);
 
   // Reverse for the inverted FlatList (newest at index 0 = bottom of screen).
   const messagesDescending = useMemo(() => [...messages].reverse(), [messages]);

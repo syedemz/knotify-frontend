@@ -7,8 +7,9 @@
  * authored in this module (real-backend-only per PRD 16.4).
  *
  * Query keys (§7.3 tuple convention):
- *   - Rooms:    `ROOMS_QUERY_KEY`      = `['rooms']`
- *   - Messages: `messagesQueryKey(id)` = `['messages', roomId]`
+ *   - Rooms:         `ROOMS_QUERY_KEY`           = `['rooms']`
+ *   - Messages:      `messagesQueryKey(id)`       = `['messages', roomId]`
+ *   - ReadReceipts:  `readReceiptsQueryKey(id)`   = `['readReceipts', roomId]`
  *
  * @module features/chat/api
  */
@@ -27,6 +28,7 @@ import type {
   ChatRoom,
   Message,
   MessageConnection,
+  MessageRead,
 } from '@/services/graphql/types';
 import { adaptMessageToChatMessage, makeOptimisticChatMessage } from './shapeAdapters';
 import type { ChatMessage } from '@/types/ChatMessage';
@@ -592,4 +594,252 @@ function chatMessageToFakeMessage(chatMsg: ChatMessage): Message {
     createdAt: new Date(chatMsg.timestamp).toISOString(),
     deliveredAt: null,
   };
+}
+
+// ── readReceiptsQueryKey ───────────────────────────────────────────────────
+
+/**
+ * Returns the TanStack Query key for a room's latest read-receipt state.
+ *
+ * Uses a two-element tuple per §7.3. Stored via `queryClient.setQueryData`
+ * when a `MessageRead` subscription event arrives or when `markAsRead`
+ * succeeds.
+ *
+ * @param roomId - The opaque room identifier.
+ * @returns A `readonly [string, string]` tuple.
+ */
+export function readReceiptsQueryKey(roomId: string): readonly ['readReceipts', string] {
+  return ['readReceipts', roomId] as const;
+}
+
+// ── Enriched read-receipt cache entry ─────────────────────────────────────
+
+/**
+ * The shape stored in `['readReceipts', roomId]`.
+ *
+ * Extends the server `MessageRead` with a client-derived
+ * `lastReadMessageCreatedAt` field (the ISO-8601 `createdAt` of the
+ * message identified by `lastReadMessageId`). This is needed because the
+ * shape adapter compares `message.createdAt <= lastReadMessageCreatedAt`
+ * rather than comparing opaque IDs (per PRD AC 2 — createdAt sort-key).
+ */
+export interface ReadReceiptCacheEntry extends MessageRead {
+  /**
+   * The ISO-8601 `createdAt` of the message with id `lastReadMessageId`,
+   * looked up from the `['messages', roomId]` cache at the time the receipt
+   * arrived. `null` when the message was not found in the local cache (e.g.
+   * the message is older than the loaded page window — the read tick will not
+   * be shown for those messages, which is an acceptable edge-case for now).
+   */
+  readonly lastReadMessageCreatedAt: string | null;
+}
+
+// ── useReadReceiptQuery ────────────────────────────────────────────────────
+
+/**
+ * Reads the latest cached read-receipt for a given room.
+ *
+ * Data is populated by `useOnReadReceiptSubscription` and
+ * `useMarkReadMutation` via `queryClient.setQueryData`. This hook is
+ * `enabled: false` — it only reads from cache, never fetches from the
+ * network.
+ *
+ * Returns `undefined` when no receipt has arrived yet for this room.
+ *
+ * @param roomId - The opaque room identifier.
+ */
+export function useReadReceiptQuery(roomId: string) {
+  return useQuery<ReadReceiptCacheEntry | undefined>({
+    queryKey: readReceiptsQueryKey(roomId),
+    queryFn: () => undefined,
+    enabled: false,
+  });
+}
+
+// ── GraphQL documents (read-receipt) ──────────────────────────────────────
+
+const ON_READ_RECEIPT_SUBSCRIPTION = /* GraphQL */ `
+  subscription OnReadReceipt($roomId: ID!) {
+    onReadReceipt(roomId: $roomId) {
+      roomId
+      userId
+      lastReadMessageId
+      lastReadAt
+    }
+  }
+`;
+
+const MARK_AS_READ_MUTATION = /* GraphQL */ `
+  mutation MarkAsRead($lastMessageId: ID!, $roomId: ID!) {
+    markAsRead(lastMessageId: $lastMessageId, roomId: $roomId) {
+      roomId
+      userId
+      lastReadMessageId
+      lastReadAt
+    }
+  }
+`;
+
+// ── useOnReadReceiptSubscription ───────────────────────────────────────────
+
+/**
+ * Subscribes to the `onReadReceipt(roomId)` AppSync subscription and
+ * updates the `['readReceipts', roomId]` TanStack Query cache when the
+ * counterpart reads our messages.
+ *
+ * On each incoming `MessageRead` event, the hook:
+ * 1. Looks up the `createdAt` of `lastReadMessageId` from the
+ *    `['messages', roomId]` cache (needed for the `createdAt`-based
+ *    comparator in the shape adapter per PRD AC 2).
+ * 2. Stores the enriched `ReadReceiptCacheEntry` in `['readReceipts', roomId]`
+ *    via `queryClient.setQueryData`, which triggers re-renders in any
+ *    subscriber (e.g. `ChatRoomScreen` via `useReadReceiptQuery`).
+ *
+ * Only patches messages where `message.senderId === currentUserId` is implied
+ * by context — the shape adapter enforces the sender check; this hook simply
+ * stores the receipt and lets the adapter decide what to show.
+ *
+ * Uses a `useEffect` + `.subscribe()` / `.unsubscribe()` lifecycle.
+ * Cleans up on unmount or when `roomId` changes.
+ *
+ * @param roomId - The room to subscribe to.
+ */
+export function useOnReadReceiptSubscription(roomId: string): void {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const client = getAppsyncClient();
+
+    const sub = (
+      client.graphql({
+        query: ON_READ_RECEIPT_SUBSCRIPTION,
+        variables: { roomId },
+      }) as unknown as {
+        subscribe: (handlers: {
+          next: (event: { data: { onReadReceipt: MessageRead | null } }) => void;
+          error: (err: unknown) => void;
+        }) => { unsubscribe: () => void };
+      }
+    ).subscribe({
+      next: (event) => {
+        const receipt = event?.data?.onReadReceipt;
+        if (!receipt) return;
+
+        // Derive the createdAt of the read-up-to message from the local cache.
+        // We need this for the createdAt-based comparator in the shape adapter.
+        const cached = queryClient.getQueryData<{ pages: MessageConnection[] }>(
+          messagesQueryKey(roomId),
+        );
+        let lastReadMessageCreatedAt: string | null = null;
+        if (cached) {
+          for (const page of cached.pages) {
+            for (const item of page.items) {
+              if (item.messageId === receipt.lastReadMessageId) {
+                lastReadMessageCreatedAt = item.createdAt;
+                break;
+              }
+            }
+            if (lastReadMessageCreatedAt !== null) break;
+          }
+        }
+
+        const entry: ReadReceiptCacheEntry = {
+          ...receipt,
+          lastReadMessageCreatedAt,
+        };
+
+        queryClient.setQueryData<ReadReceiptCacheEntry>(
+          readReceiptsQueryKey(roomId),
+          entry,
+        );
+      },
+      error: (err: unknown) => {
+        console.warn('[useOnReadReceiptSubscription] subscription error', err);
+      },
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
+  }, [roomId, queryClient]);
+}
+
+// ── useMarkReadMutation ────────────────────────────────────────────────────
+
+/**
+ * Variables accepted by {@link useMarkReadMutation}.
+ */
+export interface MarkReadVars {
+  /**
+   * The `messageId` of the most-recent received message to mark as read.
+   * Maps to the `lastMessageId` arg on the `markAsRead` AppSync mutation.
+   */
+  lastMessageId: string;
+  /** The room the messages belong to. */
+  roomId: string;
+}
+
+/**
+ * Marks messages in a room as read up to `lastMessageId` via the
+ * `markAsRead(lastMessageId, roomId): MessageRead!` AppSync mutation.
+ *
+ * On success, enriches the returned `MessageRead` with the matching
+ * `lastReadMessageCreatedAt` from the local messages cache and stores it
+ * in `['readReceipts', roomId]`. This triggers `useReadReceiptQuery`
+ * subscribers (e.g. `ChatRoomScreen`) to re-render and show 'read' ticks.
+ *
+ * The mutation has no optimistic update — the read tick appears only after
+ * the server round-trip succeeds, which is the correct UX (we do not want
+ * to show 'read' before the server confirms it).
+ *
+ * @example
+ * ```tsx
+ * const markRead = useMarkReadMutation();
+ * markRead.mutate({ roomId: 'room-001', lastMessageId: 'msg-latest-003' });
+ * ```
+ *
+ * @returns A TanStack mutation object.
+ */
+export function useMarkReadMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<MessageRead, Error, MarkReadVars>({
+    mutationFn: async ({ lastMessageId, roomId }): Promise<MessageRead> => {
+      const client = getAppsyncClient();
+      const response = (await client.graphql({
+        query: MARK_AS_READ_MUTATION,
+        variables: { lastMessageId, roomId },
+      })) as { data: { markAsRead: MessageRead } };
+      return response.data.markAsRead;
+    },
+
+    onSuccess: (receipt, { roomId }) => {
+      // Enrich with createdAt looked up from the local messages cache.
+      const cached = queryClient.getQueryData<{ pages: MessageConnection[] }>(
+        messagesQueryKey(roomId),
+      );
+      let lastReadMessageCreatedAt: string | null = null;
+      if (cached) {
+        for (const page of cached.pages) {
+          for (const item of page.items) {
+            if (item.messageId === receipt.lastReadMessageId) {
+              lastReadMessageCreatedAt = item.createdAt;
+              break;
+            }
+          }
+          if (lastReadMessageCreatedAt !== null) break;
+        }
+      }
+
+      const entry: ReadReceiptCacheEntry = {
+        ...receipt,
+        lastReadMessageCreatedAt,
+      };
+
+      queryClient.setQueryData<ReadReceiptCacheEntry>(
+        readReceiptsQueryKey(roomId),
+        entry,
+      );
+    },
+  });
 }
