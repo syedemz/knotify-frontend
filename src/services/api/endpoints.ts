@@ -203,3 +203,64 @@ export const friendRequestsApi = {
       path: `/friend-requests/${requestId}`,
     }),
 } as const;
+
+// ── Blocks ────────────────────────────────────────────────────────────────────
+
+/**
+ * Minimal shape of a blocked-user record returned by `GET /blocks`.
+ *
+ * Per architecture §11.2.8: each row contains the `user_id` of the user the
+ * signed-in user has blocked. Additional fields (e.g. profile snapshot) may
+ * be added by the backend; the client only requires `user_id` for the
+ * BlockedUsersScreen list (story 16.10).
+ */
+export interface BlockedUser {
+  /** `user_id` of the blocked user. */
+  user_id: string;
+  /** ISO-8601 timestamp when the block was created. */
+  created_at: string;
+}
+
+/**
+ * Typed helpers for `/blocks/*` endpoints per architecture §11.2.8.
+ */
+export const blocksApi = {
+  /**
+   * `GET /blocks` — fetch the list of users the signed-in user has blocked.
+   *
+   * Returns an array of {@link BlockedUser} records. The endpoint requires a
+   * valid session JWT.
+   *
+   * @returns An array of {@link BlockedUser} records (may be empty).
+   */
+  list: (): Promise<readonly BlockedUser[]> =>
+    request<readonly BlockedUser[]>({ method: 'GET', path: '/blocks' }),
+
+  /**
+   * `POST /blocks` — block a user.
+   *
+   * Returns the newly-created {@link BlockedUser} record. Throws
+   * {@link ApiError} on failure (e.g. 404 when `userId` does not exist).
+   *
+   * @param userId - `user_id` of the user to block.
+   * @returns The created {@link BlockedUser} record.
+   */
+  block: (userId: string): Promise<BlockedUser> =>
+    request<BlockedUser>({
+      method: 'POST',
+      path: '/blocks',
+      body: { user_id: userId },
+    }),
+
+  /**
+   * `DELETE /blocks/{userId}` — unblock a previously-blocked user.
+   *
+   * Returns the deleted {@link BlockedUser} record. Throws {@link ApiError}
+   * with `status === 404` when no matching block exists.
+   *
+   * @param userId - `user_id` of the user to unblock.
+   * @returns The deleted {@link BlockedUser} record.
+   */
+  unblock: (userId: string): Promise<BlockedUser> =>
+    request<BlockedUser>({ method: 'DELETE', path: `/blocks/${userId}` }),
+} as const;

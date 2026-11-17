@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.2 complete — FriendsListScreen thin wire: LoadingState/EmptyState/ErrorState/FlatList of ListRow + OtherProfileScreen row-tap navigation + 17 wiring tests)
+last_updated: 2026-11-16 (story 16.9 complete — blocksApi endpoints + useBlockedUsersQuery/useBlockUserMutation/useUnblockUserMutation hooks + cross-cache purge on block + 23 tests)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -408,7 +408,7 @@ stories:
   - id: 16.9
     title: Blocks endpoints + hooks + cross-cache purge
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 157
     depends_on: [16.FR1]
     acceptance_criteria:
