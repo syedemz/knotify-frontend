@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.9 complete — blocksApi endpoints + useBlockedUsersQuery/useBlockUserMutation/useUnblockUserMutation hooks + cross-cache purge on block + 23 tests)
+last_updated: 2026-11-16 (story 16.4 complete — chat feature hooks + shape adapter: ROOMS_QUERY_KEY/messagesQueryKey + useRoomsQuery/useMessagesQuery/useCreateOrGetRoomMutation/useSendMessageMutation/useOnMessageInRoomSubscription + shapeAdapters.ts adaptMessageToChatMessage/makeOptimisticChatMessage + ChatMessage.status extended with 'sending' + 41 new tests)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -292,7 +292,7 @@ stories:
   - id: 16.4
     title: Chat feature hooks + shape adapter (real backend)
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 151
     depends_on: [16.3]
     acceptance_criteria:
