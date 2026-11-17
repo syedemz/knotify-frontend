@@ -33,6 +33,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   AppState,
   FlatList,
   ImageBackground,
@@ -67,6 +68,7 @@ import {
 import { TypingIndicatorRow } from '@/features/chat/components/TypingIndicatorRow';
 import { useProfileQuery } from '@/features/profile/api';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
+import { useBlockUserMutation } from '@/features/blocks/api';
 import { adaptMessageToChatMessage } from '@/features/chat/shapeAdapters';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
@@ -145,6 +147,9 @@ export function ChatRoomScreen(): React.ReactElement {
 
   // Send mutation (optimistic append per 16.4).
   const sendMutation = useSendMessageMutation(currentUserId);
+
+  // Block mutation (story 16.10): single-item action sheet on triple-dot.
+  const blockMutation = useBlockUserMutation();
 
   const [composerText, setComposerText] = useState('');
 
@@ -379,10 +384,44 @@ export function ChatRoomScreen(): React.ReactElement {
   }, [navigation]);
 
   const handleMenuPress = useCallback(() => {
-    // No-op: chat room menu is not fully implemented in story 16.5.
-    // Story 16.10 adds the block action via a single-item action sheet.
-    console.log('chat room menu — not fully implemented yet');
-  }, []);
+    // Single-item action sheet (story 16.10 AC 2).
+    // counterpartUserId is derived before this handler fires (see useMemo above).
+    // Alert.alert is the accepted cross-platform pattern for this phase.
+    Alert.alert(
+      t('blocks.action.sheetTitle'),
+      undefined,
+      [
+        {
+          text: t('blocks.action.blockLabel'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('blocks.action.confirmTitle'),
+              t('blocks.action.confirmMessage'),
+              [
+                { text: t('blocks.action.cancel'), style: 'cancel' },
+                {
+                  text: t('blocks.action.confirmBlock'),
+                  style: 'destructive',
+                  onPress: () => {
+                    if (counterpartUserId !== '') {
+                      blockMutation.mutate({ userId: counterpartUserId });
+                    }
+                    navigation.goBack();
+                  },
+                },
+              ],
+            );
+          },
+        },
+        { text: t('blocks.action.cancel'), style: 'cancel' },
+      ],
+    );
+    // counterpartUserId is a derived value (useMemo) but stable as long as the
+    // room record and currentUserId are stable. We include it in deps rather
+    // than using a ref because the hook order is unconditional and the dep
+    // array keeps the closure fresh.
+  }, [blockMutation, counterpartUserId, navigation]);
 
   const handleSend = useCallback(async () => {
     const trimmed = composerText.trim();

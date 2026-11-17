@@ -684,5 +684,23 @@
       "sayHiLabel": "ہیلو کہیں",
       "notNowLabel": "ابھی نہیں"
     }
+  },
+  "blocks": {
+    "blockedUsers": {
+      "headerTitle": "بلاک شدہ صارفین",
+      "emptyTitle": "کوئی بلاک شدہ صارف نہیں",
+      "emptyDescription": "جن صارفین کو آپ بلاک کریں گے وہ یہاں نظر آئیں گے۔",
+      "errorTitle": "بلاک شدہ صارفین لوڈ نہیں ہو سکے",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "unblockButton": "بلاک ختم کریں"
+    },
+    "action": {
+      "sheetTitle": "اختیارات",
+      "blockLabel": "بلاک کریں",
+      "confirmTitle": "اس صارف کو بلاک کریں؟",
+      "confirmMessage": "وہ آپ سے رابطہ نہیں کر سکیں گے۔",
+      "confirmBlock": "بلاک کریں",
+      "cancel": "منسوخ کریں"
+    }
   }
 }

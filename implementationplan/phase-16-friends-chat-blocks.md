@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-17 (story 16.8 complete — FriendRequestSubscriptionListener + DevTriggersPanel teardown: added useOnFriendRequestUpdatedSubscription to friendRequests/api.ts; created FriendRequestSubscriptionListener component (Notification.type branch: friend_request opens IncomingRequestModal; friend_request_accepted opens RequestAcceptedModal; unknown types fall through to cache invalidation; async-profile-hydration gates modal visibility on useProfileQuery resolve; AppState resume bumps remountKey + invalidates INCOMING cache); mounted above <Tab.Navigator> in AppTabs; deleted DevTriggersPanel + its label keys + its test; AppearanceSection small touch (unrelated to 16.8 scope — see diff); 80 friendRequests tests pass incl. new FriendRequestSubscriptionListener suite; tsc zero errors; AppTabs ESM pre-existing failure unchanged)
+last_updated: 2026-11-17 (story 16.10 complete — BlockedUsersScreen thin wire + block action entry points: created BlockedUsersScreen at src/features/blocks/screens/BlockedUsersScreen.tsx (FlatList of ListRow with Unblock Button wired to useUnblockUserMutation; loading/empty/error/ready states via catalog components); registered BlockedUsersScreen in ExploreStackParamList + ExploreStack; OtherProfileScreen and ChatRoomScreen gain block action via Alert.alert two-step (action sheet → confirm dialog → blockMutation.mutate + navigation.goBack()); added blocks.blockedUsers.* + blocks.action.* labels to labels.en.json + labels.ur.json; fixed ExploreStack.test.tsx (added BlockedUsersScreen stub); 2763→2796 passing (+33); tsc zero errors; eslint zero new errors; AppTabs ESM pre-existing failure unchanged)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -422,7 +422,7 @@ stories:
   - id: 16.10
     title: BlockedUsersScreen thin wire + block toggle entry points (single-item action sheet)
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 158
     depends_on: [16.9]
     acceptance_criteria:

@@ -190,6 +190,17 @@ const mockUseOnTypingInRoomSubscription = jest.fn((_roomId: any, _currentUserId:
 });
 const mockSetTypingMutate = jest.fn();
 
+// ── useBlockUserMutation mock ─────────────────────────────────────────────────
+
+const mockBlockMutate = jest.fn();
+
+jest.mock('@/features/blocks/api', () => ({
+  useBlockUserMutation: () => ({
+    mutate: mockBlockMutate,
+    isPending: false,
+  }),
+}));
+
 jest.mock('@/features/chat/api', () => ({
   useRoomsQuery: () => mockRoomsQueryResult,
   useMessagesQuery: () => mockMessagesQueryResult,
@@ -252,7 +263,7 @@ jest.mock('@/features/profile/api', () => ({
 
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
-import { AppState } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { ThemeProvider } from '@/theme';
 import type { UserProfile } from '@/types/api/UserProfile';
 
@@ -308,6 +319,7 @@ beforeEach(() => {
   mockReadReceiptQueryResult = { data: undefined };
   mockUseOnTypingInRoomSubscription.mockClear();
   mockSetTypingMutate.mockClear();
+  mockBlockMutate.mockClear();
   capturedTypingEventCallback = null;
 
   // Default: Mehvish profile resolved, two test messages
@@ -1136,4 +1148,85 @@ describe('ChatRoomScreen — AC (w): unmount fires final setTyping(false)', () =
       expect(falseCalls.length).toBe(0);
     },
   );
+});
+
+// ── AC (story 16.10): Block action via triple-dot menu in ChatRoomScreen ────────
+//
+// The triple-dot (chat-room-menu-btn) previously was a no-op. Story 16.10 wires
+// it to an Alert.alert action sheet with a single "Block" option. Confirm →
+// blockMutation.mutate({ userId: counterpartUserId }) + navigation.goBack().
+
+describe('ChatRoomScreen — block action via triple-dot menu (story 16.10)', () => {
+  it('given ChatRoomScreen is rendered, then chat-room-menu-btn is present', () => {
+    const { getByTestId } = renderScreen();
+    expect(getByTestId('chat-room-menu-btn')).toBeTruthy();
+  });
+
+  it('tapping the menu button opens Alert.alert with Block option', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    const [title] = alertSpy.mock.calls[0] as [string, ...unknown[]];
+    expect(title).toBe('Options');
+  });
+
+  it('tapping Block in the action sheet opens a confirm Alert', () => {
+    // Action sheet: index 0 = "Block" (destructive). On first Alert: press Block.
+    // This triggers the second Alert (confirm dialog) to appear.
+    const capturedTitles: string[] = [];
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (title, _msg, buttons) => {
+        capturedTitles.push(title);
+        // On first call (action sheet): press "Block" to trigger the confirm dialog.
+        if (capturedTitles.length === 1) {
+          const btns = buttons as Array<{ onPress?: () => void }>;
+          btns[0]?.onPress?.();
+        }
+      },
+    );
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    // Both the action-sheet and the confirm dialog should have been shown.
+    expect(capturedTitles).toContain('Options');
+    expect(capturedTitles).toContain('Block this user?');
+  });
+
+  it('confirming Block calls blockMutation.mutate with counterpartUserId', () => {
+    // Action sheet: index 0 = "Block". Confirm dialog: index 1 = confirm "Block".
+    let alertCallCount = 0;
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        alertCallCount += 1;
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        if (alertCallCount === 1) {
+          btns[0]?.onPress?.();
+        } else {
+          btns[1]?.onPress?.();
+        }
+      },
+    );
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    expect(mockBlockMutate).toHaveBeenCalledTimes(1);
+    expect(mockBlockMutate).toHaveBeenCalledWith({ userId: COUNTERPART_USER_ID });
+  });
+
+  it('confirming Block calls navigation.goBack()', () => {
+    let alertCallCount = 0;
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        alertCallCount += 1;
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        if (alertCallCount === 1) {
+          btns[0]?.onPress?.();
+        } else {
+          btns[1]?.onPress?.();
+        }
+      },
+    );
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    expect(mockGoBack).toHaveBeenCalled();
+  });
 });

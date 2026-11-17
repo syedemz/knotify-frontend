@@ -28,7 +28,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
@@ -55,6 +55,7 @@ import {
   useDeclineFriendRequestMutation,
 } from '@/features/friendRequests/api';
 import { useProfileQuery } from '@/features/profile/api';
+import { useBlockUserMutation } from '@/features/blocks/api';
 
 import { BackHeaderBar } from '../components/BackHeaderBar';
 import { FloatingChatButton } from '../components/FloatingChatButton';
@@ -83,6 +84,7 @@ export function OtherProfileScreen(): React.ReactElement {
   const profileQuery = useProfileQuery(userId);
   const acceptMutation = useAcceptFriendRequestMutation();
   const declineMutation = useDeclineFriendRequestMutation();
+  const blockMutation = useBlockUserMutation();
 
   const friends = friendsQuery.data ?? [];
   const requests = requestsQuery.data ?? [];
@@ -176,8 +178,37 @@ export function OtherProfileScreen(): React.ReactElement {
   }, [declineMutation, incomingRequest, navigation]);
 
   const handleMenuPress = useCallback(() => {
-    setSnackbarMsg(t('otherProfile.menu.comingSoonToast'));
-  }, []);
+    // Single-item action sheet pattern (story 16.10 AC 2).
+    // Alert.alert is the accepted cross-platform approach for this phase.
+    Alert.alert(
+      t('blocks.action.sheetTitle'),
+      undefined,
+      [
+        {
+          text: t('blocks.action.blockLabel'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('blocks.action.confirmTitle'),
+              t('blocks.action.confirmMessage'),
+              [
+                { text: t('blocks.action.cancel'), style: 'cancel' },
+                {
+                  text: t('blocks.action.confirmBlock'),
+                  style: 'destructive',
+                  onPress: () => {
+                    blockMutation.mutate({ userId });
+                    navigation.goBack();
+                  },
+                },
+              ],
+            );
+          },
+        },
+        { text: t('blocks.action.cancel'), style: 'cancel' },
+      ],
+    );
+  }, [blockMutation, navigation, userId]);
 
   const handleChatPress = useCallback(() => {
     if (profile === undefined) {

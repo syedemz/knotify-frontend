@@ -684,5 +684,23 @@
       "sayHiLabel": "Say hi",
       "notNowLabel": "Not now"
     }
+  },
+  "blocks": {
+    "blockedUsers": {
+      "headerTitle": "Blocked Users",
+      "emptyTitle": "No blocked users",
+      "emptyDescription": "Users you block will appear here.",
+      "errorTitle": "Could not load blocked users",
+      "errorDescription": "Check your connection and try again.",
+      "unblockButton": "Unblock"
+    },
+    "action": {
+      "sheetTitle": "Options",
+      "blockLabel": "Block",
+      "confirmTitle": "Block this user?",
+      "confirmMessage": "They will no longer be able to contact you.",
+      "confirmBlock": "Block",
+      "cancel": "Cancel"
+    }
   }
 }

@@ -118,6 +118,22 @@ jest.mock('@/features/friends/screens/FriendsListScreen', () => {
   };
 });
 
+// BlockedUsersScreen stub: renders identifiable text. Added in story 16.10 when
+// the screen was registered in the Explore stack.
+jest.mock('@/features/blocks/screens/BlockedUsersScreen', () => {
+  const RN = require('react-native') as typeof import('react-native');
+  const Rct = require('react') as typeof import('react');
+  return {
+    BlockedUsersScreen: function StubBlockedUsersScreen() {
+      return Rct.createElement(
+        RN.View,
+        { testID: 'blocked-users-screen' },
+        Rct.createElement(RN.Text, null, 'BLOCKED_USERS'),
+      );
+    },
+  };
+});
+
 // OtherProfileScreen stub: renders identifiable text + a pressable back button.
 jest.mock('@/features/profile/screens/OtherProfileScreen', () => {
   const RN = require('react-native') as typeof import('react-native');

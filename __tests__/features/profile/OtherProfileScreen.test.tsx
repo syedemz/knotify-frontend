@@ -65,6 +65,7 @@ jest.mock('react-native-safe-area-context', () => {
 
 import React from 'react';
 import { render, fireEvent, screen, act } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { ThemeProvider } from '@/theme';
 import { OtherProfileScreen } from '@/features/profile/screens/OtherProfileScreen';
 import type { UserProfile } from '@/types/api/UserProfile';
@@ -81,6 +82,7 @@ const dummyQurat = dummyQuratRaw as unknown as UserProfile;
 
 const mockAcceptMutate = jest.fn();
 const mockDeclineMutate = jest.fn();
+const mockBlockMutate = jest.fn();
 
 // ── Query hook mocks ──────────────────────────────────────────────────────────
 
@@ -130,6 +132,13 @@ jest.mock('@/features/profile/api', () => ({
     isError: mockProfileError,
   }),
   profileQueryKey: (userId: string) => ['profile', userId],
+}));
+
+jest.mock('@/features/blocks/api', () => ({
+  useBlockUserMutation: () => ({
+    mutate: mockBlockMutate,
+    isPending: false,
+  }),
 }));
 
 // ── Navigation + routing mocks ─────────────────────────────────────────────────
@@ -478,5 +487,91 @@ describe('OtherProfileScreen — AC (l): chat FAB opens ChatRoom via useOpenChat
     fireEvent.press(screen.getByTestId('floating-chat-button'));
 
     expect(screen.queryByText('Chat coming soon')).toBeNull();
+  });
+});
+
+// ── AC (story 16.10): Block action via overflow menu on friend view ────────────
+//
+// The menu button (back-header-menu-button) is only shown when source='friend'
+// (OtherProfileScreen passes `onMenuPress` to BackHeaderBar only for friend view).
+// Tapping it → Alert.alert (action sheet) → tapping "Block" → confirm Alert →
+// tapping confirm → blockMutation.mutate + navigation.goBack().
+
+describe('OtherProfileScreen — block action (story 16.10)', () => {
+  beforeEach(() => {
+    mockRoute = { params: { userId: dummyMehvish.user_id, source: 'friend' } };
+    mockProfileData = dummyMehvish;
+  });
+
+  it('menu button (kebab) is rendered for friend view', () => {
+    renderScreen();
+    expect(screen.getByTestId('back-header-menu-button')).toBeTruthy();
+  });
+
+  it('tapping menu opens Alert.alert (action sheet) with Block option', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    renderScreen();
+    fireEvent.press(screen.getByTestId('back-header-menu-button'));
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    // First Alert call: the action-sheet with the Block option.
+    const [title] = alertSpy.mock.calls[0] as [string, ...unknown[]];
+    expect(title).toBe('Options');
+  });
+
+  it('tapping Block in the action sheet opens a confirm Alert', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        // On first call (action sheet): simulate pressing the first button (Block).
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        btns[0]?.onPress?.();
+      },
+    );
+    renderScreen();
+    fireEvent.press(screen.getByTestId('back-header-menu-button'));
+    // Alert.alert should have been called twice: action sheet + confirm dialog.
+    expect(alertSpy).toHaveBeenCalledTimes(2);
+    const [confirmTitle] = alertSpy.mock.calls[1] as [string, ...unknown[]];
+    expect(confirmTitle).toBe('Block this user?');
+  });
+
+  it('confirming Block calls blockMutation.mutate with the viewed userId', () => {
+    // Action sheet: index 0 = "Block" (destructive), index 1 = "Cancel".
+    // Confirm dialog: index 0 = "Cancel", index 1 = "Block" (confirm).
+    let alertCallCount = 0;
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        alertCallCount += 1;
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        if (alertCallCount === 1) {
+          // First Alert (action sheet): press "Block" at index 0.
+          btns[0]?.onPress?.();
+        } else {
+          // Second Alert (confirm dialog): press confirm "Block" at index 1.
+          btns[1]?.onPress?.();
+        }
+      },
+    );
+    renderScreen();
+    fireEvent.press(screen.getByTestId('back-header-menu-button'));
+    expect(mockBlockMutate).toHaveBeenCalledTimes(1);
+    expect(mockBlockMutate).toHaveBeenCalledWith({ userId: dummyMehvish.user_id });
+  });
+
+  it('confirming Block calls navigation.goBack()', () => {
+    let alertCallCount = 0;
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        alertCallCount += 1;
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        if (alertCallCount === 1) {
+          btns[0]?.onPress?.();
+        } else {
+          btns[1]?.onPress?.();
+        }
+      },
+    );
+    renderScreen();
+    fireEvent.press(screen.getByTestId('back-header-menu-button'));
+    expect(mockGoBack).toHaveBeenCalled();
   });
 });
