@@ -609,6 +609,15 @@
       "accessibility": "{name} سے چیٹ کریں"
     }
   },
+  "friends": {
+    "list": {
+      "headerTitle": "دوست",
+      "emptyTitle": "ابھی تک کوئی دوست نہیں",
+      "emptyDescription": "دوستی کی درخواست قبول کریں تاکہ یہاں پروفائلز نظر آئیں۔",
+      "errorTitle": "دوست لوڈ نہیں ہو سکے",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔"
+    }
+  },
   "explore": {
     "title": "دریافت کریں",
     "tabs": {

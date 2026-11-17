@@ -102,6 +102,22 @@ jest.mock('@/features/bookmarks/screens/BookmarkDeckViewScreen', () => {
   };
 });
 
+// FriendsListScreen stub: renders identifiable text. Added in story 16.2 when
+// the screen was registered in the Explore stack.
+jest.mock('@/features/friends/screens/FriendsListScreen', () => {
+  const RN = require('react-native') as typeof import('react-native');
+  const Rct = require('react') as typeof import('react');
+  return {
+    FriendsListScreen: function StubFriendsListScreen() {
+      return Rct.createElement(
+        RN.View,
+        { testID: 'friends-list-screen' },
+        Rct.createElement(RN.Text, null, 'FRIENDS_LIST'),
+      );
+    },
+  };
+});
+
 // OtherProfileScreen stub: renders identifiable text + a pressable back button.
 jest.mock('@/features/profile/screens/OtherProfileScreen', () => {
   const RN = require('react-native') as typeof import('react-native');

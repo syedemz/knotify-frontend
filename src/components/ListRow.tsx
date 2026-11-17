@@ -39,6 +39,11 @@ export interface ListRowProps {
    * Accessibility label for the row. Defaults to `label`.
    */
   accessibilityLabel?: string;
+  /**
+   * Optional test identifier forwarded to the outermost element.
+   * Useful for targeting a specific row in automated tests.
+   */
+  testID?: string;
 }
 
 /**
@@ -62,6 +67,7 @@ export function ListRow({
   onPress,
   disabled = false,
   accessibilityLabel,
+  testID,
 }: ListRowProps) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -96,6 +102,7 @@ export function ListRow({
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
         accessibilityState={{ disabled }}
+        testID={testID}
       >
         {content}
       </Pressable>
@@ -106,6 +113,7 @@ export function ListRow({
     <View
       style={[styles.row, disabled && styles.rowDisabled]}
       accessibilityLabel={accessibilityLabel ?? label}
+      testID={testID}
     >
       {content}
     </View>

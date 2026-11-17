@@ -102,6 +102,8 @@ export type ChatStackParamList = {
  *
  * Screens:
  * - `ExploreHomeScreen` (initial) — Friends + Requests + Bookmarks subtabs.
+ * - `FriendsListScreen` — full standalone list of the signed-in user's friends
+ *   (story 16.2). Accepts no params.
  * - `OtherProfileScreen` — full profile view, pushed from list rows.
  * - `BookmarkDeckViewScreen` — full deck view for a bookmarked profile (story 14.3
  *   registers the type + placeholder; story 14.4 ships the real screen).
@@ -115,6 +117,7 @@ export type ChatStackParamList = {
  */
 export type ExploreStackParamList = {
   ExploreHomeScreen: undefined;
+  FriendsListScreen: undefined;
   OtherProfileScreen: { userId: string; source: 'friend' | 'request' };
   BookmarkDeckViewScreen: { userId: string };
 };

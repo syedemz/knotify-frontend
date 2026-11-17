@@ -18,6 +18,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { ExploreHomeScreen } from '@/features/explore/screens/ExploreHomeScreen';
+import { FriendsListScreen } from '@/features/friends/screens/FriendsListScreen';
 import { OtherProfileScreen } from '@/features/profile/screens/OtherProfileScreen';
 import { BookmarkDeckViewScreen } from '@/features/bookmarks/screens/BookmarkDeckViewScreen';
 import type { ExploreStackParamList } from './types';
@@ -37,6 +38,7 @@ export function ExploreStack(): React.JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ExploreHomeScreen" component={ExploreHomeScreen} />
+      <Stack.Screen name="FriendsListScreen" component={FriendsListScreen} />
       <Stack.Screen name="OtherProfileScreen" component={OtherProfileScreen} />
       <Stack.Screen
         name="BookmarkDeckViewScreen"

@@ -609,6 +609,15 @@
       "accessibility": "Chat with {name}"
     }
   },
+  "friends": {
+    "list": {
+      "headerTitle": "Friends",
+      "emptyTitle": "No friends yet",
+      "emptyDescription": "Accept a friend request to see profiles here.",
+      "errorTitle": "Could not load friends",
+      "errorDescription": "Check your connection and try again."
+    }
+  },
   "explore": {
     "title": "Explore",
     "tabs": {
