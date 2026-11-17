@@ -40,26 +40,20 @@ jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
   }),
 }));
 
-// ── useFriendship mock ────────────────────────────────────────────────────────
+// ── useSendFriendRequestMutation mock (story 16.FR3) ─────────────────────────
 
-const mockSendRequest = jest.fn<Promise<void>, [string]>().mockResolvedValue(undefined);
+const mockSendMutate = jest.fn();
 
-jest.mock('@/state/friendship/FriendshipProvider', () => ({
-  useFriendship: () => ({
-    friends: [],
-    requests: [],
-    acceptRequest: jest.fn(),
-    declineRequest: jest.fn(),
-    isFriend: jest.fn().mockReturnValue(false),
-    receivedRequestFrom: jest.fn().mockReturnValue(false),
-    getFullProfile: jest.fn().mockReturnValue(undefined),
-    pendingToast: null,
-    setPendingToast: jest.fn(),
-    consumePendingToast: jest.fn(),
-    outgoingRequestIds: [],
-    sendRequest: mockSendRequest,
-    hasOutgoingRequest: jest.fn().mockReturnValue(false),
+jest.mock('@/features/friendRequests/api', () => ({
+  useSendFriendRequestMutation: () => ({
+    mutate: mockSendMutate,
+    isPending: false,
   }),
+  useIncomingRequestsQuery: () => ({ data: [], isLoading: false, isError: false }),
+  useOutgoingRequestsQuery: () => ({ data: [], isLoading: false, isError: false }),
+  useAcceptFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useDeclineFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useCancelOutgoingRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
 }));
 
 // ── Navigation mock ───────────────────────────────────────────────────────────
@@ -201,7 +195,7 @@ beforeEach(() => {
   mockGoBack.mockClear();
   mockNavigate.mockClear();
   mockRemoveBookmark.mockClear();
-  mockSendRequest.mockClear();
+  mockSendMutate.mockClear();
   mockGetBookmark.mockReturnValue(AISHA_FIXTURE);
 });
 

@@ -45,10 +45,10 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowLeft, MoreVertical, Mic, Send } from 'lucide-react-native';
 
-import { EmptyState, Heading, TouchableArea } from '@/components';
+import { EmptyState, LoadingState, Heading, TouchableArea } from '@/components';
 import { t } from '@/labels';
-import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import { useChatHistory } from '@/state/chat/ChatProvider';
+import { useProfileQuery } from '@/features/profile/api';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
 import { useTheme } from '@/theme';
@@ -93,7 +93,7 @@ export function ChatRoomScreen(): React.ReactElement {
   const route = useRoute<ChatRoomRoute>();
 
   const { friendUserId } = route.params;
-  const { getFullProfile } = useFriendship();
+  const profileQuery = useProfileQuery(friendUserId);
   const { messages, sendMessage } = useChatHistory(friendUserId);
 
   const [composerText, setComposerText] = useState('');
@@ -136,13 +136,21 @@ export function ChatRoomScreen(): React.ReactElement {
 
   // ── Profile resolution — after all hooks ───────────────────────────────────
 
-  const profile = getFullProfile(friendUserId) ?? null;
+  const profile = profileQuery.data ?? null;
 
-  // ── Missing profile guard ──────────────────────────────────────────────────
+  // ── Loading / missing profile guard ───────────────────────────────────────
   //
   // Conditional return is AFTER all hooks — Rules of Hooks compliant.
 
-  if (profile === null) {
+  if (profileQuery.isLoading) {
+    return (
+      <View style={styles.root} testID="chat-room-loading">
+        <LoadingState message={t('common.loading')} />
+      </View>
+    );
+  }
+
+  if (profile === null || profileQuery.isError) {
     return (
       <View style={styles.root} testID="chat-room-missing">
         <EmptyState
@@ -156,7 +164,8 @@ export function ChatRoomScreen(): React.ReactElement {
 
   // ── Derived values from resolved profile ───────────────────────────────────
 
-  const photoPath = profile.photos?.[0] ?? profile.photo_url ?? '';
+  // `UserProfile` does not have a `photos` array — use `photo_url` directly.
+  const photoPath = profile.photo_url ?? '';
   const fullName = `${profile.first_name} ${profile.last_name}`;
   const hasText = composerText.trim().length > 0;
 

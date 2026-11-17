@@ -1,14 +1,19 @@
 /**
- * Tests for `src/features/chat/screens/ChatListScreen.tsx` (story 15.4).
+ * Tests for `src/features/chat/screens/ChatListScreen.tsx` (story 15.4 + 16.FR3).
+ *
+ * Story 16.FR3: rewired from `useFriendship().friends` to `useFriendsQuery()`.
+ * This test suite mocks `useFriendsQuery` directly — no FriendshipProvider needed.
  *
  * Strategy: `ChatListRow` is mocked so this test suite only verifies the
- * wiring (correct props passed, navigation, empty state) without pulling in
- * the real `useChatHistory` or AsyncStorage.
+ * wiring (correct props passed, navigation, empty/loading/error states)
+ * without pulling in the real `useChatHistory` or AsyncStorage.
  *
  * AC coverage:
  * (a) Mehvish row rendered — `ChatListRow` receives the correct `friend` prop.
  * (b) Row press navigates to `ChatRoomScreen` with the correct `friendUserId`.
  * (c) Empty friends list renders `EmptyState` with `chat.list.emptyTitle`.
+ * (d) Loading state renders `LoadingState`.
+ * (e) Error state renders `ErrorState`.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -36,19 +41,16 @@ jest.mock('react-native-safe-area-context', () => {
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';
-
-import type { DummyFullProfile } from '@/types/DummyFullProfile';
+import type { UserProfile } from '@/types/api/UserProfile';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const mehvish = require('../../../assets/dummymehvish.json') as DummyFullProfile;
+const mehvish = require('../../../assets/dummymehvish.json') as UserProfile;
 
 // ── Mock ChatListRow ──────────────────────────────────────────────────────────
 //
 // ChatListRow holds useChatHistory at its top level. We stub it to a simple
 // pressable element so we can assert prop pass-through and press behaviour
 // without needing AsyncStorage or a ChatProvider.
-
-const mockOnPress = jest.fn();
 
 jest.mock('@/features/chat/components/ChatListRow', () => {
   const RN = require('react-native') as typeof import('react-native');
@@ -72,26 +74,20 @@ jest.mock('@/features/chat/components/ChatListRow', () => {
   };
 });
 
-// ── Mock useFriendship ────────────────────────────────────────────────────────
+// ── Mock useFriendsQuery ──────────────────────────────────────────────────────
 
-let mockFriends: DummyFullProfile[] = [mehvish];
+let mockFriendsQueryResult: {
+  data: UserProfile[] | undefined;
+  isLoading: boolean;
+  isError: boolean;
+} = {
+  data: [mehvish],
+  isLoading: false,
+  isError: false,
+};
 
-jest.mock('@/state/friendship/FriendshipProvider', () => ({
-  useFriendship: jest.fn(() => ({
-    friends: mockFriends,
-    requests: [],
-    acceptRequest: jest.fn(),
-    declineRequest: jest.fn(),
-    isFriend: jest.fn(),
-    receivedRequestFrom: jest.fn(),
-    getFullProfile: jest.fn(),
-    outgoingRequestIds: [],
-    sendRequest: jest.fn(),
-    hasOutgoingRequest: jest.fn(),
-    pendingToast: null,
-    setPendingToast: jest.fn(),
-    consumePendingToast: jest.fn(),
-  })),
+jest.mock('@/features/friends/api', () => ({
+  useFriendsQuery: () => mockFriendsQueryResult,
 }));
 
 // ── Mock navigation ───────────────────────────────────────────────────────────
@@ -118,28 +114,28 @@ function renderScreen() {
   );
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  mockFriends = [mehvish];
+  mockFriendsQueryResult = { data: [mehvish], isLoading: false, isError: false };
   mockNavigate.mockClear();
-  jest.clearAllMocks();
-  mockFriends = [mehvish]; // re-set after clearAllMocks resets module mocks
 });
+
+// ── AC (a): Mehvish row rendered with correct friend prop ─────────────────────
 
 describe('ChatListScreen — AC (a): Mehvish row rendered with correct friend prop', () => {
   it(
     'given friends=[Mehvish], when ChatListScreen renders, then a stub row with Mehvish user_id is present',
     () => {
       const { getByTestId } = renderScreen();
-      // The stub ChatListRow renders a Pressable with testID stub-chat-list-row-<user_id>
       expect(getByTestId(`stub-chat-list-row-${mehvish.user_id}`)).toBeTruthy();
-      // And shows the user_id as text to prove friend prop was passed
       const idText = getByTestId(`stub-row-friend-id-${mehvish.user_id}`);
       expect(idText.props.children).toBe(mehvish.user_id);
     },
   );
 });
+
+// ── AC (b): row press navigates to ChatRoomScreen ─────────────────────────────
 
 describe('ChatListScreen — AC (b): row press navigates to ChatRoomScreen', () => {
   it(
@@ -155,31 +151,35 @@ describe('ChatListScreen — AC (b): row press navigates to ChatRoomScreen', () 
   );
 });
 
+// ── AC (c): empty friends list renders EmptyState ─────────────────────────────
+
 describe('ChatListScreen — AC (c): empty friends list renders EmptyState', () => {
   it(
-    'given friends=[], when ChatListScreen renders, then EmptyState with chat.list.emptyTitle is shown',
+    'given friends=[], when ChatListScreen renders, then EmptyState is shown',
     () => {
-      // Override the mock to return an empty friends list
-      const { useFriendship } = require('@/state/friendship/FriendshipProvider') as
-        typeof import('@/state/friendship/FriendshipProvider');
-      (useFriendship as jest.Mock).mockReturnValue({
-        friends: [],
-        requests: [],
-        acceptRequest: jest.fn(),
-        declineRequest: jest.fn(),
-        isFriend: jest.fn(),
-        receivedRequestFrom: jest.fn(),
-        getFullProfile: jest.fn(),
-        outgoingRequestIds: [],
-        sendRequest: jest.fn(),
-        hasOutgoingRequest: jest.fn(),
-        pendingToast: null,
-        setPendingToast: jest.fn(),
-        consumePendingToast: jest.fn(),
-      });
-
+      mockFriendsQueryResult = { data: [], isLoading: false, isError: false };
       const { getByText } = renderScreen();
       expect(getByText('No conversations yet')).toBeTruthy();
     },
   );
+});
+
+// ── AC (d): loading state ─────────────────────────────────────────────────────
+
+describe('ChatListScreen — AC (d): loading state renders LoadingState', () => {
+  it('when isLoading=true, renders LoadingState not FlatList', () => {
+    mockFriendsQueryResult = { data: undefined, isLoading: true, isError: false };
+    const { queryByTestId } = renderScreen();
+    expect(queryByTestId('chat-list-flatlist')).toBeNull();
+  });
+});
+
+// ── AC (e): error state ───────────────────────────────────────────────────────
+
+describe('ChatListScreen — AC (e): error state renders ErrorState', () => {
+  it('when isError=true, renders ErrorState not FlatList', () => {
+    mockFriendsQueryResult = { data: undefined, isLoading: false, isError: true };
+    const { queryByTestId } = renderScreen();
+    expect(queryByTestId('chat-list-flatlist')).toBeNull();
+  });
 });

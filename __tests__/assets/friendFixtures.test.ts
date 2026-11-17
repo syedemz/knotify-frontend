@@ -15,7 +15,7 @@ import dummyQurat from '../../assets/dummyqurat.json';
 import dummyFriendships from '../../assets/dummyfriendships.json';
 import dummyRequests from '../../assets/dummyrequests.json';
 import type { DummyFullProfile } from '@/types/DummyFullProfile';
-import type { PendingRequest } from '@/state/friendship/FriendshipProvider';
+import type { FriendRequest } from '@/types/api/FriendRequest';
 
 /**
  * Structural type-guard assertion.
@@ -183,24 +183,24 @@ describe('dummyrequests.json', () => {
   });
 
   it('first entry has from_user_id equal to Qurat\'s user_id', () => {
-    const entry = dummyRequests[0] as PendingRequest;
+    const entry = dummyRequests[0] as unknown as FriendRequest;
     expect(entry).toBeDefined();
     expect(entry.from_user_id).toBe(dummyQurat.user_id);
   });
 
   it('first entry has status "pending"', () => {
-    const entry = dummyRequests[0] as PendingRequest;
+    const entry = dummyRequests[0] as unknown as FriendRequest;
     expect(entry.status).toBe('pending');
   });
 
   it('first entry has a request_id string', () => {
-    const entry = dummyRequests[0] as PendingRequest;
+    const entry = dummyRequests[0] as unknown as FriendRequest;
     expect(typeof entry.request_id).toBe('string');
     expect(entry.request_id.length).toBeGreaterThan(0);
   });
 
   it('first entry has a created_at string', () => {
-    const entry = dummyRequests[0] as PendingRequest;
+    const entry = dummyRequests[0] as unknown as FriendRequest;
     expect(typeof entry.created_at).toBe('string');
   });
 });

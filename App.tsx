@@ -13,8 +13,6 @@ import { AuthProvider } from "@/state/auth/AuthProvider";
 import { OwnProfileProvider } from "@/state/ownProfile/OwnProfileProvider";
 // TODO(mock-only): remove when real backend + JWT claim decode ship
 import { OnboardingCompletionProvider } from "@/state/onboardingCompletion/OnboardingCompletionProvider";
-// TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship
-import { FriendshipProvider } from "@/state/friendship/FriendshipProvider";
 // TODO(mock-only): remove BookmarksProvider when real bookmark backend ships
 import { BookmarksProvider } from "@/state/bookmarks/BookmarksProvider";
 // TODO(mock-only): remove ChatProvider when real messages endpoint ships (phase 17)
@@ -122,18 +120,15 @@ export default function App() {
                 <OwnProfileProvider>
                 {/* TODO(mock-only): remove OnboardingCompletionProvider when real backend + JWT claim decode ship */}
                 <OnboardingCompletionProvider>
-                  {/* TODO(mock-only): remove FriendshipProvider when real friendship/request endpoints ship */}
-                  <FriendshipProvider>
-                    {/* TODO(mock-only): remove BookmarksProvider when real bookmark backend ships */}
-                    <BookmarksProvider>
-                      {/* TODO(mock-only): remove ChatProvider when real messages endpoint ships (phase 17) */}
-                      <ChatProvider>
-                        <NavigationContainer linking={linking}>
-                          <RootNavigator />
-                        </NavigationContainer>
-                      </ChatProvider>
-                    </BookmarksProvider>
-                  </FriendshipProvider>
+                  {/* TODO(mock-only): remove BookmarksProvider when real bookmark backend ships */}
+                  <BookmarksProvider>
+                    {/* TODO(mock-only): remove ChatProvider when real messages endpoint ships (phase 17) */}
+                    <ChatProvider>
+                      <NavigationContainer linking={linking}>
+                        <RootNavigator />
+                      </NavigationContainer>
+                    </ChatProvider>
+                  </BookmarksProvider>
                 </OnboardingCompletionProvider>
                 </OwnProfileProvider>
               </AuthProvider>

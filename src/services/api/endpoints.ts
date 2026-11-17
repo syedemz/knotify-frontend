@@ -39,6 +39,23 @@ export const profileApi = {
    */
   updateMe: (patch: Partial<UserProfileWritable>): Promise<UserProfile> =>
     request<UserProfile>({ method: 'PATCH', path: '/profile/me', body: patch }),
+
+  /**
+   * `GET /profiles/:userId` — fetch another user's public profile by their
+   * `user_id` (Cognito sub).
+   *
+   * Per architecture §8.3. Used wherever the client needs to resolve a
+   * `user_id → UserProfile` without the full friendship context — e.g. modal
+   * listener hosts, ChatListScreen row headers, ChatRoomScreen header.
+   *
+   * Returns the full {@link UserProfile} row. Throws {@link ApiError} with
+   * `status === 404` when no matching user exists.
+   *
+   * @param userId - The `user_id` (Cognito sub) to look up.
+   * @returns The public {@link UserProfile} for that user.
+   */
+  getProfileById: (userId: string): Promise<UserProfile> =>
+    request<UserProfile>({ method: 'GET', path: `/profiles/${userId}` }),
 } as const;
 
 // ── Match ────────────────────────────────────────────────────────────────────

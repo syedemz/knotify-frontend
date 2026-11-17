@@ -33,6 +33,11 @@ export interface EmptyStateProps {
    * Accessibility label for the container. Defaults to `title`.
    */
   accessibilityLabel?: string;
+  /**
+   * Test ID for the root container. Useful in tests for targeting this
+   * specific empty-state instance by its testID.
+   */
+  testID?: string;
 }
 
 /**
@@ -59,6 +64,7 @@ export function EmptyState({
   actionLabel,
   onAction,
   accessibilityLabel,
+  testID,
 }: EmptyStateProps) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -67,6 +73,7 @@ export function EmptyState({
     <View
       style={styles.container}
       accessibilityLabel={accessibilityLabel ?? title}
+      testID={testID}
     >
       {illustration !== undefined && (
         <View style={styles.illustration}>{illustration}</View>

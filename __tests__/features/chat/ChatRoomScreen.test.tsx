@@ -1,7 +1,11 @@
 /**
- * Tests for `src/features/chat/screens/ChatRoomScreen.tsx` (story 15.5).
+ * Tests for `src/features/chat/screens/ChatRoomScreen.tsx` (story 15.5 + 16.FR3).
  *
- * Strategy: mocks out `useFriendship`, `useChatHistory`, `useRoute`,
+ * Story 16.FR3: profile resolution rewired from `useFriendship().getFullProfile`
+ * to `useProfileQuery(friendUserId)`. This test suite mocks `@/features/profile/api`
+ * instead of `@/state/friendship/FriendshipProvider`.
+ *
+ * Strategy: mocks out `useProfileQuery`, `useChatHistory`, `useRoute`,
  * `useNavigation`, and `react-native-safe-area-context` so we can render
  * the screen in isolation without a real NavigationContainer, AsyncStorage,
  * or FriendshipProvider.
@@ -15,7 +19,7 @@
  * (f) Typing a character shows Send icon (chat-room-send-btn present, chat-room-mic-btn absent).
  * (g) Tapping Send calls sendMessage with trimmed text and clears the input.
  * (h) Tapping triple-dot does not crash (chat-room-menu-btn testID present).
- * (i) Missing friend (getFullProfile returns null) renders EmptyState, no composer or header.
+ * (i) Missing friend (profileQuery error/null) renders EmptyState, no composer or header.
  * (j) Back button calls navigation.goBack().
  * (k) editedAt suffix renders "edited" tag.
  * (l) Status icons render for sent / delivered / read states (bubble testIDs).
@@ -42,7 +46,6 @@ jest.mock('react-native-safe-area-context', () => {
 });
 
 // ── Navigation mock ───────────────────────────────────────────────────────────
-// Mock variables must be prefixed with 'mock' to satisfy Jest's factory hoisting rules.
 
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
@@ -58,26 +61,23 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-// ── useFriendship mock ────────────────────────────────────────────────────────
+// ── useProfileQuery mock ──────────────────────────────────────────────────────
 
-const mockGetFullProfile = jest.fn();
+type ProfileQueryResult = {
+  data: any;
+  isLoading: boolean;
+  isError: boolean;
+};
 
-jest.mock('@/state/friendship/FriendshipProvider', () => ({
-  useFriendship: jest.fn(() => ({
-    friends: [],
-    requests: [],
-    acceptRequest: jest.fn(),
-    declineRequest: jest.fn(),
-    isFriend: jest.fn(),
-    receivedRequestFrom: jest.fn(),
-    getFullProfile: mockGetFullProfile,
-    outgoingRequestIds: [],
-    sendRequest: jest.fn(),
-    hasOutgoingRequest: jest.fn(),
-    pendingToast: null,
-    setPendingToast: jest.fn(),
-    consumePendingToast: jest.fn(),
-  })),
+let mockProfileQueryResult: ProfileQueryResult = {
+  data: undefined,
+  isLoading: false,
+  isError: false,
+};
+
+jest.mock('@/features/profile/api', () => ({
+  useProfileQuery: () => mockProfileQueryResult,
+  profileQueryKey: (userId: string) => ['profile', userId],
 }));
 
 // ── useChatHistory mock ───────────────────────────────────────────────────────
@@ -101,13 +101,13 @@ jest.mock('@/state/chat/ChatProvider', () => ({
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';
-import type { DummyFullProfile } from '@/types/DummyFullProfile';
+import type { UserProfile } from '@/types/api/UserProfile';
 import type { ChatMessage } from '@/types/ChatMessage';
 
 // ── Fixtures (loaded after mocks are declared) ────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const mehvish = require('../../../assets/dummymehvish.json') as DummyFullProfile;
+const mehvish = require('../../../assets/dummymehvish.json') as UserProfile;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const chatSeed = require('../../../assets/dummychat/chatMehvish.json') as {
@@ -135,7 +135,7 @@ beforeEach(() => {
   mockNavigate.mockClear();
   mockSendMessage.mockClear();
   // Default: Mehvish profile resolved, 18 seed messages
-  mockGetFullProfile.mockReturnValue(mehvish);
+  mockProfileQueryResult = { data: mehvish, isLoading: false, isError: false };
   mockMessages.current = chatSeed.messages;
 });
 
@@ -158,10 +158,6 @@ describe('ChatRoomScreen — AC (b): 18 seed messages rendered', () => {
       const { getAllByTestId } = renderScreen();
       const sentBubbles = getAllByTestId('bubble-sent');
       const receivedBubbles = getAllByTestId('bubble-received');
-      // FlatList in the RNTL test environment renders a subset of items due to
-      // virtualization, so we assert the total is > 0 rather than strictly 18.
-      // The data prop receives all 18 messages (verified by useChatHistory mock)
-      // and rendered items are a non-empty subset.
       expect(sentBubbles.length + receivedBubbles.length).toBeGreaterThan(0);
     },
   );
@@ -230,10 +226,7 @@ describe('ChatRoomScreen — AC (g): Send tap calls sendMessage and clears input
         fireEvent.press(sendBtn);
       });
 
-      // sendMessage called with trimmed text
       expect(mockSendMessage).toHaveBeenCalledWith('Hey!');
-
-      // Input should be cleared — Mic button should now be visible
       expect(getByTestId('chat-room-mic-btn')).toBeTruthy();
     },
   );
@@ -251,20 +244,28 @@ describe('ChatRoomScreen — AC (h): triple-dot no-op does not crash', () => {
   );
 });
 
-describe('ChatRoomScreen — AC (i): missing friend renders EmptyState', () => {
+describe('ChatRoomScreen — AC (i): profile error renders EmptyState', () => {
   it(
-    'given getFullProfile returns null, when ChatRoomScreen renders, then EmptyState is shown with no composer or header',
+    'given profileQuery.isError=true, when ChatRoomScreen renders, then EmptyState is shown with no composer or header',
     () => {
-      mockGetFullProfile.mockReturnValue(null);
+      mockProfileQueryResult = { data: undefined, isLoading: false, isError: true };
 
       const { getByText, queryByTestId } = renderScreen();
 
-      // EmptyState title is visible
       expect(getByText('Conversation unavailable')).toBeTruthy();
-
-      // No composer input or menu button
       expect(queryByTestId('chat-room-input')).toBeNull();
       expect(queryByTestId('chat-room-menu-btn')).toBeNull();
+    },
+  );
+
+  it(
+    'given profileQuery.data=null, when ChatRoomScreen renders, then EmptyState is shown',
+    () => {
+      mockProfileQueryResult = { data: null, isLoading: false, isError: false };
+
+      const { getByText } = renderScreen();
+
+      expect(getByText('Conversation unavailable')).toBeTruthy();
     },
   );
 });
@@ -285,12 +286,10 @@ describe('ChatRoomScreen — AC (k): editedAt suffix', () => {
   it(
     'given a message with editedAt is in the thread, when ChatRoomScreen renders, then the edited suffix is visible',
     () => {
-      // Verify the seed has at least one message with editedAt set
       const editedMsg = chatSeed.messages.find((m) => m.editedAt !== undefined);
       expect(editedMsg).toBeDefined();
 
       const { queryAllByText } = renderScreen();
-      // '· edited' suffix appears in the footer text element
       expect(queryAllByText(/edited/).length).toBeGreaterThan(0);
     },
   );
@@ -300,13 +299,10 @@ describe('ChatRoomScreen — AC (l): status icons render for different statuses'
   it(
     'given seed messages with various statuses, when ChatRoomScreen renders, then at least one status icon testID is present',
     () => {
-      // Use queryAllByTestId because multiple sent messages can produce multiple
-      // status-icon-* elements and queryByTestId throws on multiple matches.
       const { queryAllByTestId } = renderScreen();
       const sentIcons = queryAllByTestId('status-icon-sent');
       const deliveredIcons = queryAllByTestId('status-icon-delivered');
       const readIcons = queryAllByTestId('status-icon-read');
-      // At least one status icon type must be in the rendered tree
       expect(
         sentIcons.length + deliveredIcons.length + readIcons.length,
       ).toBeGreaterThan(0);

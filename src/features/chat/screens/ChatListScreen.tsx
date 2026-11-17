@@ -7,10 +7,10 @@
  * call at the top level, satisfying the Rules of Hooks while keeping the
  * `renderItem` callback hook-free.
  *
- * **Empty state:** When the current user has no friends yet, an `EmptyState`
- * is rendered instead of the list. In the mock-phase seed, Mehvish is always
- * a friend, so this state is unlikely in normal dev usage but is covered by
- * tests.
+ * Story 16.FR3: rewired from `useFriendship().friends` to `useFriendsQuery()`.
+ * Loading, error, and empty states use the catalog components per story 16.5's
+ * AC requirements (the teardown for the mock chat surfaces completes in 16.5;
+ * this change unblocks the data shape migration without touching screen visuals).
  *
  * **No tabBarHidden:** Unlike the Marriage and Explore stacks, the Chat tab
  * does not collapse the tab bar on scroll. The tab bar remains visible
@@ -26,9 +26,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { Heading, EmptyState } from '@/components';
+import { Heading, EmptyState, LoadingState, ErrorState } from '@/components';
 import { t } from '@/labels';
-import { useFriendship } from '@/state/friendship/FriendshipProvider';
+import { useFriendsQuery } from '@/features/friends/api';
+import type { Friend } from '@/types/api/Friend';
 import type { DummyFullProfile } from '@/types/DummyFullProfile';
 import type { ChatStackParamList } from '@/navigation/types';
 import { ChatListRow } from '@/features/chat/components/ChatListRow';
@@ -51,7 +52,8 @@ type ChatListNav = NativeStackNavigationProp<ChatStackParamList, 'ChatListScreen
 export function ChatListScreen(): React.ReactElement {
   const navigation = useNavigation<ChatListNav>();
   const insets = useSafeAreaInsets();
-  const { friends } = useFriendship();
+  const friendsQuery = useFriendsQuery();
+  const friends = friendsQuery.data ?? [];
 
   // ── Row press handler ──────────────────────────────────────────────────────
 
@@ -69,9 +71,15 @@ export function ChatListScreen(): React.ReactElement {
   // standalone ChatListRow component holds the useChatHistory call.
 
   const renderItem = useCallback(
-    ({ item }: { item: DummyFullProfile }) => (
+    ({ item }: { item: Friend }) => (
       <ChatListRow
-        friend={item}
+        // ChatListRow expects DummyFullProfile; Friend (= UserProfile) is
+        // structurally compatible for the fields it reads (user_id, first_name,
+        // last_name, photo_url). The photos[] optional field is absent on
+        // UserProfile but accessed with optional chaining in ChatListRow so it
+        // is safe. Full type alignment is deferred to story 16.5 which replaces
+        // useChatHistory inside ChatListRow with real query hooks.
+        friend={item as unknown as DummyFullProfile}
         onPress={() => handleRowPress(item.user_id)}
       />
     ),
@@ -88,7 +96,14 @@ export function ChatListScreen(): React.ReactElement {
       </View>
 
       {/* ── Body ─────────────────────────────────────────────────── */}
-      {friends.length === 0 ? (
+      {friendsQuery.isLoading ? (
+        <LoadingState message={t('common.loading')} />
+      ) : friendsQuery.isError ? (
+        <ErrorState
+          title={t('common.error')}
+          description={t('common.error')}
+        />
+      ) : friends.length === 0 ? (
         <EmptyState
           title={t('chat.list.emptyTitle')}
           description={t('chat.list.emptyDescription')}

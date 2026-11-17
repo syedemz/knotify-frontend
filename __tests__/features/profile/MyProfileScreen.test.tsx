@@ -1,5 +1,8 @@
 /**
- * Screen-wiring tests for MyProfileScreen (story 12.5).
+ * Screen-wiring tests for MyProfileScreen (story 12.5 + story 16.FR3).
+ *
+ * Story 16.FR3: FriendshipProvider removed from MyProfileScreen.
+ * Edit tab now shows "Coming soon" EmptyState (DevTriggersPanel deleted).
  *
  * (a) Preview tab (default) renders HeroBlock (self variant), AboutMe,
  *     MarriageIntentions, Faith, FuturePlans, Personality, Education,
@@ -7,7 +10,7 @@
  *     SiblingsSection NOT rendered (dummyprofile.siblings is empty);
  *     PhotoBlockSection NOT rendered (dummyprofile.photos.length === 1);
  *     ContactActionsSection NOT rendered (viewer === 'self').
- * (b) Edit tab renders EmptyState "Coming soon".
+ * (b) Edit tab renders EmptyState "Coming soon" (DevTriggersPanel removed in 16.FR3).
  * (c) top-right icon-only Share triggers Share.share.
  * (d) bottom row-link Share triggers Share.share.
  * (e) tapping the close X calls navigation.goBack.
@@ -19,19 +22,8 @@ import React from 'react';
 import { Share } from 'react-native';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 
-// ── FriendshipProvider mock ───────────────────────────────────────────────────
-// MyProfileScreen now calls useFriendship() — mock it for these wiring tests.
-
-const mockQuratProfile = require('../../../assets/dummyqurat.json') as {
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  age: number;
-  current_residence_city: string;
-};
-
 // ── OwnProfileProvider mock ───────────────────────────────────────────────────
-// MyProfileScreen now reads the user's own profile via useOwnProfile().
+// MyProfileScreen reads the user's own profile via useOwnProfile().
 // Mock it with the dummyprofile fixture so all sections render as before.
 
 const mockOwnProfileFixture = require('../../../assets/dummyprofile.json');
@@ -42,27 +34,6 @@ jest.mock('@/state/ownProfile/OwnProfileProvider', () => ({
     status: 'ready' as const,
     error: null,
     refresh: jest.fn(),
-  }),
-}));
-
-jest.mock('@/state/friendship/FriendshipProvider', () => ({
-  useFriendship: () => ({
-    acceptRequest: jest.fn(),
-    declineRequest: jest.fn(),
-    getFullProfile: (userId: string) => {
-      if (userId === mockQuratProfile.user_id) return mockQuratProfile;
-      return undefined;
-    },
-    friends: [],
-    requests: [],
-    isFriend: () => false,
-    receivedRequestFrom: () => false,
-    pendingToast: null,
-    setPendingToast: jest.fn(),
-    consumePendingToast: jest.fn(),
-    outgoingRequestIds: [],
-    sendRequest: jest.fn(),
-    hasOutgoingRequest: () => false,
   }),
 }));
 
@@ -205,29 +176,31 @@ describe('(a) Preview tab renders expected sections', () => {
   });
 });
 
-// ── (b) Edit tab renders DevTriggersPanel (story 15.6) ───────────────────────
+// ── (b) Edit tab renders "Coming soon" EmptyState (story 16.FR3) ─────────────
+//
+// DevTriggersPanel was removed in story 16.FR3. The Edit tab now shows a
+// "Coming soon" EmptyState with testID="my-profile-edit-empty-state".
 
-describe('(b) Edit tab renders DevTriggersPanel with dev triggers', () => {
-  it('tapping the Edit tab shows the DevTriggersPanel', () => {
+describe('(b) Edit tab renders "Coming soon" EmptyState (16.FR3)', () => {
+  it('tapping the Edit tab shows the EmptyState', () => {
     renderScreen('preview');
-    // Switch to Edit tab.
     fireEvent.press(screen.getByTestId('my-profile-tab-edit'));
-    expect(screen.getByTestId('dev-triggers-panel')).toBeTruthy();
+    expect(screen.getByTestId('my-profile-edit-empty-state')).toBeTruthy();
   });
 
-  it('rendering with initialTab="edit" directly shows the DevTriggersPanel', () => {
+  it('rendering with initialTab="edit" directly shows the EmptyState', () => {
     renderScreen('edit');
-    expect(screen.getByTestId('dev-triggers-panel')).toBeTruthy();
+    expect(screen.getByTestId('my-profile-edit-empty-state')).toBeTruthy();
   });
 
-  it('Edit tab does NOT render ProfileScrollView sections', () => {
+  it('Edit tab shows "Coming soon" text', () => {
     renderScreen('edit');
-    expect(screen.queryByTestId('profile-scroll-view')).toBeNull();
+    expect(screen.getByText('Coming soon')).toBeTruthy();
   });
 
-  it('Edit tab does NOT show "Coming soon" EmptyState (replaced by DevTriggersPanel)', () => {
+  it('Edit tab does NOT render DevTriggersPanel (removed in 16.FR3)', () => {
     renderScreen('edit');
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.queryByTestId('dev-triggers-panel')).toBeNull();
   });
 });
 

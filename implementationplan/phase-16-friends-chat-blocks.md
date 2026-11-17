@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.3 complete — shared Amplify config module + AppSync client + GraphQL types shipped)
+last_updated: 2026-11-16 (story 16.FR3 complete — modal shape rewire + FriendshipProvider teardown + useProfileQuery)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -247,7 +247,7 @@ stories:
   - id: 16.FR3
     title: Modal shape rewire + FriendshipProvider teardown
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 148
     depends_on: [16.FR2, 16.1]
     acceptance_criteria:

@@ -20,6 +20,11 @@ export interface LoadingStateProps {
    * @default 'Loading'
    */
   accessibilityLabel?: string;
+  /**
+   * Test ID for the root container. Useful in tests for targeting this
+   * specific loading-state instance.
+   */
+  testID?: string;
 }
 
 /**
@@ -39,6 +44,7 @@ export interface LoadingStateProps {
 export function LoadingState({
   message,
   accessibilityLabel = "Loading",
+  testID,
 }: LoadingStateProps) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -48,6 +54,7 @@ export function LoadingState({
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="progressbar"
+      testID={testID}
     >
       <ActivityIndicator
         size="large"

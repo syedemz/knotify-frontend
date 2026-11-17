@@ -65,7 +65,7 @@ import Animated, {
 import { EmptyState, LoadingState, Snackbar, Button } from '@/components';
 import { t } from '@/labels';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
-import { useFriendship } from '@/state/friendship/FriendshipProvider';
+import { useSendFriendRequestMutation } from '@/features/friendRequests/api';
 import { useDeckQuery } from '@/features/landing/hooks/useDeckQuery';
 import type { DeckProfile } from '@/types/api/DeckProfile';
 import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
@@ -214,8 +214,8 @@ export function MarriageLandingScreen(): React.ReactElement {
   // ── Bookmarks state ─────────────────────────────────────────────────────────
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
 
-  // ── Friendship state (outgoing requests) ────────────────────────────────────
-  const { sendRequest } = useFriendship();
+  // ── Friend request mutation ─────────────────────────────────────────────────
+  const sendRequestMutation = useSendFriendRequestMutation();
 
   // ── Deck data (real backend GET /match/deck) ────────────────────────────────
   const deckQuery = useDeckQuery();
@@ -386,14 +386,13 @@ export function MarriageLandingScreen(): React.ReactElement {
   }, []);
 
   const handleRequestConfirmed = useCallback(() => {
-    // TODO(mock-only): real request-create ships in phase 15
     const currentDeck = deck[currentDeckIndex];
     if (currentDeck !== undefined) {
-      sendRequest(currentDeck.user_id).catch((e) => console.warn('sendRequest failed', e));
+      sendRequestMutation.mutate({ toUserId: currentDeck.user_id });
     }
     animateDeckTransition(1);
     setSnackbarMsg(t('landing.likeSent'));
-  }, [animateDeckTransition, currentDeckIndex, deck, sendRequest]);
+  }, [animateDeckTransition, currentDeckIndex, deck, sendRequestMutation]);
 
   const handleUndo = useCallback(() => {
     animateDeckTransition(-1);
