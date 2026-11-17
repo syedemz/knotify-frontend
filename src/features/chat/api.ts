@@ -475,10 +475,14 @@ export function useSendMessageMutation(currentUserId: string) {
  * @param roomId - The room to subscribe to.
  * @param currentUserId - The signed-in user's id. Used to adapt the incoming
  *   `Message` to a `ChatMessage`.
+ * @param remountKey - Optional numeric key. When incremented by the caller
+ *   (e.g. on AppState resume), the effect tears down the existing subscription
+ *   and re-establishes a fresh one. Defaults to `0`.
  */
 export function useOnMessageInRoomSubscription(
   roomId: string,
   currentUserId: string,
+  remountKey: number = 0,
 ): void {
   const queryClient = useQueryClient();
   // Track all messageIds currently in the cache to enable O(1) dedupe.
@@ -556,7 +560,7 @@ export function useOnMessageInRoomSubscription(
     return () => {
       sub.unsubscribe();
     };
-  }, [roomId, currentUserId, queryClient]);
+  }, [roomId, currentUserId, remountKey, queryClient]);
 }
 
 // ── Private helpers ────────────────────────────────────────────────────────

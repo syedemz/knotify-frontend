@@ -668,7 +668,9 @@
       "backAccessibility": "واپس جائیں",
       "missingTitle": "گفتگو دستیاب نہیں",
       "missingDescription": "ہم آپ کے کنکشنز میں اس شخص کو نہیں ڈھونڈ سکے۔",
-      "editedSuffix": "· ترمیم شدہ"
+      "editedSuffix": "· ترمیم شدہ",
+      "errorTitle": "پیغامات لوڈ نہیں ہو سکے",
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔"
     }
   },
   "friendRequests": {

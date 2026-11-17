@@ -668,7 +668,9 @@
       "backAccessibility": "Go back",
       "missingTitle": "Conversation unavailable",
       "missingDescription": "We could not find this person in your connections.",
-      "editedSuffix": "· edited"
+      "editedSuffix": "· edited",
+      "errorTitle": "Could not load messages",
+      "errorDescription": "Check your connection and try again."
     }
   },
   "friendRequests": {

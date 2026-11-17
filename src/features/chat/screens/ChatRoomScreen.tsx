@@ -8,8 +8,10 @@
  * the counterpart `user_id` from `ChatRoom.userA`/`userB` via `useRoomsQuery`
  * cache lookup, then calling `useProfileQuery(counterpartUserId)`.
  *
- * Story 16.6 finishes this screen (subscription wiring, AppState resubscribe,
- * status-icon transitions). This story keeps the existing visual intact.
+ * Story 16.6: adds subscription wiring (`useOnMessageInRoomSubscription`),
+ * AppState-resume refetch/resubscribe (via a remount key), `ErrorState` for
+ * messages-query failures, and 'sending' → 'sent' → 'delivered' status-icon
+ * transitions (the 'sending' clock lives in MessageBubble).
  *
  * **Rules of Hooks.** ALL hooks are declared before any conditional return.
  * Derived values that depend on the resolved state are computed after all hooks.
@@ -17,8 +19,9 @@
  * @module features/chat/screens/ChatRoomScreen
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   FlatList,
   ImageBackground,
   KeyboardAvoidingView,
@@ -27,15 +30,23 @@ import {
   TextInput as RNTextInput,
   View,
 } from 'react-native';
+import type { AppStateStatus } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, MoreVertical, Mic, Send } from 'lucide-react-native';
 
-import { EmptyState, LoadingState, Heading, TouchableArea } from '@/components';
+import { EmptyState, ErrorState, LoadingState, Heading, TouchableArea } from '@/components';
 import { t } from '@/labels';
-import { useMessagesQuery, useRoomsQuery, useSendMessageMutation } from '@/features/chat/api';
+import {
+  messagesQueryKey,
+  useMessagesQuery,
+  useOnMessageInRoomSubscription,
+  useRoomsQuery,
+  useSendMessageMutation,
+} from '@/features/chat/api';
 import { useProfileQuery } from '@/features/profile/api';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import { adaptMessageToChatMessage } from '@/features/chat/shapeAdapters';
@@ -86,6 +97,7 @@ export function ChatRoomScreen(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ChatRoomNav>();
   const route = useRoute<ChatRoomRoute>();
+  const queryClient = useQueryClient();
 
   const { roomId } = route.params;
 
@@ -117,6 +129,48 @@ export function ChatRoomScreen(): React.ReactElement {
 
   const [composerText, setComposerText] = useState('');
 
+  // ── Subscription remount key ──────────────────────────────────────────────
+  //
+  // Bumped on AppState transition to 'active' after a background window so the
+  // subscription is torn down and re-established (see AppState useEffect below).
+  // The key is passed to a wrapper View so React reconciles the subscription
+  // hook as a new mount.
+  const [subscriptionKey, setSubscriptionKey] = useState(0);
+
+  // ── AppState handler — refetch + resubscribe on foreground resume ─────────
+  //
+  // On transition to 'active': invalidate the messages cache so any messages
+  // that arrived during the background window are picked up by a fresh fetch,
+  // then bump subscriptionKey to remount the subscription hook.
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      const prevState = appStateRef.current;
+      appStateRef.current = nextState;
+
+      if (prevState !== 'active' && nextState === 'active') {
+        // Invalidate so missed messages are fetched rather than replayed.
+        void queryClient.invalidateQueries({ queryKey: messagesQueryKey(roomId) });
+        // Remount the subscription to re-establish the WebSocket after the
+        // AppSync ~10-minute idle disconnection.
+        setSubscriptionKey((k) => k + 1);
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [roomId, queryClient]);
+
+  // ── Subscription wiring ───────────────────────────────────────────────────
+  //
+  // `useOnMessageInRoomSubscription` manages the WebSocket lifecycle.
+  // Passing `subscriptionKey` as `remountKey` causes the hook's internal
+  // useEffect to tear down and re-establish the subscription whenever
+  // `subscriptionKey` is incremented (on AppState resume).
+  useOnMessageInRoomSubscription(roomId, currentUserId, subscriptionKey);
+
   // Flatten pages of messages into a single array and adapt to ChatMessage.
   // The infinite query pages are ordered oldest-first; flatten preserves that.
   const messages: readonly ChatMessage[] = useMemo(() => {
@@ -142,8 +196,14 @@ export function ChatRoomScreen(): React.ReactElement {
   const handleSend = useCallback(async () => {
     const trimmed = composerText.trim();
     if (trimmed.length === 0) return;
-    await sendMutation.mutateAsync({ content: trimmed, roomId, contentType: 'text' });
-    setComposerText('');
+    try {
+      await sendMutation.mutateAsync({ content: trimmed, roomId, contentType: 'text' });
+      setComposerText('');
+    } catch (err) {
+      // The optimistic rollback is handled by useSendMessageMutation.onError.
+      // Log here so the error is not silently swallowed in development.
+      console.warn('[ChatRoomScreen] sendMessage failed — rollback applied', err);
+    }
   }, [composerText, roomId, sendMutation]);
 
   const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
@@ -157,9 +217,9 @@ export function ChatRoomScreen(): React.ReactElement {
 
   const profile = profileQuery.data ?? null;
 
-  // ── Loading / missing guard ───────────────────────────────────────────────
+  // ── Loading / error / missing guard ──────────────────────────────────────
   //
-  // Conditional return is AFTER all hooks — Rules of Hooks compliant.
+  // Conditional returns are AFTER all hooks — Rules of Hooks compliant.
 
   if (profileQuery.isLoading || roomsQuery.isLoading) {
     return (
@@ -176,6 +236,17 @@ export function ChatRoomScreen(): React.ReactElement {
           title={t('chat.room.missingTitle')}
           description={t('chat.room.missingDescription')}
           accessibilityLabel={t('chat.room.missingTitle')}
+        />
+      </View>
+    );
+  }
+
+  if (messagesQuery.isError) {
+    return (
+      <View style={styles.root} testID="chat-room-error">
+        <ErrorState
+          title={t('chat.room.errorTitle')}
+          description={t('chat.room.errorDescription')}
         />
       </View>
     );

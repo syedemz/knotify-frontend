@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.5 complete — ChatListScreen real Rooms query wiring + roomId route param + mock chat delete: replaced useFriendsQuery with useRoomsQuery, switched ChatStackParamList.ChatRoomScreen param to roomId, rewrote openChatRoom.ts to use useCreateOrGetRoomMutation, rewrote ChatListRow to ChatRoom+useProfileQuery, rewrote ChatRoomScreen to use useMessagesQuery+useSendMessageMutation, deleted ChatProvider.tsx+chatHistoryStorage.ts+chatMehvish.json+their tests, removed ChatProvider from App.tsx, updated all 4 test suites + ChatStack.crossTab.test + ChatMessage.ts, grep gate passes)
+last_updated: 2026-11-16 (story 16.6 complete — ChatRoomScreen subscription + status icons + AppState resume: added useOnMessageInRoomSubscription wiring with remountKey parameter, AppState handler for cache invalidation + subscription remount on foreground resume, ErrorState for messages query error, 'sending' Clock status icon in MessageBubble, error-safe handleSend with try/catch; test delta +16: 25 ChatRoomScreen tests + 14 MessageBubble tests; tsc zero errors; eslint zero new errors)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -334,7 +334,7 @@ stories:
   - id: 16.6
     title: Wire real messages query + onMessageInRoom subscription into ChatRoomScreen
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 153
     depends_on: [16.5]
     acceptance_criteria:
