@@ -52,6 +52,7 @@ import { ChatStack } from './ChatStack';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
 import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
+import { FriendRequestSubscriptionListener } from '@/features/friendRequests/FriendRequestSubscriptionListener';
 import type { AppTabsParamList } from './types';
 
 // ---------------------------------------------------------------------------
@@ -218,10 +219,15 @@ export function AppTabs(): React.JSX.Element {
   const menuAvatarSource = resolveDummyPhoto(profile?.photo_url ?? undefined);
 
   return (
-    <Tab.Navigator
-      screenOptions={{ headerShown: false }}
-      tabBar={(props) => <CollapsingTabBar {...props} />}
-    >
+    <>
+      {/* Subscription-driven modal triggers for friend request lifecycle events.
+          Mounts above Tab.Navigator so modals render over the tab shell on
+          every tab, regardless of which tab is currently focused. */}
+      <FriendRequestSubscriptionListener />
+      <Tab.Navigator
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => <CollapsingTabBar {...props} />}
+      >
       <Tab.Screen
         name="Marriage"
         component={MarriageLandingScreen}
@@ -263,5 +269,6 @@ export function AppTabs(): React.JSX.Element {
         }}
       />
     </Tab.Navigator>
+    </>
   );
 }

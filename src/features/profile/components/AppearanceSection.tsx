@@ -9,9 +9,9 @@
  * `System` mode follows the OS color scheme via `useColorScheme()` inside
  * ThemeProvider.
  *
- * Mounted below `DevTriggersPanel` on `MyProfileScreen`'s Edit tab. Not a
- * production surface yet — phase 19 will build a proper SettingsScreen; this
- * widget is a dev-friendly shortcut in the meantime.
+ * Mounted on `MyProfileScreen`'s Edit tab. Not a production surface yet —
+ * phase 17 will build a proper SettingsScreen; this widget is a dev-friendly
+ * shortcut in the meantime.
  *
  * @module features/profile/components/AppearanceSection
  */

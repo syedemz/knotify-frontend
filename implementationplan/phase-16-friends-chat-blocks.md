@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-15 (Round 2 brainstorm — subscription/mutation names corrected against real AppSync schema, backend-config dev URLs confirmed, setTyping unblocked)
+last_updated: 2026-11-17 (story 16.10 complete — BlockedUsersScreen thin wire + block action entry points: created BlockedUsersScreen at src/features/blocks/screens/BlockedUsersScreen.tsx (FlatList of ListRow with Unblock Button wired to useUnblockUserMutation; loading/empty/error/ready states via catalog components); registered BlockedUsersScreen in ExploreStackParamList + ExploreStack; OtherProfileScreen and ChatRoomScreen gain block action via Alert.alert two-step (action sheet → confirm dialog → blockMutation.mutate + navigation.goBack()); added blocks.blockedUsers.* + blocks.action.* labels to labels.en.json + labels.ur.json; fixed ExploreStack.test.tsx (added BlockedUsersScreen stub); 2763→2796 passing (+33); tsc zero errors; eslint zero new errors; AppTabs ESM pre-existing failure unchanged)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -192,7 +192,8 @@ stories:
   - id: 16.1
     title: Friends endpoint + hook
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 145
     depends_on: []
     acceptance_criteria:
       - `src/features/friends/api.ts` exposes `useFriendsQuery()` returning a typed friend list.
@@ -204,7 +205,8 @@ stories:
   - id: 16.2
     title: FriendsListScreen thin wire
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 149
     depends_on: [16.1]
     acceptance_criteria:
       - `FriendsListScreen` renders the friend list via `FlatList` of `ListRow`; tapping a row navigates to `OtherProfileScreen` with `userId` typed through the ParamList.
@@ -215,7 +217,8 @@ stories:
   - id: 16.FR1
     title: Friend-request REST endpoints + queries (real backend)
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 146
     depends_on: []
     acceptance_criteria:
       - `src/services/api/endpoints.ts` gains a `friendRequestsApi` object with `listIncoming()`, `listOutgoing()` methods calling `GET /friend-requests?direction=incoming` and `GET /friend-requests?direction=outgoing` per architecture §11.2.8.
@@ -227,7 +230,8 @@ stories:
   - id: 16.FR2
     title: Friend-request mutation hooks + cross-cache invalidation
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 147
     depends_on: [16.FR1]
     acceptance_criteria:
       - `src/features/friendRequests/api.ts` gains `useSendFriendRequestMutation`, `useAcceptFriendRequestMutation`, `useDeclineFriendRequestMutation`, `useCancelOutgoingRequestMutation` wired to `POST /friend-requests`, `POST /friend-requests/{id}/accept`, `POST /friend-requests/{id}/decline`, `DELETE /friend-requests/{id}` respectively.
@@ -243,7 +247,8 @@ stories:
   - id: 16.FR3
     title: Modal shape rewire + FriendshipProvider teardown
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 148
     depends_on: [16.FR2, 16.1]
     acceptance_criteria:
       - `IncomingRequestModal.onAccept` and `.onDecline` signatures change to `(userId: string, requestId: string) => void`. The modal already has the full request row in its `profile` prop context; the host receives both values and calls `useAcceptFriendRequestMutation.mutate({ requestId })` / `useDeclineFriendRequestMutation.mutate({ requestId })`.
@@ -268,7 +273,8 @@ stories:
   - id: 16.3
     title: AppSync client + Amplify GraphQL wiring + shared Amplify config refactor
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 150
     depends_on: []
     acceptance_criteria:
       - New `src/services/amplify/amplifyConfig.ts` module owns the single `Amplify.configure({ Auth: { Cognito: {...} }, API: { GraphQL: {...} } })` call. Both `src/services/auth/cognitoClient.ts` and `src/services/graphql/appsyncClient.ts` contribute their config blocks into this one call. The old `ensureConfigured()` guard in `cognitoClient.ts` is replaced with `ensureAmplifyConfigured()` from the new module; the new guard is idempotent and configures BOTH Auth and API on first call.
@@ -286,7 +292,8 @@ stories:
   - id: 16.4
     title: Chat feature hooks + shape adapter (real backend)
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 151
     depends_on: [16.3]
     acceptance_criteria:
       - `src/features/chat/api.ts` exposes `useRoomsQuery()`, `useMessagesQuery(roomId)`, `useCreateOrGetRoomMutation()`, `useSendMessageMutation()`, and `useOnMessageInRoomSubscription(roomId)`. Query keys follow §7.3 — `['rooms']`, `['messages', roomId]`.
@@ -303,7 +310,8 @@ stories:
   - id: 16.5
     title: Wire real Rooms query into ChatListScreen + switch route param to roomId + delete mock chat
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 152
     depends_on: [16.4]
     acceptance_criteria:
       - `ChatListScreen` replaces its `useFriendship().friends`-driven list with `useRoomsQuery()`. Each row renders one `ChatRoom`. Counterpart user_id derived from `ChatRoom.userA` + `ChatRoom.userB` with `currentUserId` (the one that is NOT currentUserId is the counterpart). Counterpart display name + avatar comes from either the `cachedOtherName` / `cachedOtherAvatar` on the matching `ChatRoomMembership` row (if the listMyRooms query returns them joined) OR via `useProfileQuery(counterpartUserId)` with the usual `['profile', userId]` cache. Last-message preview + timestamp come from `ChatRoom.lastMessagePreview` + `ChatRoom.lastMessageAt` top-level fields.
@@ -326,7 +334,8 @@ stories:
   - id: 16.6
     title: Wire real messages query + onMessageInRoom subscription into ChatRoomScreen
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 153
     depends_on: [16.5]
     acceptance_criteria:
       - Replace the `useChatHistory` data source in `ChatRoomScreen` with `useMessagesQuery(roomId)` + `useOnMessageInRoomSubscription(roomId)`. `sendMessage` calls `useSendMessageMutation.mutate({ content, contentType: 'text', roomId })` (optimistic append + rollback per 16.4). Route param is now `roomId` (per 16.5) — update `useRoute<ChatRoomRoute>().params` destructure.
@@ -347,7 +356,8 @@ stories:
   - id: 16.CH1
     title: Read-receipt subscription + 'read' status tick
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 154
     depends_on: [16.6]
     acceptance_criteria:
       - `src/features/chat/api.ts` adds `useOnReadReceiptSubscription(roomId)` wired to the AppSync `onReadReceipt(roomId): MessageRead` subscription.
@@ -363,7 +373,8 @@ stories:
   - id: 16.CH2
     title: Typing-indicator subscription + chat-room typing row
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 155
     depends_on: [16.6]
     acceptance_criteria:
       - `src/features/chat/api.ts` adds `useOnTypingInRoomSubscription(roomId)` wired to `onTypingInRoom(roomId): TypingEvent`, AND `useSetTypingMutation` wired to the outbound mutation `setTyping(isTyping: Boolean!, roomId: ID!): TypingEvent!` (confirmed present on the real schema, 2026-11-15).
@@ -378,7 +389,8 @@ stories:
   - id: 16.8
     title: Subscription-driven modal triggers + FriendRequestSubscriptionListener + DevTriggersPanel teardown
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 156
     depends_on: [16.FR2, 16.FR3]
     acceptance_criteria:
       - New component `src/features/friendRequests/FriendRequestSubscriptionListener.tsx` — returns `null`. Subscribes to the SINGLE AppSync subscription `onFriendRequestUpdated: Notification` when `useAuth().status === 'authenticated'`; renders nothing otherwise. Branches on the returned `Notification.type` to decide which modal to open (see context_summary "FriendRequestSubscriptionListener" for the full branch spec). Holds two independent `useState` fields for `incomingProfile` and `acceptedProfile` plus their visibility booleans. Mounts both `IncomingRequestModal` and `RequestAcceptedModal` as siblings.
@@ -396,7 +408,8 @@ stories:
   - id: 16.9
     title: Blocks endpoints + hooks + cross-cache purge
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 157
     depends_on: [16.FR1]
     acceptance_criteria:
       - `src/services/api/endpoints.ts` gains a `blocksApi` object with `list()`, `block(userId)`, `unblock(userId)` methods calling `GET /blocks`, `POST /blocks`, `DELETE /blocks/{userId}` per §11.2.8.
@@ -409,7 +422,8 @@ stories:
   - id: 16.10
     title: BlockedUsersScreen thin wire + block toggle entry points (single-item action sheet)
     agent: frontenddeveloper
-    done: false
+    done: true
+    tracking_issue: 158
     depends_on: [16.9]
     acceptance_criteria:
       - `BlockedUsersScreen` renders blocked users via `FlatList` of `ListRow`; each row exposes an Unblock `Button` wired to `useUnblockUserMutation`.

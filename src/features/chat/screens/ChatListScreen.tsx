@@ -1,21 +1,21 @@
 /**
- * ChatListScreen — WhatsApp-style list of connected friends with their last
- * message and formatted timestamp.
+ * ChatListScreen — WhatsApp-style list of chat rooms with their last-message
+ * preview and formatted timestamp.
  *
- * This is the initial route of `ChatStack` (story 15.4). Each row is a
- * `ChatListRow` — a standalone component that holds its own `useChatHistory`
- * call at the top level, satisfying the Rules of Hooks while keeping the
- * `renderItem` callback hook-free.
+ * Story 15.4: initial shell.
+ * Story 16.FR3: rewired from `useFriendship().friends` to `useFriendsQuery()`.
+ * Story 16.5: rewired from `useFriendsQuery()` to `useRoomsQuery()`. Route
+ * param switched to `roomId` per PRD Round-1 BLOCKING 5. Counterpart user_id
+ * derived from `ChatRoom.userA`/`userB` using `currentUserId` from
+ * `useOwnProfile()`. Each row is a `ChatListRow` driven by one `ChatRoom`.
  *
- * **Empty state:** When the current user has no friends yet, an `EmptyState`
- * is rendered instead of the list. In the mock-phase seed, Mehvish is always
- * a friend, so this state is unlikely in normal dev usage but is covered by
- * tests.
+ * Loading / error / empty states use the catalog components (`LoadingState`,
+ * `ErrorState`, `EmptyState`) per story 16.5 ACs.
  *
  * **No tabBarHidden:** Unlike the Marriage and Explore stacks, the Chat tab
  * does not collapse the tab bar on scroll. The tab bar remains visible
- * throughout — `ChatRoomScreen` (story 15.5) owns its own header and does not
- * need the bar to be hidden.
+ * throughout — `ChatRoomScreen` owns its own header and does not need the bar
+ * to be hidden.
  *
  * @module features/chat/screens/ChatListScreen
  */
@@ -26,10 +26,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { Heading, EmptyState } from '@/components';
+import { Heading, EmptyState, LoadingState, ErrorState } from '@/components';
 import { t } from '@/labels';
-import { useFriendship } from '@/state/friendship/FriendshipProvider';
-import type { DummyFullProfile } from '@/types/DummyFullProfile';
+import { useRoomsQuery } from '@/features/chat/api';
+import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
+import type { ChatRoom } from '@/services/graphql/types';
 import type { ChatStackParamList } from '@/navigation/types';
 import { ChatListRow } from '@/features/chat/components/ChatListRow';
 
@@ -40,42 +41,44 @@ type ChatListNav = NativeStackNavigationProp<ChatStackParamList, 'ChatListScreen
 // ── Component ─────────────────────────────────────────────────────────────────
 
 /**
- * Chat tab home screen — lists every friend with their last message preview
- * and a formatted timestamp.
+ * Chat tab home screen — lists every chat room with the counterpart's name,
+ * last-message preview, and a formatted timestamp.
  *
- * Pressing a row navigates to `ChatRoomScreen` with the friend's `user_id`.
- * When there are no friends, an `EmptyState` placeholder is shown.
+ * Pressing a row navigates to `ChatRoomScreen` with the room's `roomId`.
+ * When there are no rooms, an `EmptyState` placeholder is shown.
  *
  * @see {@link ChatListRow} for the per-row component.
  */
 export function ChatListScreen(): React.ReactElement {
   const navigation = useNavigation<ChatListNav>();
   const insets = useSafeAreaInsets();
-  const { friends } = useFriendship();
+  const roomsQuery = useRoomsQuery();
+  const rooms = roomsQuery.data ?? [];
+
+  // The signed-in user's id — used by ChatListRow to derive the counterpart.
+  const { profile: ownProfile } = useOwnProfile();
+  const currentUserId = ownProfile?.user_id ?? '';
 
   // ── Row press handler ──────────────────────────────────────────────────────
 
   const handleRowPress = useCallback(
-    (friendUserId: string) => {
-      navigation.navigate('ChatRoomScreen', { friendUserId });
+    (roomId: string) => {
+      navigation.navigate('ChatRoomScreen', { roomId });
     },
     [navigation],
   );
 
   // ── renderItem ─────────────────────────────────────────────────────────────
-  //
-  // DO NOT call useChatHistory here or inside this callback — hooks may only
-  // be called at the top level of a React component or custom hook. The
-  // standalone ChatListRow component holds the useChatHistory call.
 
   const renderItem = useCallback(
-    ({ item }: { item: DummyFullProfile }) => (
+    ({ item }: { item: ChatRoom }) => (
       <ChatListRow
-        friend={item}
-        onPress={() => handleRowPress(item.user_id)}
+        room={item}
+        currentUserId={currentUserId}
+        onPress={() => handleRowPress(item.roomId)}
       />
     ),
-    [handleRowPress],
+    [currentUserId, handleRowPress],
   );
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -88,7 +91,14 @@ export function ChatListScreen(): React.ReactElement {
       </View>
 
       {/* ── Body ─────────────────────────────────────────────────── */}
-      {friends.length === 0 ? (
+      {roomsQuery.isLoading ? (
+        <LoadingState message={t('common.loading')} />
+      ) : roomsQuery.isError ? (
+        <ErrorState
+          title={t('common.error')}
+          description={t('common.error')}
+        />
+      ) : rooms.length === 0 ? (
         <EmptyState
           title={t('chat.list.emptyTitle')}
           description={t('chat.list.emptyDescription')}
@@ -97,8 +107,8 @@ export function ChatListScreen(): React.ReactElement {
       ) : (
         <FlatList
           testID="chat-list-flatlist"
-          data={friends}
-          keyExtractor={(item) => item.user_id}
+          data={rooms}
+          keyExtractor={(item) => item.roomId}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
         />

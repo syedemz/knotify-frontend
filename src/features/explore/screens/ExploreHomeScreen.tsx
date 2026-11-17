@@ -5,6 +5,14 @@
  * a third **Bookmarks** subtab showing the user's saved deck profiles as a
  * 2-column grid of `BookmarkCard` components.
  *
+ * Story 16.FR3: rewired from `useFriendship()` to direct TanStack Query hooks:
+ * - Friends: `useFriendsQuery()` returns `Friend[]` (each is a full UserProfile).
+ * - Requests: `useIncomingRequestsQuery()` returns `FriendRequest[]`.
+ * - Accept: `useAcceptFriendRequestMutation` (optimistic removal + cache invalidation).
+ * - Decline: `useDeclineFriendRequestMutation` (optimistic removal) + local snackbar.
+ * - `pendingToast` cross-screen handoff REMOVED — Decline no longer propagates a
+ *   toast to this screen via provider state; each screen shows its own toast.
+ *
  * Subtab order: Friends | Requests | Bookmarks.
  *
  * - **Friends**: flat list of current friends. Row press → `OtherProfileScreen`
@@ -22,22 +30,13 @@
  * `TouchableArea` wraps ONLY the left column; the Accept/Decline buttons live in a
  * sibling `Row` outside the touch target.
  *
- * **Snackbar surface (NG2 / Q16):** This screen is the canonical snackbar surface
- * for the Explore stack. It serves:
- * 1. Row-level Accept/Decline button toasts.
- * 2. The "Request declined" toast forwarded from `OtherProfileScreen` via
- *    `FriendshipProvider.pendingToast` (consumed on `useFocusEffect`).
- *
- * **Tab-segment pattern:** Mirrors `MyProfileScreen`'s Preview/Edit approach —
- * local `activeTab` state, brand color on active, secondary color on inactive.
- *
  * @module features/explore/screens/ExploreHomeScreen
  */
 
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import {
@@ -47,15 +46,22 @@ import {
   Heading,
   TouchableArea,
   EmptyState,
+  LoadingState,
+  ErrorState,
   Snackbar,
   Button,
 } from '@/components';
 import { t } from '@/labels';
-import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
-import type { DummyFullProfile } from '@/types/DummyFullProfile';
+import { useFriendsQuery } from '@/features/friends/api';
+import {
+  useIncomingRequestsQuery,
+  useAcceptFriendRequestMutation,
+  useDeclineFriendRequestMutation,
+} from '@/features/friendRequests/api';
+import type { Friend } from '@/types/api/Friend';
+import type { FriendRequest } from '@/types/api/FriendRequest';
 import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
-import type { PendingRequest } from '@/state/friendship/FriendshipProvider';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
 import { BookmarkCard } from '@/features/bookmarks/components/BookmarkCard';
 import type { ExploreStackParamList } from '@/navigation/types';
@@ -76,41 +82,27 @@ type TabKey = 'friends' | 'requests' | 'bookmarks';
  *
  * - Friends tab: tap row → `OtherProfileScreen` with `source='friend'`.
  * - Requests tab: tap row body → `OtherProfileScreen` with `source='request'`;
- *   tap Accept → `acceptRequest` + snackbar; tap Decline → `declineRequest` + snackbar.
+ *   tap Accept → `useAcceptFriendRequestMutation` + snackbar;
+ *   tap Decline → `useDeclineFriendRequestMutation` + local snackbar.
  * - Bookmarks tab: 2-column grid of saved deck profiles; tap card →
  *   `BookmarkDeckViewScreen` with `{ userId }`.
- * - Snackbar surface: also consumes `FriendshipProvider.pendingToast` on every
- *   screen-focus event (cross-screen Decline handoff from `OtherProfileScreen`).
  */
 export function ExploreHomeScreen(): React.ReactElement {
   const navigation = useNavigation<ExploreNav>();
   const insets = useSafeAreaInsets();
-  const {
-    friends,
-    requests,
-    acceptRequest,
-    declineRequest,
-    getFullProfile,
-    consumePendingToast,
-    pendingToast,
-  } = useFriendship();
+
+  // ── Data hooks ─────────────────────────────────────────────────────────────
+  const friendsQuery = useFriendsQuery();
+  const requestsQuery = useIncomingRequestsQuery();
+  const acceptMutation = useAcceptFriendRequestMutation();
+  const declineMutation = useDeclineFriendRequestMutation();
   const { bookmarks } = useBookmarks();
+
+  const friends = friendsQuery.data ?? [];
+  const requests = requestsQuery.data ?? [];
 
   const [activeTab, setActiveTab] = useState<TabKey>('friends');
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
-
-  // ── pendingToast consume on focus (NG2 / Q16) ──────────────────────────────
-  // Every time this screen regains focus (e.g. after OtherProfileScreen goBack),
-  // check if FriendshipProvider has a pending toast from the Decline handoff.
-  // Call consumePendingToast() to clear it so it is shown exactly once.
-  useFocusEffect(
-    useCallback(() => {
-      consumePendingToast();
-      if (pendingToast !== null) {
-        setSnackbarMsg(pendingToast);
-      }
-    }, [consumePendingToast, pendingToast]),
-  );
 
   // ── Tab handlers ───────────────────────────────────────────────────────────
 
@@ -145,19 +137,19 @@ export function ExploreHomeScreen(): React.ReactElement {
   );
 
   const handleAcceptRequest = useCallback(
-    (userId: string) => {
-      acceptRequest(userId);
+    (requestId: string) => {
+      acceptMutation.mutate({ requestId });
       setSnackbarMsg(t('explore.requests.acceptedToast'));
     },
-    [acceptRequest],
+    [acceptMutation],
   );
 
   const handleDeclineRequest = useCallback(
-    (userId: string) => {
-      declineRequest(userId);
+    (requestId: string) => {
+      declineMutation.mutate({ requestId });
       setSnackbarMsg(t('explore.requests.declinedToast'));
     },
-    [declineRequest],
+    [declineMutation],
   );
 
   const handleSnackbarDismiss = useCallback(() => {
@@ -176,12 +168,12 @@ export function ExploreHomeScreen(): React.ReactElement {
   // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderFriendRow = useCallback(
-    ({ item }: { item: DummyFullProfile }) => {
+    ({ item }: { item: Friend }) => {
       // Pass the raw asset path — Avatar (inside ProfileThumbnailCircle)
       // calls resolveDummyPhoto() internally. Pre-resolving here to a
       // require handle and String()-ing it produces "12" which Avatar
       // treats as a broken remote URL and falls back to the "?" initial.
-      const photoPath = item.photos?.[0] ?? item.photo_url ?? '';
+      const photoPath = item.photo_url ?? '';
       const fullName = `${item.first_name} ${item.last_name}`;
 
       return (
@@ -205,37 +197,31 @@ export function ExploreHomeScreen(): React.ReactElement {
   );
 
   const renderRequestRow = useCallback(
-    ({ item }: { item: PendingRequest }) => {
-      const profile = getFullProfile(item.from_user_id);
-      // Defensive: skip rows whose userId is not in the registry.
-      if (profile === undefined) {
-        return null;
-      }
-
-      // Pass raw asset path — see renderFriendRow for the same fix.
-      const photoPath = profile.photos?.[0] ?? profile.photo_url ?? '';
-      const fullName = `${profile.first_name} ${profile.last_name}`;
+    ({ item }: { item: FriendRequest }) => {
+      // For the Requests tab we show the sender's user_id as a placeholder
+      // until useProfileQuery is wired in a future story (16.8 owns the
+      // full listener + profile lookup). For now we display a minimal row.
+      const displayName = item.from_user_id;
 
       return (
         // Outer Row uses sibling structure (Note 1):
         // - Left: TouchableArea wrapping thumbnail + name column.
         // - Right: sibling Row with Accept/Decline buttons.
-        // This prevents touch propagation firing BOTH the row press AND a button.
         <Row paddingX="lg" paddingY="md" gap="md" align="center" justify="space-between">
           {/* Left: row body — tappable column */}
           <TouchableArea
             onPress={() => handleRequestRowBodyPress(item.from_user_id)}
-            accessibilityLabel={fullName}
+            accessibilityLabel={displayName}
             testID={`request-row-body-${item.from_user_id}`}
           >
             <Row gap="md" align="center">
               <ProfileThumbnailCircle
-                uri={photoPath}
+                uri=""
                 size={48}
-                accessibilityLabel={fullName}
+                accessibilityLabel={displayName}
               />
               <Column gap="xs">
-                <Heading variant="heading.sm">{fullName}</Heading>
+                <Heading variant="heading.sm">{displayName}</Heading>
                 <Text variant="label.sm" color="secondary">
                   {t('explore.requests.sentYou')}
                 </Text>
@@ -250,7 +236,7 @@ export function ExploreHomeScreen(): React.ReactElement {
               variant="primary"
               size="sm"
               fullWidth={false}
-              onPress={() => handleAcceptRequest(item.from_user_id)}
+              onPress={() => handleAcceptRequest(item.request_id)}
               testID={`request-accept-${item.from_user_id}`}
             />
             <Button
@@ -258,14 +244,14 @@ export function ExploreHomeScreen(): React.ReactElement {
               variant="ghost"
               size="sm"
               fullWidth={false}
-              onPress={() => handleDeclineRequest(item.from_user_id)}
+              onPress={() => handleDeclineRequest(item.request_id)}
               testID={`request-decline-${item.from_user_id}`}
             />
           </Row>
         </Row>
       );
     },
-    [getFullProfile, handleRequestRowBodyPress, handleAcceptRequest, handleDeclineRequest],
+    [handleRequestRowBodyPress, handleAcceptRequest, handleDeclineRequest],
   );
 
   // ── Bookmarks render helper ────────────────────────────────────────────────
@@ -340,7 +326,14 @@ export function ExploreHomeScreen(): React.ReactElement {
 
       {/* ── Tab content ───────────────────────────────────────────────── */}
       {activeTab === 'friends' ? (
-        friends.length === 0 ? (
+        friendsQuery.isLoading ? (
+          <LoadingState message={t('common.loading')} testID="loading-state" />
+        ) : friendsQuery.isError ? (
+          <ErrorState
+            title={t('common.error')}
+            description={t('common.error')}
+          />
+        ) : friends.length === 0 ? (
           <EmptyState
             title={t('explore.friends.emptyTitle')}
             description={t('explore.friends.emptyDescription')}
@@ -357,7 +350,14 @@ export function ExploreHomeScreen(): React.ReactElement {
           />
         )
       ) : activeTab === 'requests' ? (
-        requests.length === 0 ? (
+        requestsQuery.isLoading ? (
+          <LoadingState message={t('common.loading')} testID="loading-state" />
+        ) : requestsQuery.isError ? (
+          <ErrorState
+            title={t('common.error')}
+            description={t('common.error')}
+          />
+        ) : requests.length === 0 ? (
           <EmptyState
             title={t('explore.requests.emptyTitle')}
             description={t('explore.requests.emptyDescription')}
@@ -395,8 +395,7 @@ export function ExploreHomeScreen(): React.ReactElement {
         )
       )}
 
-      {/* ── Snackbar surface (NG2 / Q16) ─────────────────────────────── */}
-      {/* Serves row-level Accept/Decline toasts AND cross-screen Decline handoff */}
+      {/* ── Snackbar surface ─────────────────────────────────────────── */}
       <Snackbar
         visible={snackbarMsg !== null}
         message={snackbarMsg ?? ''}

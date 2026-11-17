@@ -46,6 +46,17 @@ jest.mock('../../../assets/dummyprofile.json', () => ({
   },
 }));
 
+// MarriageLandingScreen now calls useSendFriendRequestMutation() after story 16.FR3.
+// Mock so tests do not require a QueryClient in the render tree.
+jest.mock('@/features/friendRequests/api', () => ({
+  useSendFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useIncomingRequestsQuery: () => ({ data: [], isLoading: false, isError: false }),
+  useOutgoingRequestsQuery: () => ({ data: [], isLoading: false, isError: false }),
+  useAcceptFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useDeclineFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useCancelOutgoingRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+}));
+
 // MarriageLandingScreen now calls useBookmarks() — mock so tests do not
 // require a real BookmarksProvider in the render tree.
 jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
@@ -62,7 +73,6 @@ jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';
-import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -103,9 +113,7 @@ jest.mock('expo-image', () => {
 function renderScreen() {
   return render(
     <ThemeProvider>
-      <FriendshipProvider>
-        <MarriageLandingScreen />
-      </FriendshipProvider>
+      <MarriageLandingScreen />
     </ThemeProvider>,
   );
 }

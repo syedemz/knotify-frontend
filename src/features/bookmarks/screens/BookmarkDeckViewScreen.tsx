@@ -44,7 +44,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { EmptyState, Button } from '@/components';
 import { t } from '@/labels';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
-import { useFriendship } from '@/state/friendship/FriendshipProvider';
+import { useSendFriendRequestMutation } from '@/features/friendRequests/api';
 import type { ExploreStackParamList } from '@/navigation/types';
 import { DeckCard } from '@/features/landing/components/DeckCard';
 import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
@@ -88,8 +88,8 @@ export function BookmarkDeckViewScreen(): React.ReactElement {
   const { getBookmark } = useBookmarks();
   const profile: DummyDeckProfile | undefined = getBookmark(userId);
 
-  // ── Friendship state (outgoing requests) ────────────────────────────────────
-  const { sendRequest } = useFriendship();
+  // ── Friend request mutation ─────────────────────────────────────────────────
+  const sendRequestMutation = useSendFriendRequestMutation();
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
 
@@ -137,12 +137,11 @@ export function BookmarkDeckViewScreen(): React.ReactElement {
 
   const handleConfirmed = useCallback(() => {
     setModalVisible(false);
-    // TODO(mock-only): real request-create ships in phase 15
     if (profile !== undefined) {
-      sendRequest(profile.user_id).catch(console.warn);
+      sendRequestMutation.mutate({ toUserId: profile.user_id });
     }
     navigation.goBack();
-  }, [navigation, profile, sendRequest]);
+  }, [navigation, profile, sendRequestMutation]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
 

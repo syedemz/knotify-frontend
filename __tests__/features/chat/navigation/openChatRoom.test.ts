@@ -1,12 +1,15 @@
 /**
- * Tests for `src/features/chat/navigation/openChatRoom.ts`.
+ * Tests for `src/features/chat/navigation/openChatRoom.ts` (story 16.5).
+ *
+ * Story 16.5: `chatRoomExistsForUser` is DELETED. `useOpenChatRoom` now
+ * resolves `userId → roomId` via `useCreateOrGetRoomMutation.mutateAsync`
+ * and navigates with `{ roomId }`.
  *
  * AC coverage:
- * (a) `chatRoomExistsForUser` returns `true` for any userId (mock-only behaviour).
- * (b) `useOpenChatRoom` — when existence check returns true, navigate is called
- *     with the correct nested params.
- * (c) `useOpenChatRoom` — when existence check returns false (mocked), navigate
- *     is NOT called and `console.warn` is called.
+ * (a) `useOpenChatRoom` calls `mutateAsync` with `{ otherUserId: userId }`.
+ * (b) After `mutateAsync` resolves, `navigate` is called with
+ *     `'Chat', { screen: 'ChatRoomScreen', params: { roomId } }`.
+ * (c) If `mutateAsync` rejects, `navigate` is NOT called (error propagates).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -25,114 +28,128 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+// ── useCreateOrGetRoomMutation mock ────────────────────────────────────────────
+
+const mockMutateAsync = jest.fn();
+
+jest.mock('@/features/chat/api', () => ({
+  useCreateOrGetRoomMutation: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+    isError: false,
+  }),
+}));
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
-import { chatRoomExistsForUser, useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
+import { useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
 
 // ── Setup ──────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   mockNavigate.mockClear();
-  jest.restoreAllMocks();
+  mockMutateAsync.mockClear();
+  mockMutateAsync.mockResolvedValue({
+    roomId: 'room-resolved-001',
+    userA: 'user-a',
+    userB: 'user-b',
+    lastMessagePreview: null,
+    lastMessageAt: null,
+    lastMessageSenderId: null,
+    lastMessageId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
 });
 
-// ── AC (a): chatRoomExistsForUser returns true ─────────────────────────────────
+// ── AC (a): mutateAsync is called with { otherUserId } ─────────────────────────
 
-describe('chatRoomExistsForUser', () => {
-  it('given any userId, when called, then returns true (mock-only)', async () => {
-    await expect(chatRoomExistsForUser('test-user-123')).resolves.toBe(true);
-  });
-
-  it('given an empty string userId, when called, then still returns true', async () => {
-    await expect(chatRoomExistsForUser('')).resolves.toBe(true);
-  });
-});
-
-// ── AC (b): useOpenChatRoom navigates when check returns true ──────────────────
-
-describe('useOpenChatRoom — given chatRoomExistsForUser returns true', () => {
-  it('calls navigate with the correct Chat/ChatRoomScreen nested params', async () => {
+describe('useOpenChatRoom — AC (a): calls mutateAsync with otherUserId', () => {
+  it('given a userId, when openChatRoom is called, then mutateAsync is called with { otherUserId: userId }', async () => {
     const { result } = renderHook(() => useOpenChatRoom());
     const openChatRoom = result.current;
 
     await act(async () => {
-      await openChatRoom('user-abc');
+      await openChatRoom('user-friend-001');
     });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
-    expect(mockNavigate).toHaveBeenCalledWith('Chat', {
-      screen: 'ChatRoomScreen',
-      params: { friendUserId: 'user-abc' },
-    });
+    expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenCalledWith({ otherUserId: 'user-friend-001' });
   });
 
-  it('passes the exact userId received to navigate params', async () => {
+  it('passes the exact userId as otherUserId', async () => {
     const { result } = renderHook(() => useOpenChatRoom());
-    const openChatRoom = result.current;
-    const userId = 'mehvish-user-id-42';
+    const specificUserId = 'mehvish-user-id-42';
 
     await act(async () => {
-      await openChatRoom(userId);
+      await result.current(specificUserId);
+    });
+
+    expect(mockMutateAsync).toHaveBeenCalledWith({ otherUserId: specificUserId });
+  });
+});
+
+// ── AC (b): navigate is called with the resolved roomId ───────────────────────
+
+describe('useOpenChatRoom — AC (b): navigate called with resolved roomId', () => {
+  it(
+    'given mutateAsync resolves with roomId, when openChatRoom is called, then navigate is called with Chat/ChatRoomScreen/roomId',
+    async () => {
+      const { result } = renderHook(() => useOpenChatRoom());
+
+      await act(async () => {
+        await result.current('user-friend-001');
+      });
+
+      expect(mockNavigate).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith('Chat', {
+        screen: 'ChatRoomScreen',
+        params: { roomId: 'room-resolved-001' },
+      });
+    },
+  );
+
+  it('passes the exact roomId returned by mutateAsync', async () => {
+    mockMutateAsync.mockResolvedValueOnce({
+      roomId: 'room-specific-xyz',
+      userA: 'a',
+      userB: 'b',
+      lastMessagePreview: null,
+      lastMessageAt: null,
+      lastMessageSenderId: null,
+      lastMessageId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const { result } = renderHook(() => useOpenChatRoom());
+
+    await act(async () => {
+      await result.current('user-friend-002');
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('Chat', {
       screen: 'ChatRoomScreen',
-      params: { friendUserId: userId },
+      params: { roomId: 'room-specific-xyz' },
     });
   });
 });
 
-// ── AC (c): useOpenChatRoom does NOT navigate when check returns false ──────────
+// ── AC (c): navigate NOT called if mutateAsync rejects ────────────────────────
 
-describe('useOpenChatRoom — given chatRoomExistsForUser returns false', () => {
-  beforeEach(() => {
-    // Temporarily override the module-level function to return false.
-    // Using jest.spyOn on the module so the hook picks up the patched version.
-    jest.spyOn(
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@/features/chat/navigation/openChatRoom'),
-      'chatRoomExistsForUser',
-    ).mockResolvedValueOnce(false);
-  });
+describe('useOpenChatRoom — AC (c): navigate not called on mutation error', () => {
+  it(
+    'given mutateAsync rejects, when openChatRoom is called, then navigate is NOT called and the promise rejects',
+    async () => {
+      mockMutateAsync.mockRejectedValueOnce(new Error('Network failure'));
 
-  it('does NOT call navigate when existence check returns false', async () => {
-    // Note: the hook captures a closure over the module-level function.
-    // Because the hook calls `chatRoomExistsForUser` via direct import, the spy
-    // must patch the function reference that the compiled module uses.
-    // If this test is flaky, the spy approach may not intercept the call due
-    // to ES module semantics — in that case, the integration test via
-    // renderHook with a mocked module is the correct approach.
+      const { result } = renderHook(() => useOpenChatRoom());
 
-    // We directly verify that the guard path would not navigate by calling
-    // the underlying function directly (unit test of the guard predicate).
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      await act(async () => {
+        await expect(result.current('user-friend-001')).rejects.toThrow('Network failure');
+      });
 
-    // Simulate the guard: if exists is false, navigate is not called.
-    const exists = await chatRoomExistsForUser('some-user');
-    // Since the spy returns false for this call:
-    if (!exists) {
-      console.warn('[openChatRoom] chatRoomExistsForUser returned false for userId:', 'some-user', '— navigation aborted.');
-    }
-
-    expect(mockNavigate).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[openChatRoom] chatRoomExistsForUser returned false for userId:',
-      'some-user',
-      '— navigation aborted.',
-    );
-
-    warnSpy.mockRestore();
-  });
-
-  it('given a userId where check returns false, then console.warn is called', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-
-    const exists = await chatRoomExistsForUser('blocked-user');
-    if (!exists) {
-      console.warn('[openChatRoom] chatRoomExistsForUser returned false for userId:', 'blocked-user', '— navigation aborted.');
-    }
-
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
-  });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    },
+  );
 });

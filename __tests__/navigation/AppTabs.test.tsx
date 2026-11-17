@@ -182,6 +182,17 @@ jest.mock("@/state/ownProfile/OwnProfileProvider", () => ({
   }),
 }));
 
+// FriendRequestSubscriptionListener (story 16.8) is mounted inside AppTabs.
+// Mock it so AppTabs tests do not pull in AppSync / auth / query clients.
+jest.mock("@/features/friendRequests/FriendRequestSubscriptionListener", () => {
+  const Rct = require("react") as typeof import("react");
+  return {
+    FriendRequestSubscriptionListener: function MockFriendRequestSubscriptionListener() {
+      return null;
+    },
+  };
+});
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Imports under test ────────────────────────────────────────────────────────

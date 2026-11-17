@@ -1,7 +1,7 @@
 /**
- * Tests for `src/features/chat/components/MessageBubble.tsx` (story 15.5).
+ * Tests for `src/features/chat/components/MessageBubble.tsx`.
  *
- * AC coverage:
+ * Story 15.5 AC coverage:
  * (a) Sent messages queryable by testID='bubble-sent'.
  * (b) Received messages queryable by testID='bubble-received'.
  * (c) Message text rendered inside the bubble.
@@ -10,6 +10,9 @@
  * (f) Status icon renders for 'sent' (Check), 'delivered' (CheckCheck), 'read' (CheckCheck tinted).
  * (g) Status icons only present for sender==='me'.
  * (h) No status icons for received (sender==='friend') messages.
+ *
+ * Story 16.6 AC coverage:
+ * (f2) Status icon renders for 'sending' (Clock) — optimistic local pre-ack state.
  *
  * NOTE: Do NOT assert literal style values. RNTL flattens StyleSheet styles
  * unpredictably. Use semantic testIDs as the verification axis.
@@ -23,6 +26,15 @@ import { ThemeProvider } from '@/theme';
 import type { ChatMessage } from '@/types/ChatMessage';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
+
+/** A sent message with status='sending' (optimistic local, pre-ack). */
+const sendingMessage: ChatMessage = {
+  id: 'test-sending-001',
+  sender: 'me',
+  text: 'Still sending…',
+  timestamp: new Date(2024, 7, 26, 9, 0, 0).getTime(), // 09:00
+  status: 'sending',
+};
 
 /** A sent message with status='sent'. */
 const sentMessage: ChatMessage = {
@@ -165,6 +177,23 @@ describe('MessageBubble — AC (e): editedAt suffix', () => {
 
 describe('MessageBubble — AC (f): status icons for sent messages', () => {
   it(
+    'given status="sending", when MessageBubble renders, then the status-icon-sending testID is present (Clock icon)',
+    () => {
+      const { getByTestId } = renderBubble(sendingMessage);
+      expect(getByTestId('status-icon-sending')).toBeTruthy();
+    },
+  );
+
+  it(
+    'given status="sending", then neither status-icon-sent nor status-icon-delivered is present',
+    () => {
+      const { queryByTestId } = renderBubble(sendingMessage);
+      expect(queryByTestId('status-icon-sent')).toBeNull();
+      expect(queryByTestId('status-icon-delivered')).toBeNull();
+    },
+  );
+
+  it(
     'given status="sent", when MessageBubble renders, then the status-icon-sent testID is present',
     () => {
       const { getByTestId } = renderBubble(sentMessage);
@@ -197,6 +226,7 @@ describe('MessageBubble — AC (g/h): status icons only for sent messages', () =
       expect(queryByTestId('status-icon-sent')).toBeNull();
       expect(queryByTestId('status-icon-delivered')).toBeNull();
       expect(queryByTestId('status-icon-read')).toBeNull();
+      expect(queryByTestId('status-icon-sending')).toBeNull();
     },
   );
 });

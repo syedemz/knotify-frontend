@@ -2,17 +2,14 @@
  * IncomingRequestModal — fully presentation-only modal for surfacing an
  * incoming friend-request event.
  *
- * This component is intentionally decoupled from `FriendshipProvider`:
+ * This component is intentionally decoupled from any provider:
  * it fires callbacks (`onAccept`, `onDecline`) and the HOST is responsible
- * for calling `acceptRequest` / `declineRequest` on the provider and for
- * showing a snackbar. The modal MUST NOT call `useFriendship()` internally.
+ * for calling the accept / decline mutations and for showing a snackbar.
+ * The modal MUST NOT call any provider hook internally.
  *
- * **Dev-trigger:** For phase 15 this modal is opened by a button on the
- * `MyProfileScreen` Edit tab. In phase 17 it will be opened by the AppSync
- * `onFriendRequestReceived` subscription event.
- *
- * TODO(mock-only): remove dev trigger when subscription-driven modal trigger
- * ships in phase 17.
+ * Story 16.8 will mount this modal via `FriendRequestSubscriptionListener`
+ * which subscribes to the AppSync `onFriendRequestUpdated` subscription
+ * and passes the resolved profile + requestId as props.
  *
  * @module features/friendRequests/components/IncomingRequestModal
  */
@@ -60,7 +57,7 @@ type CrossTabNav = NativeStackNavigationProp<AppTabsParamList>;
  * Props for `IncomingRequestModal`.
  *
  * The modal is fully presentation-only: it fires callbacks but does NOT call
- * `useFriendship()` or render a snackbar internally.
+ * any provider hook or render a snackbar internally.
  */
 export interface IncomingRequestModalProps {
   /** Whether the modal is currently visible. */
@@ -77,21 +74,32 @@ export interface IncomingRequestModalProps {
 
   /**
    * Called when the user taps Accept.
-   * The HOST is responsible for calling `acceptRequest(userId)` and showing
-   * a snackbar. The modal calls `onAccept(profile.user_id)` then `onClose()`.
+   * The HOST is responsible for calling `useAcceptFriendRequestMutation.mutate`
+   * and showing a snackbar. The modal calls
+   * `onAccept(profile.user_id, requestId)` then `onClose()`.
    *
    * @param userId - The `user_id` of the request sender.
+   * @param requestId - The `request_id` of the incoming friend request row.
    */
-  readonly onAccept: (userId: string) => void;
+  readonly onAccept: (userId: string, requestId: string) => void;
 
   /**
    * Called when the user taps Decline.
-   * The HOST is responsible for calling `declineRequest(userId)` and showing
-   * a snackbar. The modal calls `onDecline(profile.user_id)` then `onClose()`.
+   * The HOST is responsible for calling `useDeclineFriendRequestMutation.mutate`
+   * and showing a snackbar. The modal calls
+   * `onDecline(profile.user_id, requestId)` then `onClose()`.
    *
    * @param userId - The `user_id` of the request sender.
+   * @param requestId - The `request_id` of the incoming friend request row.
    */
-  readonly onDecline: (userId: string) => void;
+  readonly onDecline: (userId: string, requestId: string) => void;
+
+  /**
+   * The `request_id` of the incoming friend-request row that this modal
+   * is presenting. Required so the host can call the accept/decline mutations
+   * with the correct backend ID.
+   */
+  readonly requestId: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -120,6 +128,7 @@ export function IncomingRequestModal({
   onClose,
   onAccept,
   onDecline,
+  requestId,
 }: IncomingRequestModalProps): React.JSX.Element | null {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -172,12 +181,12 @@ export function IncomingRequestModal({
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleAccept = () => {
-    onAccept(profile.user_id);
+    onAccept(profile.user_id, requestId);
     onClose();
   };
 
   const handleDecline = () => {
-    onDecline(profile.user_id);
+    onDecline(profile.user_id, requestId);
     onClose();
   };
 

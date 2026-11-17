@@ -2,17 +2,14 @@
  * RequestAcceptedModal — fully presentation-only modal for surfacing a
  * "friend request accepted" lifecycle event.
  *
- * This component is intentionally decoupled from `FriendshipProvider` and
- * from navigation knowledge: it fires `onSayHi()` and the HOST is responsible
- * for calling the cross-tab navigate. This matches the B1 contract established
- * by `IncomingRequestModal` (story 15.6).
+ * This component is intentionally decoupled from any provider and
+ * from navigation knowledge: it fires `onSayHi(acceptorUserId)` and the HOST
+ * is responsible for calling the cross-tab navigate. This matches the B1
+ * contract established by `IncomingRequestModal` (story 15.6).
  *
- * **Dev-trigger:** For phase 15 this modal is opened by a button on the
- * `MyProfileScreen` Edit tab (story 15.7). In phase 17 it will be opened by
- * the AppSync `onFriendRequestAccepted` subscription event.
- *
- * TODO(mock-only): remove dev trigger when subscription-driven modal trigger
- * ships in phase 17.
+ * Story 16.8 will mount this modal via `FriendRequestSubscriptionListener`
+ * which subscribes to the AppSync `onFriendRequestUpdated` subscription
+ * and passes the resolved profile as a prop.
  *
  * @module features/friendRequests/components/RequestAcceptedModal
  */
@@ -62,10 +59,14 @@ export interface RequestAcceptedModalProps {
 
   /**
    * Called when the user taps "Say hi".
-   * The HOST is responsible for navigating to `ChatRoomScreen`.
-   * The modal calls `onSayHi()` then `onClose()`.
+   * The HOST is responsible for navigating to `ChatRoomScreen` by calling
+   * `openChatRoom(acceptorUserId)`.
+   * The modal calls `onSayHi(profile.user_id)` then `onClose()`.
+   *
+   * @param acceptorUserId - The `user_id` of the user who accepted the request
+   *   (i.e. the person displayed in this modal — the new friend).
    */
-  readonly onSayHi: () => void;
+  readonly onSayHi: (acceptorUserId: string) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -116,7 +117,7 @@ export function RequestAcceptedModal({
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleSayHi = () => {
-    onSayHi();
+    onSayHi(profile.user_id);
     onClose();
   };
 

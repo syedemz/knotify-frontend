@@ -1,7 +1,7 @@
 /**
  * Core message type for the chat feature.
  *
- * Used by {@link chatHistoryStorage}, {@link ChatProvider}, {@link ChatRoomScreen},
+ * Used by {@link ChatRoomScreen}, {@link MessageBubble}, shape adapters,
  * and all related test fixtures.
  *
  * **Id generation (mock-only).** In a real implementation message ids come from
@@ -43,14 +43,15 @@ export interface ChatMessage {
   /**
    * Delivery / read status of the message.
    *
-   * - `'sent'`      — delivered to the server but not yet confirmed received.
-   * - `'delivered'` — confirmed received on the friend's device.
-   * - `'read'`      — seen by the friend.
-   *
-   * Phase 15 statuses are static (seed data). Phase 17 wires real delivery /
-   * read-receipt subscriptions.
+   * - `'sending'`   — optimistic local placeholder; the server round-trip is
+   *                   still in flight. Added in phase 16 for real send flow.
+   * - `'sent'`      — server has echoed the message back (server-cached).
+   * - `'delivered'` — confirmed received on the friend's device
+   *                   (`Message.deliveredAt != null`).
+   * - `'read'`      — seen by the friend (via `MessageRead` receipt in
+   *                   story 16.CH1).
    */
-  readonly status: 'sent' | 'delivered' | 'read';
+  readonly status: 'sending' | 'sent' | 'delivered' | 'read';
 
   /**
    * Unix milliseconds at which the message was last edited.

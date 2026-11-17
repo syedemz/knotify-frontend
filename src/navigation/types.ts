@@ -83,14 +83,16 @@ export type MenuStackParamList = {
  * Route params for the `ChatStack` nested navigator (story 15.4).
  *
  * Screens:
- * - `ChatListScreen` (initial) — WhatsApp-style list of friends with last message + timestamp.
- * - `ChatRoomScreen` — per-friend message thread (story 15.5 replaces the placeholder).
+ * - `ChatListScreen` (initial) — WhatsApp-style list of chat rooms with last message + timestamp.
+ * - `ChatRoomScreen` — per-room message thread (story 15.5 ships the shell;
+ *   story 16.5 switches the param to `roomId` per PRD Round-1 BLOCKING 5).
  *
- * `ChatRoomScreen` receives the `user_id` of the friend whose thread to open.
+ * `ChatRoomScreen` receives the opaque `roomId` (resolved by
+ * `useCreateOrGetRoomMutation` inside `useOpenChatRoom`).
  */
 export type ChatStackParamList = {
   ChatListScreen: undefined;
-  ChatRoomScreen: { friendUserId: string };
+  ChatRoomScreen: { roomId: string };
 };
 
 // ---------------------------------------------------------------------------
@@ -102,6 +104,10 @@ export type ChatStackParamList = {
  *
  * Screens:
  * - `ExploreHomeScreen` (initial) — Friends + Requests + Bookmarks subtabs.
+ * - `FriendsListScreen` — full standalone list of the signed-in user's friends
+ *   (story 16.2). Accepts no params.
+ * - `BlockedUsersScreen` — full standalone list of the signed-in user's blocked
+ *   users (story 16.10). Accepts no params.
  * - `OtherProfileScreen` — full profile view, pushed from list rows.
  * - `BookmarkDeckViewScreen` — full deck view for a bookmarked profile (story 14.3
  *   registers the type + placeholder; story 14.4 ships the real screen).
@@ -115,6 +121,8 @@ export type ChatStackParamList = {
  */
 export type ExploreStackParamList = {
   ExploreHomeScreen: undefined;
+  FriendsListScreen: undefined;
+  BlockedUsersScreen: undefined;
   OtherProfileScreen: { userId: string; source: 'friend' | 'request' };
   BookmarkDeckViewScreen: { userId: string };
 };

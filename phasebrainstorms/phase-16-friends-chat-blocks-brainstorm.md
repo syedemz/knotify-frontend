@@ -299,3 +299,85 @@ Items 1, 3, 5 are pure PRD edits (~10 minutes). Item 2 is a user action (provide
 
 If the user picks `proceed` as-is, expected failure modes: story 16.3 crashes on placeholder env values, story 16.5/16.6 stall on missing `useProfileQuery`, story 16.8 fails against unknown subscription names, story 16.CH2 invents a mutation. Recommend `address` one more time to get these cleaned up; the remaining fixes are small compared to the first-round brainstorm.
 
+---
+
+## 2026-11-15 23:51 brainstorm (Round 3 — dispatch-time drift audit)
+
+Inputs: current `implementationplan/phase-16-friends-chat-blocks.md` (post-Round-2 rewrite, 14 stories), fresh on-disk audit of `src/services/`, `src/state/friendship/`, `src/state/chat/`, `src/features/chat/`, `src/features/friendRequests/`, `src/navigation/`, `App.tsx`, `src/config/backendConfig.dev.json`, `package.json`, prior two brainstorm sections.
+
+**Purpose.** Final check before dispatch: has anything drifted on-disk since the Round-2 rewrite landed on 2026-11-15, and are any new gaps present?
+
+**Verdict.** **Proceed.** PRD is implementable as-written. No BLOCKING items. Minor pre-condition notes below belong in the dispatch brief, not the PRD.
+
+---
+
+### CONFIRMED (spot-checks against the current PRD)
+
+- `src/config/backendConfig.dev.json` has real `appsync.graphqlUrl` + `appsync.realtimeUrl` populated (subdomain `26ve3dcqxbh2zgd2hf2ylbn76q.appsync-{api,realtime-api}.eu-central-1.amazonaws.com/graphql`). Prod values still placeholder (out of phase-16 scope).
+- `package.json` carries `aws-amplify ^6.18.0`, `@tanstack/react-query ^5.101.3`, `@react-native-async-storage/async-storage 2.2.0`. Amplify v6 modular imports available.
+- `src/services/graphql/appsyncClient.ts` is a stub with two `TODO(phase-17)` tags (lines 22, 30). Story 16.3 owns rewriting this (notes field in PRD already corrects the phase tag to 16).
+- `src/services/auth/cognitoClient.ts` still uses `ensureConfigured()` idempotent guard (line 39) — exactly the refactor target in story 16.3's shared-Amplify-config AC.
+- `FriendshipProvider` surface matches the PRD's "What phase 15 already shipped" claim (friends, requests, acceptRequest, declineRequest, sendRequest, outgoingRequestIds, hasOutgoingRequest, getFullProfile).
+- `ChatProvider` exports `useChatHistory()` + `MEHVISH_USER_ID` constant — matches PRD's teardown list.
+- `AppTabs.tsx` has a clean insertion point directly above `<Tab.Navigator>` for the new `FriendRequestSubscriptionListener`.
+- `src/navigation/linking.ts` is an empty stub (`prefixes: []`, `screens: {}`) — confirms the Round-2 decision to defer all deep-link bootstrapping to phase 17 story 17.5.
+- `src/services/api/endpoints.ts` exposes `profileApi` with `getMe()` + `updateMe()` only (no `getProfileById`); story 16.FR3 adds the missing method as-planned.
+- `App.tsx` still mounts `<FriendshipProvider>` + `<ChatProvider>` with `TODO(mock-only)` comments — exactly the teardown targets of 16.FR3 (friendship) and 16.5 (chat).
+
+### DISPATCH-BRIEF NOTES (not PRD defects — pre-conditions implementers will encounter)
+
+- **Modal signatures are still pre-rewrite.** `IncomingRequestModal.onAccept` / `.onDecline` currently receive `(userId: string) => void` and `RequestAcceptedModal.onSayHi` currently receives `() => void` (no args). Story 16.FR3's AC rewrites these to `(userId, requestId)` and `(acceptorUserId)` respectively. The subagent on 16.FR3 should expect to edit both the modal signature AND every host callsite in one go — not assume prior code already shipped the new shape.
+- **Route-param is still `{ friendUserId }`.** `src/navigation/types.ts:93` declares `ChatRoomScreen: { friendUserId: string }` and `src/features/chat/navigation/openChatRoom.ts:88` navigates with `{ friendUserId: userId }`. Story 16.5's AC explicitly executes the switch to `{ roomId }`; subagent should expect to edit types.ts + openChatRoom.ts + every destructure of the route param in one commit.
+- **FriendsListScreen does NOT exist on disk.** Story 16.2 creates it from scratch. (Not drift — PRD AC is phrased correctly as "renders the friend list", not "updates the existing screen".) Subagent should scaffold a new file at `src/features/friends/screens/FriendsListScreen.tsx` with a route entry in whichever stack hosts it (either Explore or a new Friends stack — the PRD does not pin the host; subagent decides based on existing navigation shape).
+- **`useCancelOutgoingRequestMutation` has no obvious UI callsite today.** Story 16.FR2 ships the mutation hook, but the Explore Requests subtab in phase 15 only renders INCOMING requests. The hook can still land green (hook unit tests cover success + cache invalidation), but there's no screen that will call it this phase. Leaving it in is fine — a future phase adds the outgoing-request cancel UI and consumes it. Flag this to the 16.FR2 subagent so they don't hunt for a non-existent callsite.
+
+### INFORMATIONAL
+
+- Stale WIP branch `feat/real-deck-from-backend` (commit `f9fa624`) still exists on `origin`. Not blocking phase 16. User-memory already tracks it as separate work.
+- 30-ish `TODO(mock-only)` hits across the four grep-gate paths (`src/state/friendship`, `src/state/chat`, `src/features/chat`, `src/features/friendRequests`). The phase-level teardown AC requires zero hits in these paths at phase-end; registration-mock TODOs elsewhere (OnboardingCompletionProvider, httpClient.ts, cognitoClient.ts) are explicitly out of scope per PRD lines 184–189.
+- Last commit on `development` is `b99dcb0` "house keeping"; last non-merge PR was `#144` (plan merge). No new feature work has landed since the Round-2 rewrite — the PRD and disk are in sync.
+
+---
+
+### Recommendation
+
+**proceed.** Round 1 and Round 2 already caught everything structural. Round 3 is a clean dispatch. The three dispatch-brief notes above should be included verbatim in the briefs for stories 16.FR3, 16.5, 16.2, and 16.FR2 respectively.
+
+---
+
+## 2026-11-16 01:24 brainstorm (Round 4 — autonomous resume audit)
+
+Inputs: current state of `implementationplan/phase-16-friends-chat-blocks.md`, git log, open PR #159.
+
+**Purpose.** Final audit before autonomous dispatch resumes. User is away; wake-up scheduled 30 min after token-window reset. All 11 remaining stories (16.FR3, 16.2, 16.3, 16.4, 16.5, 16.6, 16.CH1, 16.CH2, 16.8, 16.9, 16.10) to be dispatched serially without further user prompts.
+
+**Verdict.** **Proceed as-is.** No new drift since Round 3; prior rounds covered every structural concern.
+
+### CONFIRMED since Round 3
+
+- `16.1`, `16.FR1`, `16.FR2` shipped on `feat/phase-16-friends-chat-blocks`. All tracking issues (145, 146, 147) closed.
+- PR #159 is open against `development`; it will absorb the remaining 11 stories' commits.
+- All 11 remaining tracking issues (148–158) created with correct `tracking_issue` mapping in the PRD.
+- No merges to `development` since 2026-11-15 `b99dcb0` "house keeping" — no new drift to reconcile.
+
+### DISPATCH ORDER (topological, one at a time, strict serial per engineering principles)
+
+Available immediately (no outstanding deps):
+1. **16.3** — AppSync client + Amplify config refactor. Highest downstream unblock (gates 16.4/16.5/16.6/16.CH1/16.CH2). Do first so any backend-config surprises surface early.
+2. **16.FR3** — Modal shape rewire + FriendshipProvider teardown. Large touch-list (~16 src + ~17 tests per Round-2 ADVISORY 22). Risky; do early before context pressure.
+3. **16.2** — FriendsListScreen thin wire. Small. Can go once 16.FR3 ships (FriendsListScreen is one of the callsites 16.FR3 rewires).
+4. **16.9** — Blocks hooks + cross-cache purge. Small, independent.
+
+Blocked chain (unblocks as deps resolve):
+5. **16.4** (deps [16.3]) — Chat hooks + shape adapter.
+6. **16.5** (deps [16.4]) — ChatListScreen + roomId route-param switch + mock chat delete.
+7. **16.6** (deps [16.5]) — ChatRoomScreen real wiring.
+8. **16.CH1** (deps [16.6]) — Read receipts.
+9. **16.CH2** (deps [16.6]) — Typing indicator.
+10. **16.8** (deps [16.FR2, 16.FR3]) — Subscription listener + modal rewire + DevTriggersPanel teardown.
+11. **16.10** (deps [16.9]) — BlockedUsersScreen + block entry points.
+
+**Note.** 16.2 depends on 16.1 (done), NOT on 16.FR3 strictly in the PRD. However, 16.FR3 deletes `FriendshipProvider.getFullProfile` and ships `useProfileQuery` which 16.2's `ListRow`-tap-to-OtherProfileScreen path will indirectly benefit from. 16.2 can dispatch in parallel with 16.FR3 (strict-serial rule prevents parallel execution anyway); dispatch 16.2 immediately after 16.FR3 so OtherProfileScreen is already on `useProfileQuery` by the time 16.2's row-tap tests are written.
+
+### PROCEED.
+

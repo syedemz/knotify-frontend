@@ -558,12 +558,6 @@
     },
     "myProfile": {
       "editTab": {
-        "devTriggers": {
-          "sectionHeading": "Dev triggers — remove before ship",
-          "sectionDescription": "These buttons simulate subscription events that will be driven by AppSync in phase 17.",
-          "incomingButtonLabel": "Simulate incoming friend request (Qurat)",
-          "acceptedButtonLabel": "Simulate request accepted (Mehvish)"
-        },
         "appearance": {
           "sectionHeading": "Appearance",
           "sectionDescription": "Choose how the app looks. 'System' matches your device setting.",
@@ -607,6 +601,15 @@
     },
     "chat": {
       "accessibility": "Chat with {name}"
+    }
+  },
+  "friends": {
+    "list": {
+      "headerTitle": "Friends",
+      "emptyTitle": "No friends yet",
+      "emptyDescription": "Accept a friend request to see profiles here.",
+      "errorTitle": "Could not load friends",
+      "errorDescription": "Check your connection and try again."
     }
   },
   "explore": {
@@ -659,7 +662,10 @@
       "backAccessibility": "Go back",
       "missingTitle": "Conversation unavailable",
       "missingDescription": "We could not find this person in your connections.",
-      "editedSuffix": "· edited"
+      "editedSuffix": "· edited",
+      "errorTitle": "Could not load messages",
+      "errorDescription": "Check your connection and try again.",
+      "typing": "{friend} is typing…"
     }
   },
   "friendRequests": {
@@ -677,6 +683,24 @@
       "subtitle": "You can start a chat now.",
       "sayHiLabel": "Say hi",
       "notNowLabel": "Not now"
+    }
+  },
+  "blocks": {
+    "blockedUsers": {
+      "headerTitle": "Blocked Users",
+      "emptyTitle": "No blocked users",
+      "emptyDescription": "Users you block will appear here.",
+      "errorTitle": "Could not load blocked users",
+      "errorDescription": "Check your connection and try again.",
+      "unblockButton": "Unblock"
+    },
+    "action": {
+      "sheetTitle": "Options",
+      "blockLabel": "Block",
+      "confirmTitle": "Block this user?",
+      "confirmMessage": "They will no longer be able to contact you.",
+      "confirmBlock": "Block",
+      "cancel": "Cancel"
     }
   }
 }

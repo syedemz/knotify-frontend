@@ -4,52 +4,31 @@
  * Phase 13 (story 13.4). Opens from Explore when a user taps a friend row
  * (`source='friend'`) or a pending-request row (`source='request'`).
  *
+ * Story 16.FR3: rewired from `useFriendship()` to direct TanStack Query hooks:
+ * - `useFriendsQuery()` — determines whether the viewer is a friend.
+ * - `useIncomingRequestsQuery()` — determines whether a pending request exists.
+ * - `useAcceptFriendRequestMutation` — accepts a request (optimistic removal).
+ * - `useDeclineFriendRequestMutation` — declines a request (optimistic removal);
+ *   shows a local snackbar instead of the old `setPendingToast` cross-screen handoff.
+ * - `useProfileQuery(userId)` — resolves the viewed user's full `UserProfile`.
+ *
  * **Access guard (B1 / Q7):** On every render, checks that the viewer is
  * still authorized:
- * - `source='friend'`  → authorized iff `isFriend(userId)`.
- * - `source='request'` → authorized iff `receivedRequestFrom(userId)` OR
- *   `isFriend(userId)`. The OR-clause keeps the screen visible during the
- *   1500 ms window after Accept fires (the user IS a friend by then, so the
- *   guard stays open — fixing the same race addressed by B1 for Accept).
+ * - `source='friend'`  → authorized iff `userId` appears in `useFriendsQuery()`.
+ * - `source='request'` → authorized iff `userId` appears in
+ *   `useIncomingRequestsQuery().from_user_id` OR in `useFriendsQuery()`.
+ *   The OR-clause keeps the screen visible during the optimistic-removal window
+ *   after Accept fires (the user IS now a friend so the guard stays open).
  *
- * **Profile resolution (NG1 / Q15):** Resolved exclusively via
- * `useFriendship().getFullProfile(userId)`. No fixture re-imports here.
- *
- * **Decline handoff (NG2 / Q16 — option b):** On Decline, calls
- * `declineRequest(userId)`, stores the "declined" toast via
- * `FriendshipProvider.setPendingToast()`, and calls `navigation.goBack()`
- * IMMEDIATELY (no delay). ExploreHomeScreen (story 13.5) consumes the pending
- * toast on focus. Holding the screen open for any delay would trip the access
- * guard because after `declineRequest()` the user is neither a friend nor a
- * pending-request sender.
- *
- * **Scroll-driven tab-bar + FAB collapse (post-story-13.5 polish):**
- * The scroll surface is an `Animated.ScrollView` whose `onScroll` handler
- * writes to the shared `tabBarHidden` value using the same 8 px
- * delta threshold as `MarriageLandingScreen`. Both the bottom tab bar
- * (`AppTabs.CollapsingTabBar` — widened to also participate on the Explore
- * tab) and the friend-view `FloatingChatButton` read that same shared value
- * and translate in lock-step. On mount + unmount the value is reset to 0 so
- * the bar always returns visible when arriving here or leaving.
- *
- * **Friend-view extras (post-story-13.5 polish):**
- * - `BackHeaderBar` shows a right-side ⋮ menu button (unfriend / block /
- *   report — dropdown UI ships in a later phase; for now the press fires a
- *   "coming soon" snackbar).
- * - `FloatingChatButton` — round bottom-right FAB. Pressed, it opens the
- *   chat room with this friend (chat lands in phase 17; for now the press
- *   fires a "coming soon" snackbar).
- *
- * Neither the menu button nor the chat FAB renders on the request view.
- *
- * **Route typing (story 13.5):** Uses `RouteProp<ExploreStackParamList, 'OtherProfileScreen'>`
- * from `src/navigation/types.ts`.
+ * **Decline handoff removed.** The `setPendingToast` / `consumePendingToast`
+ * mechanism is deleted. OtherProfileScreen now shows its own snackbar locally
+ * on Decline and calls `navigation.goBack()` immediately after.
  *
  * @module features/profile/screens/OtherProfileScreen
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
@@ -59,16 +38,24 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-import { EmptyState, Snackbar, Button, Row } from '@/components';
+import { EmptyState, LoadingState, Snackbar, Button, Row } from '@/components';
 import { t } from '@/labels';
 import { ProfileScrollView } from '@/features/profile-sections';
 import type { DummyOverlay } from '@/types/DummyOverlay';
 import type { UserProfile } from '@/types/api/UserProfile';
-import { useFriendship } from '@/state/friendship/FriendshipProvider';
 import type { ExploreStackParamList } from '@/navigation/types';
 import { CandidateHero } from '@/features/landing/components/CandidateHero';
+import type { CandidateHeroProfile } from '@/features/landing/components/CandidateHero';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
 import { useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
+import { useFriendsQuery } from '@/features/friends/api';
+import {
+  useIncomingRequestsQuery,
+  useAcceptFriendRequestMutation,
+  useDeclineFriendRequestMutation,
+} from '@/features/friendRequests/api';
+import { useProfileQuery } from '@/features/profile/api';
+import { useBlockUserMutation } from '@/features/blocks/api';
 
 import { BackHeaderBar } from '../components/BackHeaderBar';
 import { FloatingChatButton } from '../components/FloatingChatButton';
@@ -91,19 +78,21 @@ export function OtherProfileScreen(): React.ReactElement {
   const route = useRoute<OtherProfileRoute>();
   const { userId, source } = route.params;
 
-  const {
-    isFriend,
-    receivedRequestFrom,
-    getFullProfile,
-    acceptRequest,
-    declineRequest,
-    setPendingToast,
-  } = useFriendship();
+  // ── Data hooks ─────────────────────────────────────────────────────────────
+  const friendsQuery = useFriendsQuery();
+  const requestsQuery = useIncomingRequestsQuery();
+  const profileQuery = useProfileQuery(userId);
+  const acceptMutation = useAcceptFriendRequestMutation();
+  const declineMutation = useDeclineFriendRequestMutation();
+  const blockMutation = useBlockUserMutation();
+
+  const friends = friendsQuery.data ?? [];
+  const requests = requestsQuery.data ?? [];
 
   // ── Chat-room navigation helper ─────────────────────────────────────────────
   const openChatRoom = useOpenChatRoom();
 
-  // ── Snackbar (Accept toast + menu "coming soon" toast) ──────────────────────
+  // ── Snackbar (Accept toast + menu "coming soon" toast + Decline toast) ───────
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
 
   // ── goBack timer ref — cleared on unmount ──────────────────────────────────
@@ -119,8 +108,8 @@ export function OtherProfileScreen(): React.ReactElement {
 
   // ── Tab-bar-hidden lifecycle reset ─────────────────────────────────────────
   // Reset to 0 on mount so we arrive with the tab bar (and chat FAB) visible,
-  // and again on unmount so ExploreHomeScreen — which does not write to this
-  // shared value — always sees the tab bar visible after we leave.
+  // and again on unmount so ExploreHomeScreen always sees the tab bar visible
+  // after we leave.
   useEffect(() => {
     tabBarHidden.value = withTiming(0, { duration: 220 });
     return () => {
@@ -147,16 +136,22 @@ export function OtherProfileScreen(): React.ReactElement {
   });
 
   // ── Access guard (B1 / Q7) ─────────────────────────────────────────────────
+  const isFriend = friends.some((f) => f.user_id === userId);
+  const hasIncomingRequest = requests.some((r) => r.from_user_id === userId);
+
   const isAuthorized: boolean = (() => {
     if (source === 'friend') {
-      return isFriend(userId);
+      return isFriend;
     }
-    return receivedRequestFrom(userId) || isFriend(userId);
+    return hasIncomingRequest || isFriend;
   })();
 
-  // ── Profile resolution (NG1 / Q15) ────────────────────────────────────────
-  const profile = getFullProfile(userId);
+  // ── Profile data (from query) ──────────────────────────────────────────────
+  const profile = profileQuery.data;
   const profileForSections = profile as unknown as UserProfile & DummyOverlay;
+
+  // ── Incoming request row (needed to get request_id for mutations) ──────────
+  const incomingRequest = requests.find((r) => r.from_user_id === userId);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -165,24 +160,55 @@ export function OtherProfileScreen(): React.ReactElement {
   }, [navigation]);
 
   const handleAccept = useCallback(() => {
-    acceptRequest(userId);
+    if (incomingRequest === undefined) return;
+    acceptMutation.mutate({ requestId: incomingRequest.request_id });
     setSnackbarMsg(t('otherProfile.acceptedToast'));
     goBackTimerRef.current = setTimeout(() => {
       navigation.goBack();
     }, 1500);
-  }, [acceptRequest, userId, navigation]);
+  }, [acceptMutation, incomingRequest, navigation]);
 
   const handleDecline = useCallback(() => {
-    declineRequest(userId);
-    setPendingToast(t('otherProfile.declinedToast'));
+    if (incomingRequest === undefined) return;
+    declineMutation.mutate({ requestId: incomingRequest.request_id });
+    // Show a local snackbar then immediately navigate back.
+    // (The old pendingToast cross-screen handoff is deleted in story 16.FR3.)
+    setSnackbarMsg(t('otherProfile.declinedToast'));
     navigation.goBack();
-  }, [declineRequest, userId, setPendingToast, navigation]);
+  }, [declineMutation, incomingRequest, navigation]);
 
   const handleMenuPress = useCallback(() => {
-    // TODO(mock-only): dropdown UI (unfriend / block / report) ships in a
-    // later phase. For now the button is clickable but shows only a toast.
-    setSnackbarMsg(t('otherProfile.menu.comingSoonToast'));
-  }, []);
+    // Single-item action sheet pattern (story 16.10 AC 2).
+    // Alert.alert is the accepted cross-platform approach for this phase.
+    Alert.alert(
+      t('blocks.action.sheetTitle'),
+      undefined,
+      [
+        {
+          text: t('blocks.action.blockLabel'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('blocks.action.confirmTitle'),
+              t('blocks.action.confirmMessage'),
+              [
+                { text: t('blocks.action.cancel'), style: 'cancel' },
+                {
+                  text: t('blocks.action.confirmBlock'),
+                  style: 'destructive',
+                  onPress: () => {
+                    blockMutation.mutate({ userId });
+                    navigation.goBack();
+                  },
+                },
+              ],
+            );
+          },
+        },
+        { text: t('blocks.action.cancel'), style: 'cancel' },
+      ],
+    );
+  }, [blockMutation, navigation, userId]);
 
   const handleChatPress = useCallback(() => {
     if (profile === undefined) {
@@ -197,6 +223,12 @@ export function OtherProfileScreen(): React.ReactElement {
 
   const isFriendView = source === 'friend';
 
+  // ── Loading / error states for profile data ────────────────────────────────
+  // Show a spinner while the profile is loading. If the access guard passes
+  // but the profile query hasn't resolved yet, show the spinner.
+  const isProfileLoading = profileQuery.isLoading;
+  const isProfileError = profileQuery.isError;
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -209,7 +241,15 @@ export function OtherProfileScreen(): React.ReactElement {
         menuAccessibilityLabel={t('otherProfile.menu.accessibility')}
       />
 
-      {(!isAuthorized || profile === undefined) ? (
+      {(!isAuthorized) ? (
+        <EmptyState
+          title={t('otherProfile.notAuthorized.title')}
+          description={t('otherProfile.notAuthorized.description')}
+          accessibilityLabel={t('otherProfile.notAuthorized.title')}
+        />
+      ) : isProfileLoading ? (
+        <LoadingState message={t('common.loading')} />
+      ) : isProfileError || profile === undefined ? (
         <EmptyState
           title={t('otherProfile.notAuthorized.title')}
           description={t('otherProfile.notAuthorized.description')}
@@ -248,8 +288,10 @@ export function OtherProfileScreen(): React.ReactElement {
 
           {/* Hero — HeroBlock inside ProfileScrollView returns null for
               viewer='other' (phase-12 design), so we render CandidateHero
-              here directly, matching the MarriageLandingScreen pattern. */}
-          <CandidateHero profile={profile} />
+              here directly, matching the MarriageLandingScreen pattern.
+              UserProfile satisfies CandidateHeroProfile structurally (all
+              shared fields are present); the cast via unknown is safe. */}
+          <CandidateHero profile={profile as unknown as CandidateHeroProfile} />
 
           {/* Full profile — 14-section catalog */}
           <ProfileScrollView

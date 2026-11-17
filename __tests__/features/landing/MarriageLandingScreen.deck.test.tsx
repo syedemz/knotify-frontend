@@ -1,5 +1,6 @@
 /**
- * MarriageLandingScreen.deck.test.tsx (story 13.3 AC7b, AC7c, AC7d; story 14.2 AC)
+ * MarriageLandingScreen.deck.test.tsx (story 13.3 AC7b, AC7c, AC7d; story 14.2 AC;
+ * story 16.FR3: FriendshipProvider removed — useSendFriendRequestMutation mocked).
  *
  * Tests:
  * (b) Index behaviour: starts at 0; Dislike advances; Like advances + snackbar;
@@ -9,7 +10,8 @@
  *     has_unread_notifications=true variant (requires module-scope jest.mock).
  *     This file covers the default case (has_unread_notifications=false from
  *     the real dummyprofile.json, dot absent).
- * (d) Like does NOT call FriendshipProvider mutators.
+ * (d) Like calls sendRequestMutation.mutate (story 16.FR3; replaces old "does NOT
+ *     call FriendshipProvider mutators" assertion which is no longer meaningful).
  * (e) Star bookmark toggle — added / removed snackbar; deck index does NOT advance.
  */
 
@@ -18,7 +20,6 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import { ThemeProvider } from '@/theme';
 import { t } from '@/labels';
-import { FriendshipProvider } from '@/state/friendship/FriendshipProvider';
 import { MarriageLandingScreen } from '@/features/landing/screens/MarriageLandingScreen';
 import { DECK_FIXTURES } from '@/features/discover/data/deckFixtures';
 
@@ -39,6 +40,22 @@ jest.mock('@/features/landing/hooks/useDeckQuery', () => {
     DECK_QUERY_KEY: ['match', 'deck'],
   };
 });
+
+// ── useSendFriendRequestMutation mock (story 16.FR3) ─────────────────────────
+
+const mockSendMutate = jest.fn();
+
+jest.mock('@/features/friendRequests/api', () => ({
+  useSendFriendRequestMutation: () => ({
+    mutate: mockSendMutate,
+    isPending: false,
+  }),
+  useIncomingRequestsQuery: () => ({ data: [], isLoading: false, isError: false }),
+  useOutgoingRequestsQuery: () => ({ data: [], isLoading: false, isError: false }),
+  useAcceptFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useDeclineFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useCancelOutgoingRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+}));
 
 // ── useBookmarks mock ─────────────────────────────────────────────────────────
 // Default: nothing bookmarked. Per-test overrides via mockReturnValue / mockImplementation.
@@ -65,6 +82,7 @@ beforeEach(() => {
   mockRemoveBookmark.mockClear();
   mockIsBookmarked.mockClear();
   mockIsBookmarked.mockReturnValue(false);
+  mockSendMutate.mockClear();
 });
 
 // ── Native-module mocks ───────────────────────────────────────────────────────
@@ -105,9 +123,7 @@ jest.mock('expo-image', () => {
 function renderScreen() {
   return render(
     <ThemeProvider>
-      <FriendshipProvider>
-        <MarriageLandingScreen />
-      </FriendshipProvider>
+      <MarriageLandingScreen />
     </ThemeProvider>,
   );
 }
@@ -222,7 +238,6 @@ describe('(e) Star bookmark toggle', () => {
     expect(mockRemoveBookmark).not.toHaveBeenCalled();
 
     // Deck index has NOT advanced — CandidateHero is still the first card
-    // (CollapsingActionBar still in tree confirms index < DECK_FIXTURES.length)
     expect(screen.getByTestId('candidate-hero')).toBeTruthy();
     expect(screen.getByTestId('collapsing-action-bar')).toBeTruthy();
   });
@@ -263,116 +278,39 @@ describe('(c) bell-dot mirror — default state (no unread dot)', () => {
   });
 });
 
-// ── (d) Like does NOT call FriendshipProvider mutators ───────────────────────
+// ── (d) Like calls sendRequestMutation.mutate (story 16.FR3) ─────────────────
+//
+// Before 16.FR3: Like did mock-theatre only (no mutation). After 16.FR3:
+// completing the send-request modal flow calls sendRequestMutation.mutate
+// with the current deck card's user_id.
 
-describe('(d) Like does not call FriendshipProvider mutators', () => {
-  it('Like press does NOT trigger any FriendshipProvider mutation — acceptRequest and declineRequest are never called', () => {
-    // Because MarriageLandingScreen implements mock-theatre (AC — Like handler
-    // must NOT write to FriendshipProvider), the screen does not import or call
-    // useFriendship() at all. We verify this by asserting the snackbar appears
-    // (Like's only side-effect) while the friendship state remains unchanged.
-    //
-    // Spy approach: wrap with a FriendshipProvider whose mutations we can track.
-    const acceptSpy = jest.fn();
-    const declineSpy = jest.fn();
-
-    // Render with a custom wrapper that intercepts FriendshipProvider calls.
-    function Wrapper({ children }: { children: React.ReactNode }) {
-      return (
-        <ThemeProvider>
-          <FriendshipProviderWithSpies
-            onAccept={acceptSpy}
-            onDecline={declineSpy}
-          >
-            {children}
-          </FriendshipProviderWithSpies>
-        </ThemeProvider>
-      );
-    }
-
-    render(
-      <Wrapper>
-        <MarriageLandingScreen />
-      </Wrapper>,
-    );
-
+describe('(d) Like calls useSendFriendRequestMutation.mutate after the confirmation flow', () => {
+  it('completing the send-request modal flow calls sendMutate with the deck card user_id', () => {
     jest.useFakeTimers();
     try {
+      renderScreen();
       fireEvent.press(screen.getByTestId('action-button-like'));
-      // Walk the full send-request modal flow.
       fireEvent.press(screen.getByTestId('send-request-yes-ask'));
       fireEvent.press(screen.getByTestId('send-request-yes-confirm'));
       act(() => {
         jest.advanceTimersByTime(1100);
       });
 
-      // Even after confirming, the mock-theatre flow does NOT touch
-      // FriendshipProvider — no accept/decline mutators are called anywhere
-      // along the path (real request-create ships in phase 15).
-      expect(acceptSpy).not.toHaveBeenCalled();
-      expect(declineSpy).not.toHaveBeenCalled();
-      // Snackbar confirms the Like flow completed
-      expect(screen.getByText(t('landing.likeSent'))).toBeTruthy();
+      // sendRequestMutation.mutate was called with the first deck card's user_id
+      expect(mockSendMutate).toHaveBeenCalledTimes(1);
+      expect(mockSendMutate).toHaveBeenCalledWith({
+        toUserId: DECK_FIXTURES[0]!.user_id,
+      });
     } finally {
       jest.useRealTimers();
     }
   });
+
+  it('cancelling the send-request modal (No at first step) does NOT call sendMutate', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('action-button-like'));
+    fireEvent.press(screen.getByTestId('send-request-no-ask'));
+
+    expect(mockSendMutate).not.toHaveBeenCalled();
+  });
 });
-
-// ── Test helper — FriendshipProvider with intercepted mutators ───────────────
-
-/**
- * Wraps `FriendshipProvider` and intercepts `acceptRequest` / `declineRequest`
- * to let tests assert they were never called by `MarriageLandingScreen`.
- *
- * Because `MarriageLandingScreen` does NOT call `useFriendship()` at all
- * (mock-theatre: the Like handler only advances the index + fires a snackbar),
- * neither spy should fire when the Like button is pressed.
- */
-function FriendshipProviderWithSpies({
-  children,
-  onAccept,
-  onDecline,
-}: {
-  children: React.ReactNode;
-  onAccept: jest.Mock;
-  onDecline: jest.Mock;
-}) {
-  // We supply the real FriendshipProvider but instrument the context value.
-  // Since MarriageLandingScreen doesn't use useFriendship(), the spies exist
-  // purely to catch any accidental call path.
-  //
-  // Implementation: mount the real provider and override context via a child
-  // context consumer that re-provides a spied version.
-  const { useFriendship } = require('@/state/friendship/FriendshipProvider') as typeof import('@/state/friendship/FriendshipProvider');
-  const ctx = require('@/state/friendship/FriendshipProvider') as typeof import('@/state/friendship/FriendshipProvider');
-
-  function InnerSpy({ children: inner }: { children: React.ReactNode }) {
-    const friendship = useFriendship();
-    const spiedValue = React.useMemo(
-      () => ({
-        ...friendship,
-        acceptRequest: (userId: string) => {
-          onAccept(userId);
-          friendship.acceptRequest(userId);
-        },
-        declineRequest: (userId: string) => {
-          onDecline(userId);
-          friendship.declineRequest(userId);
-        },
-      }),
-      [friendship],
-    );
-    // Re-expose context — but since MarriageLandingScreen doesn't consume it,
-    // the spies will simply never fire if the AC holds.
-    void spiedValue;
-    void ctx;
-    return <>{inner}</>;
-  }
-
-  return (
-    <FriendshipProvider>
-      <InnerSpy>{children}</InnerSpy>
-    </FriendshipProvider>
-  );
-}

@@ -20,7 +20,7 @@
 
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Check, CheckCheck } from 'lucide-react-native';
+import { Check, CheckCheck, Clock } from 'lucide-react-native';
 
 import { Text } from '@/components';
 import { useTheme } from '@/theme';
@@ -117,6 +117,7 @@ interface StatusIconProps {
 /**
  * Renders the delivery status icon for a sent message.
  *
+ * - `'sending'`   → `Clock` (optimistic local, pre-ack)
  * - `'sent'`      → single `Check`
  * - `'delivered'` → `CheckCheck` in inverse text color
  * - `'read'`      → `CheckCheck` tinted `status.info`
@@ -130,6 +131,18 @@ function StatusIcon({ status, theme }: StatusIconProps): React.ReactElement {
     status === 'read'
       ? theme.colors.status.info
       : theme.colors.text.inverse;
+
+  if (status === 'sending') {
+    return (
+      <View testID="status-icon-sending">
+        <Clock
+          size={STATUS_ICON_SIZE}
+          color={iconColor}
+          strokeWidth={2.5}
+        />
+      </View>
+    );
+  }
 
   if (status === 'sent') {
     return (

@@ -1,10 +1,14 @@
 /**
- * Tests for IncomingRequestModal (story 15.6).
+ * Tests for IncomingRequestModal (story 15.6 + story 16.FR3).
+ *
+ * Story 16.FR3: added `requestId` prop; callbacks changed to:
+ *   onAccept(userId: string, requestId: string): void
+ *   onDecline(userId: string, requestId: string): void
  *
  * AC coverage:
  * (a) Renders profile fields correctly (name, age · city visible).
- * (b) Tapping Accept calls `onAccept(profile.user_id)` + `onClose`.
- * (c) Tapping Decline calls `onDecline(profile.user_id)` + `onClose`.
+ * (b) Tapping Accept calls `onAccept(profile.user_id, requestId)` + `onClose`.
+ * (c) Tapping Decline calls `onDecline(profile.user_id, requestId)` + `onClose`.
  * (d) Tapping View-full-profile calls navigation.navigate + `onClose`.
  * (e) Backdrop press calls `onClose` only (no `onAccept` / `onDecline` firing).
  * (f) Renders nothing when `profile` is null.
@@ -53,6 +57,8 @@ const quratFixture = require('../../../../assets/dummyqurat.json') as DummyFullP
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const TEST_REQUEST_ID = 'req-test-001';
+
 function renderModal(
   overrides: Partial<{
     visible: boolean;
@@ -60,11 +66,13 @@ function renderModal(
     onClose: jest.Mock;
     onAccept: jest.Mock;
     onDecline: jest.Mock;
+    requestId: string;
   }> = {},
 ) {
   const onClose = overrides.onClose ?? jest.fn();
   const onAccept = overrides.onAccept ?? jest.fn();
   const onDecline = overrides.onDecline ?? jest.fn();
+  const requestId = overrides.requestId ?? TEST_REQUEST_ID;
 
   return {
     onClose,
@@ -78,6 +86,7 @@ function renderModal(
           onClose={onClose}
           onAccept={onAccept}
           onDecline={onDecline}
+          requestId={requestId}
         />
       </ThemeProvider>,
     ),
@@ -115,13 +124,13 @@ describe('(a) renders profile fields correctly', () => {
   });
 });
 
-// ── (b) Accept calls onAccept(user_id) + onClose ─────────────────────────────
+// ── (b) Accept calls onAccept(user_id, requestId) + onClose ──────────────────
 
 describe('(b) Accept calls onAccept(user_id) + onClose', () => {
-  it('fires onAccept with profile.user_id when Accept is pressed', () => {
+  it('fires onAccept with profile.user_id and requestId when Accept is pressed', () => {
     const { onAccept, onClose } = renderModal();
     fireEvent.press(screen.getByTestId('incoming-request-accept-btn'));
-    expect(onAccept).toHaveBeenCalledWith(quratFixture.user_id);
+    expect(onAccept).toHaveBeenCalledWith(quratFixture.user_id, TEST_REQUEST_ID);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -132,13 +141,13 @@ describe('(b) Accept calls onAccept(user_id) + onClose', () => {
   });
 });
 
-// ── (c) Decline calls onDecline(user_id) + onClose ───────────────────────────
+// ── (c) Decline calls onDecline(user_id, requestId) + onClose ────────────────
 
 describe('(c) Decline calls onDecline(user_id) + onClose', () => {
-  it('fires onDecline with profile.user_id when Decline is pressed', () => {
+  it('fires onDecline with profile.user_id and requestId when Decline is pressed', () => {
     const { onDecline, onClose } = renderModal();
     fireEvent.press(screen.getByTestId('incoming-request-decline-btn'));
-    expect(onDecline).toHaveBeenCalledWith(quratFixture.user_id);
+    expect(onDecline).toHaveBeenCalledWith(quratFixture.user_id, TEST_REQUEST_ID);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
