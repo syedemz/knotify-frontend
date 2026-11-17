@@ -22,6 +22,12 @@
  *     stores enriched ReadReceiptCacheEntry, error path.
  * (j) useReadReceiptQuery — enabled:false (no network), reads setQueryData writes.
  *
+ * Story 16.CH2 AC coverage:
+ *
+ * (k) useSetTypingMutation — calls setTyping with correct isTyping+roomId args, success path, error path.
+ * (l) useOnTypingInRoomSubscription — inbound event calls onEvent callback;
+ *     self-event (userId === currentUserId) is filtered; unsubscribe on unmount.
+ *
  * Tests stub `getAppsyncClient()` via `jest.mock('@/services/graphql/appsyncClient')`.
  * No fixture files are created under `src/services/api/mocks/`.
  */
@@ -53,8 +59,10 @@ import {
   useOnReadReceiptSubscription,
   useMarkReadMutation,
   useReadReceiptQuery,
+  useSetTypingMutation,
+  useOnTypingInRoomSubscription,
 } from '@/features/chat/api';
-import type { ChatRoom, Message, MessageConnection, MessageRead } from '@/services/graphql/types';
+import type { ChatRoom, Message, MessageConnection, MessageRead, TypingEvent } from '@/services/graphql/types';
 import type { ReadReceiptCacheEntry } from '@/features/chat/api';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -1033,6 +1041,255 @@ describe('useReadReceiptQuery', () => {
       });
       // No graphql call should have been issued.
       expect(mockGraphql).not.toHaveBeenCalled();
+    },
+  );
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// (k) useSetTypingMutation
+// ═════════════════════════════════════════════════════════════════════════════
+
+function makeTypingEvent(overrides?: Partial<TypingEvent>): TypingEvent {
+  return {
+    roomId: ROOM_ID,
+    userId: CURRENT_USER_ID,
+    isTyping: true,
+    ...overrides,
+  };
+}
+
+describe('useSetTypingMutation — success (isTyping: true)', () => {
+  it(
+    'given backend returns TypingEvent, when mutate resolves with isTyping:true, then isSuccess is true',
+    async () => {
+      const event = makeTypingEvent({ isTyping: true });
+      mockGraphql.mockResolvedValueOnce({ data: { setTyping: event } });
+
+      const client = makeClient();
+      const { result } = renderHook(() => useSetTypingMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ isTyping: true, roomId: ROOM_ID });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(mockGraphql).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variables: expect.objectContaining({ isTyping: true, roomId: ROOM_ID }),
+        }),
+      );
+    },
+  );
+});
+
+describe('useSetTypingMutation — success (isTyping: false)', () => {
+  it(
+    'given backend returns TypingEvent, when mutate resolves with isTyping:false, then isSuccess is true',
+    async () => {
+      const event = makeTypingEvent({ isTyping: false });
+      mockGraphql.mockResolvedValueOnce({ data: { setTyping: event } });
+
+      const client = makeClient();
+      const { result } = renderHook(() => useSetTypingMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ isTyping: false, roomId: ROOM_ID });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(mockGraphql).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variables: expect.objectContaining({ isTyping: false, roomId: ROOM_ID }),
+        }),
+      );
+    },
+  );
+});
+
+describe('useSetTypingMutation — error', () => {
+  it(
+    'given backend throws, when mutate rejects, then isError is true',
+    async () => {
+      mockGraphql.mockRejectedValueOnce(new Error('AppSync typing error'));
+
+      const client = makeClient();
+      const { result } = renderHook(() => useSetTypingMutation(), {
+        wrapper: makeWrapper(client),
+      });
+
+      act(() => {
+        result.current.mutate({ isTyping: true, roomId: ROOM_ID });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true);
+      });
+    },
+  );
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// (l) useOnTypingInRoomSubscription
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('useOnTypingInRoomSubscription — inbound event calls onEvent callback', () => {
+  it(
+    'given an isTyping:true event from the counterpart, when it arrives, then onEvent is called with the event',
+    async () => {
+      let capturedNext!: (event: { data: { onTypingInRoom: TypingEvent | null } }) => void;
+      const unsubscribeMock = jest.fn();
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: unsubscribeMock };
+        },
+      });
+
+      const onEventMock = jest.fn();
+      const client = makeClient();
+
+      renderHook(
+        () => useOnTypingInRoomSubscription(ROOM_ID, CURRENT_USER_ID, onEventMock),
+        { wrapper: makeWrapper(client) },
+      );
+
+      const event = makeTypingEvent({ userId: FRIEND_USER_ID, isTyping: true });
+      act(() => {
+        capturedNext({ data: { onTypingInRoom: event } });
+      });
+
+      await waitFor(() => {
+        expect(onEventMock).toHaveBeenCalledWith(event);
+      });
+    },
+  );
+
+  it(
+    'given an isTyping:false event from the counterpart, when it arrives, then onEvent is called',
+    async () => {
+      let capturedNext!: (event: { data: { onTypingInRoom: TypingEvent | null } }) => void;
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: jest.fn() };
+        },
+      });
+
+      const onEventMock = jest.fn();
+      const client = makeClient();
+
+      renderHook(
+        () => useOnTypingInRoomSubscription(ROOM_ID, CURRENT_USER_ID, onEventMock),
+        { wrapper: makeWrapper(client) },
+      );
+
+      const event = makeTypingEvent({ userId: FRIEND_USER_ID, isTyping: false });
+      act(() => {
+        capturedNext({ data: { onTypingInRoom: event } });
+      });
+
+      await waitFor(() => {
+        expect(onEventMock).toHaveBeenCalledWith(event);
+      });
+    },
+  );
+});
+
+describe('useOnTypingInRoomSubscription — self-event filtering', () => {
+  it(
+    'given an event whose userId === currentUserId, when it arrives, then onEvent is NOT called (self-filter)',
+    async () => {
+      let capturedNext!: (event: { data: { onTypingInRoom: TypingEvent | null } }) => void;
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: jest.fn() };
+        },
+      });
+
+      const onEventMock = jest.fn();
+      const client = makeClient();
+
+      renderHook(
+        () => useOnTypingInRoomSubscription(ROOM_ID, CURRENT_USER_ID, onEventMock),
+        { wrapper: makeWrapper(client) },
+      );
+
+      // Self-event: the server reflects the mutation back to the sender.
+      const selfEvent = makeTypingEvent({ userId: CURRENT_USER_ID, isTyping: true });
+      act(() => {
+        capturedNext({ data: { onTypingInRoom: selfEvent } });
+      });
+
+      // Allow any async update.
+      await new Promise((res) => setTimeout(res, 50));
+
+      expect(onEventMock).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('useOnTypingInRoomSubscription — null event payload', () => {
+  it(
+    'given a null event payload, then onEvent is NOT called',
+    async () => {
+      let capturedNext!: (event: { data: { onTypingInRoom: TypingEvent | null } }) => void;
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (handlers: { next: typeof capturedNext; error: () => void }) => {
+          capturedNext = handlers.next;
+          return { unsubscribe: jest.fn() };
+        },
+      });
+
+      const onEventMock = jest.fn();
+      const client = makeClient();
+
+      renderHook(
+        () => useOnTypingInRoomSubscription(ROOM_ID, CURRENT_USER_ID, onEventMock),
+        { wrapper: makeWrapper(client) },
+      );
+
+      act(() => {
+        capturedNext({ data: { onTypingInRoom: null } });
+      });
+
+      await new Promise((res) => setTimeout(res, 50));
+
+      expect(onEventMock).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('useOnTypingInRoomSubscription — unmount teardown', () => {
+  it(
+    'given the hook unmounts, then unsubscribe is called (no leaked subscription)',
+    () => {
+      const unsubscribeMock = jest.fn();
+      mockGraphql.mockReturnValueOnce({
+        subscribe: (_handlers: unknown) => ({
+          unsubscribe: unsubscribeMock,
+        }),
+      });
+
+      const client = makeClient();
+      const { unmount } = renderHook(
+        () => useOnTypingInRoomSubscription(ROOM_ID, CURRENT_USER_ID, jest.fn()),
+        { wrapper: makeWrapper(client) },
+      );
+
+      expect(unsubscribeMock).not.toHaveBeenCalled();
+      unmount();
+      expect(unsubscribeMock).toHaveBeenCalledTimes(1);
     },
   );
 });

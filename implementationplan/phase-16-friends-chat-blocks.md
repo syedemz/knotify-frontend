@@ -1,6 +1,6 @@
 phase: 16
 title: Friend requests, friends, chat backend, blocks (real backend wiring)
-last_updated: 2026-11-16 (story 16.CH1 complete — read-receipt subscription + 'read' status tick: added useOnReadReceiptSubscription + useMarkReadMutation + useReadReceiptQuery + readReceiptsQueryKey + ReadReceiptCacheEntry to api.ts; wired useOnReadReceiptSubscription + useMarkReadMutation (useFocusEffect debounce) + useReadReceiptQuery into ChatRoomScreen; messages useMemo now passes lastReadMessageCreatedAt hint to adaptMessageToChatMessage; test delta +20: 36 useChatHooks tests + 30 ChatRoomScreen tests; tsc zero errors; eslint zero new errors)
+last_updated: 2026-11-16 (story 16.CH2 complete — typing-indicator subscription + chat-room typing row: added useOnTypingInRoomSubscription (subscription with self-event filter + onEventRef stable-ref pattern) + useSetTypingMutation (fire-and-forget) to api.ts; added chatRoom.typing label to en+ur; created TypingIndicatorRow component; wired into ChatRoomScreen with 2s idle timer + ~2s outbound throttle (useRef timestamp) + 4s auto-dismiss on inbound silence + unmount final setTyping(false); test delta +21: 44 useChatHooks tests (from 36) + 38 ChatRoomScreen tests (from 30) + 5 TypingIndicatorRow tests; 2742 → 2763 passing; tsc zero errors; eslint zero new errors)
 
 context_summary: |
   Phase 16 is a **thin** post-onboarding phase per §11.2.8, merged on 2026-11-15
@@ -373,7 +373,7 @@ stories:
   - id: 16.CH2
     title: Typing-indicator subscription + chat-room typing row
     agent: frontenddeveloper
-    done: false
+    done: true
     tracking_issue: 155
     depends_on: [16.6]
     acceptance_criteria:

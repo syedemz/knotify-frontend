@@ -670,7 +670,8 @@
       "missingDescription": "ہم آپ کے کنکشنز میں اس شخص کو نہیں ڈھونڈ سکے۔",
       "editedSuffix": "· ترمیم شدہ",
       "errorTitle": "پیغامات لوڈ نہیں ہو سکے",
-      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔"
+      "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "typing": "{friend} ٹائپ کر رہا ہے…"
     }
   },
   "friendRequests": {

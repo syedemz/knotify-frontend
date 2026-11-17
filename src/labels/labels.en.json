@@ -670,7 +670,8 @@
       "missingDescription": "We could not find this person in your connections.",
       "editedSuffix": "· edited",
       "errorTitle": "Could not load messages",
-      "errorDescription": "Check your connection and try again."
+      "errorDescription": "Check your connection and try again.",
+      "typing": "{friend} is typing…"
     }
   },
   "friendRequests": {

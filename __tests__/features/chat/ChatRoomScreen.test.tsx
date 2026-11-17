@@ -12,9 +12,14 @@
  * Story 16.CH1: adds read-receipt subscription wiring, mark-as-read on focus,
  * and 'read' status tick on sent bubbles.
  *
+ * Story 16.CH2: adds typing-indicator subscription wiring, outbound typing events
+ * (throttle + idle timer), TypingIndicatorRow above the composer, and unmount
+ * final `setTyping(false)`.
+ *
  * Strategy: mocks out `useProfileQuery`, `useRoomsQuery`, `useMessagesQuery`,
  * `useSendMessageMutation`, `useOnMessageInRoomSubscription`,
  * `useOnReadReceiptSubscription`, `useReadReceiptQuery`, `useMarkReadMutation`,
+ * `useOnTypingInRoomSubscription`, `useSetTypingMutation`,
  * `messagesQueryKey`, `useOwnProfile`, `useRoute`, `useNavigation`,
  * `@tanstack/react-query`'s `useQueryClient`, and
  * `react-native-safe-area-context` so we can render the screen in isolation.
@@ -38,10 +43,17 @@
  * (n) AppState resume: transitions to 'active' invalidate messages cache + bump subscriptionKey.
  * (o) ErrorState shown when messagesQuery.isError=true.
  *
- * AC coverage (16.CH1 — new):
+ * AC coverage (16.CH1 — preserved):
  * (p) 'delivered' → 'read' icon transition when readReceiptQuery returns a matching lastReadMessageCreatedAt.
  * (q) useOnReadReceiptSubscription called on mount.
  * (r) useMarkReadMutation.mutate called on focus when received messages are present.
+ *
+ * AC coverage (16.CH2 — new):
+ * (s) useOnTypingInRoomSubscription called on mount with (roomId, currentUserId, callback).
+ * (t) Typing row appears when counterpart typing event (isTyping:true) fires, disappears on isTyping:false.
+ * (u) Typing row auto-dismisses after 4 seconds of silence.
+ * (v) Outbound throttle: keystroke storm produces only one setTyping(true), not many.
+ * (w) Unmount fires final setTyping(false) when typing was active.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -167,6 +179,17 @@ type ReadReceiptQueryResult = {
 
 let mockReadReceiptQueryResult: ReadReceiptQueryResult = { data: undefined };
 
+// ── useOnTypingInRoomSubscription + useSetTypingMutation mocks ───────────────
+
+// Captures the onEvent callback so tests can fire typing events directly.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let capturedTypingEventCallback: ((event: any) => void) | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockUseOnTypingInRoomSubscription = jest.fn((_roomId: any, _currentUserId: any, onEvent: any) => {
+  capturedTypingEventCallback = onEvent as typeof capturedTypingEventCallback;
+});
+const mockSetTypingMutate = jest.fn();
+
 jest.mock('@/features/chat/api', () => ({
   useRoomsQuery: () => mockRoomsQueryResult,
   useMessagesQuery: () => mockMessagesQueryResult,
@@ -182,6 +205,13 @@ jest.mock('@/features/chat/api', () => ({
   useReadReceiptQuery: () => mockReadReceiptQueryResult,
   useMarkReadMutation: () => ({
     mutate: mockMarkReadMutate,
+    isPending: false,
+    isError: false,
+  }),
+  useOnTypingInRoomSubscription: (roomId: any, userId: any, onEvent: any) =>
+    mockUseOnTypingInRoomSubscription(roomId, userId, onEvent),
+  useSetTypingMutation: () => ({
+    mutate: mockSetTypingMutate,
     isPending: false,
     isError: false,
   }),
@@ -276,6 +306,9 @@ beforeEach(() => {
   mockMarkReadMutate.mockClear();
   mockInvalidateQueries.mockClear();
   mockReadReceiptQueryResult = { data: undefined };
+  mockUseOnTypingInRoomSubscription.mockClear();
+  mockSetTypingMutate.mockClear();
+  capturedTypingEventCallback = null;
 
   // Default: Mehvish profile resolved, two test messages
   mockProfileQueryResult = { data: mehvish, isLoading: false, isError: false };
@@ -881,6 +914,7 @@ describe('ChatRoomScreen — AC (r): mark-as-read fires on focus when received m
     'given no received messages in the query, when ChatRoomScreen mounts, then useMarkReadMutation.mutate is NOT called',
     () => {
       // Only a sent message — no received messages.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockMessagesQueryResult = {
         data: {
           pages: [{
@@ -903,6 +937,203 @@ describe('ChatRoomScreen — AC (r): mark-as-read fires on focus when received m
       renderScreen();
 
       expect(mockMarkReadMutate).not.toHaveBeenCalled();
+    },
+  );
+});
+
+// ── AC (s) — 16.CH2: useOnTypingInRoomSubscription called on mount ────────────
+
+describe('ChatRoomScreen — AC (s): useOnTypingInRoomSubscription wired on mount', () => {
+  it(
+    'given ChatRoomScreen renders, when the component mounts, then useOnTypingInRoomSubscription is called with roomId and currentUserId',
+    () => {
+      renderScreen();
+      expect(mockUseOnTypingInRoomSubscription).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const [calledRoomId, calledUserId] = mockUseOnTypingInRoomSubscription.mock.calls[0] as [string, string, any];
+      expect(calledRoomId).toBe(ROOM_ID);
+      expect(calledUserId).toBe(CURRENT_USER_ID);
+    },
+  );
+
+  it(
+    'given ChatRoomScreen renders, then the third argument (onEvent callback) is a function',
+    () => {
+      renderScreen();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const [, , onEvent] = mockUseOnTypingInRoomSubscription.mock.calls[0] as [string, string, any];
+      expect(typeof onEvent).toBe('function');
+    },
+  );
+});
+
+// ── AC (t) — 16.CH2: typing row appears and disappears on typing events ────────
+
+describe('ChatRoomScreen — AC (t): typing row appears on isTyping:true, disappears on isTyping:false', () => {
+  it(
+    'given isTyping:true event fires, when ChatRoomScreen renders, then typing-indicator-row is shown',
+    () => {
+      const { queryByTestId } = renderScreen();
+
+      // Before the event: row should not be visible.
+      expect(queryByTestId('typing-indicator-row')).toBeNull();
+
+      // Fire isTyping:true event via the captured callback.
+      act(() => {
+        capturedTypingEventCallback?.({
+          isTyping: true,
+          userId: COUNTERPART_USER_ID,
+          roomId: ROOM_ID,
+        });
+      });
+
+      expect(queryByTestId('typing-indicator-row')).toBeTruthy();
+    },
+  );
+
+  it(
+    'given isTyping:true then isTyping:false events fire, when both are processed, then typing-indicator-row is dismissed',
+    () => {
+      const { queryByTestId } = renderScreen();
+
+      act(() => {
+        capturedTypingEventCallback?.({
+          isTyping: true,
+          userId: COUNTERPART_USER_ID,
+          roomId: ROOM_ID,
+        });
+      });
+      expect(queryByTestId('typing-indicator-row')).toBeTruthy();
+
+      act(() => {
+        capturedTypingEventCallback?.({
+          isTyping: false,
+          userId: COUNTERPART_USER_ID,
+          roomId: ROOM_ID,
+        });
+      });
+      expect(queryByTestId('typing-indicator-row')).toBeNull();
+    },
+  );
+});
+
+// ── AC (u) — 16.CH2: typing row auto-dismisses after 4 seconds of silence ─────
+
+describe('ChatRoomScreen — AC (u): typing row auto-dismisses after 4 seconds of silence', () => {
+  it(
+    'given isTyping:true event fires, when 4 seconds elapse with no further event, then typing-indicator-row is auto-dismissed',
+    () => {
+      jest.useFakeTimers();
+      const { queryByTestId } = renderScreen();
+
+      act(() => {
+        capturedTypingEventCallback?.({
+          isTyping: true,
+          userId: COUNTERPART_USER_ID,
+          roomId: ROOM_ID,
+        });
+      });
+      expect(queryByTestId('typing-indicator-row')).toBeTruthy();
+
+      // Advance time by 4 seconds.
+      act(() => {
+        jest.advanceTimersByTime(4000);
+      });
+
+      expect(queryByTestId('typing-indicator-row')).toBeNull();
+      jest.useRealTimers();
+    },
+  );
+});
+
+// ── AC (v) — 16.CH2: outbound throttle ───────────────────────────────────────
+
+describe('ChatRoomScreen — AC (v): outbound throttle — keystroke storm produces at most one setTyping(true) in ~2s', () => {
+  it(
+    'given rapid successive keystrokes within 2 seconds, when input changes fire many times, then setTypingMutate is called only once with isTyping:true',
+    () => {
+      jest.useFakeTimers();
+      const { getByTestId } = renderScreen();
+      const input = getByTestId('chat-room-input');
+
+      // Simulate a keystroke storm — 5 rapid changes.
+      act(() => {
+        fireEvent.changeText(input, 'H');
+        fireEvent.changeText(input, 'He');
+        fireEvent.changeText(input, 'Hel');
+        fireEvent.changeText(input, 'Hell');
+        fireEvent.changeText(input, 'Hello');
+      });
+
+      // Count how many calls were made with isTyping: true.
+      const trueCalls = mockSetTypingMutate.mock.calls.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (call: any[]) => (call[0] as { isTyping: boolean }).isTyping === true,
+      );
+      // Throttle ensures at most one `isTyping:true` call during the storm.
+      expect(trueCalls.length).toBe(1);
+
+      jest.useRealTimers();
+    },
+  );
+});
+
+// ── AC (w) — 16.CH2: unmount fires final setTyping(false) ────────────────────
+
+describe('ChatRoomScreen — AC (w): unmount fires final setTyping(false)', () => {
+  it(
+    'given the user was typing, when the screen unmounts, then setTypingMutate is called with isTyping:false',
+    () => {
+      jest.useFakeTimers();
+      const { getByTestId, unmount } = renderScreen();
+      const input = getByTestId('chat-room-input');
+
+      // Start a typing session.
+      act(() => {
+        fireEvent.changeText(input, 'Hello');
+      });
+
+      // Confirm that at least one isTyping:true call was made.
+      const trueCallsBefore = mockSetTypingMutate.mock.calls.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (call: any[]) => (call[0] as { isTyping: boolean }).isTyping === true,
+      );
+      expect(trueCallsBefore.length).toBeGreaterThan(0);
+
+      // Unmount the screen.
+      act(() => {
+        unmount();
+      });
+
+      // After unmount, a final setTyping(false) should have been fired.
+      const falseCalls = mockSetTypingMutate.mock.calls.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (call: any[]) => (call[0] as { isTyping: boolean }).isTyping === false,
+      );
+      expect(falseCalls.length).toBeGreaterThan(0);
+      // The last false call must have the correct roomId.
+      const lastFalseCall = falseCalls[falseCalls.length - 1] as [{ isTyping: boolean; roomId: string }];
+      expect(lastFalseCall[0].roomId).toBe(ROOM_ID);
+
+      jest.useRealTimers();
+    },
+  );
+
+  it(
+    'given the user has NOT started typing, when the screen unmounts, then setTypingMutate is NOT called with isTyping:false',
+    () => {
+      const { unmount } = renderScreen();
+
+      act(() => {
+        unmount();
+      });
+
+      // No typing session was started, so no setTyping(false) should fire.
+      const falseCalls = mockSetTypingMutate.mock.calls.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (call: any[]) => (call[0] as { isTyping: boolean }).isTyping === false,
+      );
+      expect(falseCalls.length).toBe(0);
     },
   );
 });

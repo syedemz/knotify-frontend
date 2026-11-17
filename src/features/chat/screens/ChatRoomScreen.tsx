@@ -18,6 +18,13 @@
  * and 'read' status tick — passes `lastReadMessageCreatedAt` hint to the shape
  * adapter so sent messages that have been read show two blue ticks.
  *
+ * Story 16.CH2: adds typing-indicator subscription (`useOnTypingInRoomSubscription`)
+ * and outbound typing events (`useSetTypingMutation`) with a 2-second idle timer
+ * and ~2-second throttle on outbound `isTyping: true` calls. A `TypingIndicatorRow`
+ * is shown above the composer when the counterpart is typing. On unmount, a final
+ * `setTyping({ isTyping: false })` is fired so the counterpart's row dismisses
+ * immediately.
+ *
  * **Rules of Hooks.** ALL hooks are declared before any conditional return.
  * Derived values that depend on the resolved state are computed after all hooks.
  *
@@ -51,10 +58,13 @@ import {
   useMessagesQuery,
   useOnMessageInRoomSubscription,
   useOnReadReceiptSubscription,
+  useOnTypingInRoomSubscription,
   useReadReceiptQuery,
   useRoomsQuery,
   useSendMessageMutation,
+  useSetTypingMutation,
 } from '@/features/chat/api';
+import { TypingIndicatorRow } from '@/features/chat/components/TypingIndicatorRow';
 import { useProfileQuery } from '@/features/profile/api';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import { adaptMessageToChatMessage } from '@/features/chat/shapeAdapters';
@@ -63,6 +73,7 @@ import { MessageBubble } from '@/features/chat/components/MessageBubble';
 import { useTheme } from '@/theme';
 import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
+import type { TypingEvent } from '@/services/graphql/types';
 import type { ChatStackParamList } from '@/navigation/types';
 import type { ChatMessage } from '@/types/ChatMessage';
 
@@ -204,6 +215,115 @@ export function ChatRoomScreen(): React.ReactElement {
   // in the current page window. Updated after messages resolve (see useMemo).
   const latestReceivedMessageIdRef = useRef<string | null>(null);
 
+  // ── Typing indicator — inbound (16.CH2) ──────────────────────────────────
+  //
+  // `isCounterpartTyping` drives the TypingIndicatorRow above the composer.
+  // Set to `true` on `isTyping: true` events; auto-dismissed after 4 seconds
+  // of silence via `counterpartTypingTimerRef`, or immediately on `isTyping: false`.
+  const [isCounterpartTyping, setIsCounterpartTyping] = useState(false);
+  const counterpartTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTypingEvent = useCallback(
+    (event: TypingEvent) => {
+      if (counterpartTypingTimerRef.current !== null) {
+        clearTimeout(counterpartTypingTimerRef.current);
+        counterpartTypingTimerRef.current = null;
+      }
+      if (event.isTyping) {
+        setIsCounterpartTyping(true);
+        // Auto-dismiss after 4 seconds of silence (AC 3).
+        counterpartTypingTimerRef.current = setTimeout(() => {
+          setIsCounterpartTyping(false);
+          counterpartTypingTimerRef.current = null;
+        }, 4000);
+      } else {
+        setIsCounterpartTyping(false);
+      }
+    },
+    [],
+  );
+
+  useOnTypingInRoomSubscription(roomId, currentUserId, handleTypingEvent);
+
+  // ── Typing indicator — outbound (16.CH2) ─────────────────────────────────
+  //
+  // Throttle: at most one `isTyping: true` call every ~2 seconds regardless
+  // of keystroke frequency. Idle timer: 2 seconds of no input → `isTyping: false`.
+  // On unmount: final `setTyping(false)` so counterpart's row dismisses.
+  const setTypingMutation = useSetTypingMutation();
+  const setTypingMutationRef = useRef(setTypingMutation);
+  useEffect(() => {
+    setTypingMutationRef.current = setTypingMutation;
+  });
+
+  // Ref stores the wall-clock timestamp of the last `isTyping: true` outbound call.
+  const lastTypingTrueSentAtRef = useRef<number>(0);
+  // Ref for the 2-second idle timer that sends `isTyping: false`.
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref for whether we have an active outbound typing session (sent true, not yet false).
+  const isTypingActiveRef = useRef(false);
+
+  // handleComposerChange: called on every input-change event.
+  // Wire this into the TextInput's onChangeText alongside setComposerText.
+  const handleComposerChange = useCallback(
+    (text: string) => {
+      setComposerText(text);
+
+      if (text.length === 0) {
+        // Input cleared — end typing session immediately.
+        if (idleTimerRef.current !== null) {
+          clearTimeout(idleTimerRef.current);
+          idleTimerRef.current = null;
+        }
+        if (isTypingActiveRef.current) {
+          isTypingActiveRef.current = false;
+          setTypingMutationRef.current.mutate({ isTyping: false, roomId });
+        }
+        return;
+      }
+
+      // Non-empty: reset idle timer.
+      if (idleTimerRef.current !== null) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+      idleTimerRef.current = setTimeout(() => {
+        idleTimerRef.current = null;
+        isTypingActiveRef.current = false;
+        setTypingMutationRef.current.mutate({ isTyping: false, roomId });
+      }, 2000);
+
+      // Throttle: only send `isTyping: true` if more than ~2s have elapsed
+      // since the last true call (AC 2 throttle requirement).
+      const now = Date.now();
+      if (!isTypingActiveRef.current || now - lastTypingTrueSentAtRef.current >= 2000) {
+        isTypingActiveRef.current = true;
+        lastTypingTrueSentAtRef.current = now;
+        setTypingMutationRef.current.mutate({ isTyping: true, roomId });
+      }
+    },
+    [roomId],
+  );
+
+  // Unmount: clear timers and send final `setTyping(false)` (AC 5).
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current !== null) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+      if (counterpartTypingTimerRef.current !== null) {
+        clearTimeout(counterpartTypingTimerRef.current);
+        counterpartTypingTimerRef.current = null;
+      }
+      if (isTypingActiveRef.current) {
+        isTypingActiveRef.current = false;
+        setTypingMutationRef.current.mutate({ isTyping: false, roomId });
+      }
+    };
+    // roomId is a route param — stable for the lifetime of this screen mount.
+  }, [roomId]);
+
   // Debounced mark-as-read: fires at most once per focus event.
   useFocusEffect(
     useCallback(() => {
@@ -267,6 +387,17 @@ export function ChatRoomScreen(): React.ReactElement {
   const handleSend = useCallback(async () => {
     const trimmed = composerText.trim();
     if (trimmed.length === 0) return;
+
+    // End the typing session before sending — clear idle timer and send false.
+    if (idleTimerRef.current !== null) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    if (isTypingActiveRef.current) {
+      isTypingActiveRef.current = false;
+      setTypingMutationRef.current.mutate({ isTyping: false, roomId });
+    }
+
     try {
       await sendMutation.mutateAsync({ content: trimmed, roomId, contentType: 'text' });
       setComposerText('');
@@ -411,6 +542,12 @@ export function ChatRoomScreen(): React.ReactElement {
         </ImageBackground>
       </View>
 
+      {/* ── Typing indicator row (16.CH2) ──────────────────────────── */}
+      {/* profile is non-null here (past the null guard above). */}
+      {isCounterpartTyping && (
+        <TypingIndicatorRow friendName={profile.first_name ?? ''} />
+      )}
+
       {/* ── Composer ────────────────────────────────────────────────── */}
       <View style={[styles.composer, { paddingBottom: insets.bottom + theme.spacing.sm }]}>
         {/* Input pill */}
@@ -419,7 +556,7 @@ export function ChatRoomScreen(): React.ReactElement {
             testID="chat-room-input"
             style={styles.textInput}
             value={composerText}
-            onChangeText={setComposerText}
+            onChangeText={handleComposerChange}
             placeholder={t('chat.room.composerPlaceholder')}
             placeholderTextColor={theme.colors.text.tertiary}
             multiline={true}

@@ -29,6 +29,7 @@ import type {
   Message,
   MessageConnection,
   MessageRead,
+  TypingEvent,
 } from '@/services/graphql/types';
 import { adaptMessageToChatMessage, makeOptimisticChatMessage } from './shapeAdapters';
 import type { ChatMessage } from '@/types/ChatMessage';
@@ -762,6 +763,137 @@ export function useOnReadReceiptSubscription(roomId: string): void {
       sub.unsubscribe();
     };
   }, [roomId, queryClient]);
+}
+
+// ── GraphQL documents (typing) ────────────────────────────────────────────
+
+const ON_TYPING_IN_ROOM_SUBSCRIPTION = /* GraphQL */ `
+  subscription OnTypingInRoom($roomId: ID!) {
+    onTypingInRoom(roomId: $roomId) {
+      roomId
+      userId
+      isTyping
+    }
+  }
+`;
+
+const SET_TYPING_MUTATION = /* GraphQL */ `
+  mutation SetTyping($isTyping: Boolean!, $roomId: ID!) {
+    setTyping(isTyping: $isTyping, roomId: $roomId) {
+      roomId
+      userId
+      isTyping
+    }
+  }
+`;
+
+// ── useSetTypingMutation ───────────────────────────────────────────────────
+
+/**
+ * Variables accepted by {@link useSetTypingMutation}.
+ */
+export interface SetTypingVars {
+  /** Whether the signed-in user is currently typing. */
+  isTyping: boolean;
+  /** Room the typing event belongs to. */
+  roomId: string;
+}
+
+/**
+ * Sends an outbound typing event via the `setTyping(isTyping, roomId)` AppSync
+ * mutation.
+ *
+ * The mutation is fire-and-forget — no cache update is needed. The returned
+ * `TypingEvent` is discarded on the sender's side; the counterpart receives the
+ * event via `onTypingInRoom(roomId)` subscription.
+ *
+ * Callers are responsible for throttling: at most one `isTyping: true` call
+ * every ~2 seconds (see `ChatRoomScreen` for the `useRef`-based throttle).
+ *
+ * @example
+ * ```tsx
+ * const setTyping = useSetTypingMutation();
+ * setTyping.mutate({ isTyping: true, roomId: 'room-001' });
+ * ```
+ *
+ * @returns A TanStack mutation object with `data: TypingEvent`.
+ */
+export function useSetTypingMutation() {
+  return useMutation<TypingEvent, Error, SetTypingVars>({
+    mutationFn: async ({ isTyping, roomId }): Promise<TypingEvent> => {
+      const client = getAppsyncClient();
+      const response = (await client.graphql({
+        query: SET_TYPING_MUTATION,
+        variables: { isTyping, roomId },
+      })) as { data: { setTyping: TypingEvent } };
+      return response.data.setTyping;
+    },
+  });
+}
+
+// ── useOnTypingInRoomSubscription ─────────────────────────────────────────
+
+/**
+ * Subscribes to the `onTypingInRoom(roomId)` AppSync subscription and
+ * delivers incoming `TypingEvent` events to the provided callback.
+ *
+ * Only events where `event.userId !== currentUserId` are forwarded to the
+ * callback — self-events (the user's own typing reflection from the server)
+ * are silently discarded.
+ *
+ * Uses a `useEffect` + `.subscribe()` / `.unsubscribe()` lifecycle.
+ * Cleans up on unmount or when `roomId` changes.
+ *
+ * @param roomId - The room to subscribe to.
+ * @param currentUserId - The signed-in user's id. Used to filter out self-events.
+ * @param onEvent - Callback invoked for each inbound `TypingEvent` from the
+ *   counterpart. Called with the full `TypingEvent` object.
+ */
+export function useOnTypingInRoomSubscription(
+  roomId: string,
+  currentUserId: string,
+  onEvent: (event: TypingEvent) => void,
+): void {
+  // Stable ref to the latest callback so the subscription effect does not
+  // need to be torn down and re-established when only the callback changes.
+  const onEventRef = useRef(onEvent);
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  });
+
+  useEffect(() => {
+    const client = getAppsyncClient();
+
+    const sub = (
+      client.graphql({
+        query: ON_TYPING_IN_ROOM_SUBSCRIPTION,
+        variables: { roomId },
+      }) as unknown as {
+        subscribe: (handlers: {
+          next: (event: { data: { onTypingInRoom: TypingEvent | null } }) => void;
+          error: (err: unknown) => void;
+        }) => { unsubscribe: () => void };
+      }
+    ).subscribe({
+      next: (event) => {
+        const typingEvent = event?.data?.onTypingInRoom;
+        if (!typingEvent) return;
+
+        // Filter out self-events: the server reflects the mutation back to
+        // the sender; ignore them so the sender never sees their own row.
+        if (typingEvent.userId === currentUserId) return;
+
+        onEventRef.current(typingEvent);
+      },
+      error: (err: unknown) => {
+        console.warn('[useOnTypingInRoomSubscription] subscription error', err);
+      },
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
+  }, [roomId, currentUserId]);
 }
 
 // ── useMarkReadMutation ────────────────────────────────────────────────────
