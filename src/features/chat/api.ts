@@ -91,6 +91,7 @@ const LIST_MY_ROOMS_QUERY = /* GraphQL */ `
       lastMessagePreview
       lastMessageSenderId
       lastMessageId
+      friendshipActive
     }
   }
 `;
@@ -132,6 +133,7 @@ const CREATE_OR_GET_ROOM_MUTATION = /* GraphQL */ `
       lastMessagePreview
       lastMessageSenderId
       lastMessageId
+      friendshipActive
     }
   }
 `;

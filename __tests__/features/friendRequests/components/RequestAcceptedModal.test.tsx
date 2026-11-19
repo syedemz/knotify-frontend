@@ -74,9 +74,9 @@ function renderModal(
 describe('(a) renders interpolated title with Mehvish firstName', () => {
   it('shows the card with Mehvish firstName interpolated into the title', () => {
     renderModal();
-    // Title: "You and {{firstName}} are now connected!" with {{firstName}} replaced
+    // Title: "{{firstName}} has accepted your connection request" with {{firstName}} replaced
     expect(
-      screen.getByText(`You and ${mehvishFixture.first_name} are now connected!`),
+      screen.getByText(`${mehvishFixture.first_name} has accepted your connection request`),
     ).toBeTruthy();
   });
 

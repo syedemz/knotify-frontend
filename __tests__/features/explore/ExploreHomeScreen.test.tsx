@@ -128,6 +128,19 @@ jest.mock('@/features/friendRequests/api', () => ({
   OUTGOING_REQUESTS_QUERY_KEY: ['friend-requests', 'outgoing'] as const,
 }));
 
+// Request rows call `useProfileQuery(from_user_id)` per row to resolve the
+// sender's display name. Mock it so the hook doesn't try to reach a real
+// QueryClient — the test asserts on testIDs tied to `user_id`, not on names.
+jest.mock('@/features/profile/api', () => ({
+  useProfileQuery: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
+  profileQueryKey: (userId: string) => ['profile', userId] as const,
+}));
+
 // ── BookmarksProvider mock ─────────────────────────────────────────────────────
 
 const mockBookmarks: DummyDeckProfile[] = [];

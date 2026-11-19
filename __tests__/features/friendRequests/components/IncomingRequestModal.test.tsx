@@ -107,6 +107,11 @@ describe('(a) renders profile fields correctly', () => {
     expect(screen.getByText('Qurat Baloch')).toBeTruthy();
   });
 
+  it('shows the connection-request subtitle line', () => {
+    renderModal();
+    expect(screen.getByText('has sent you a connection request')).toBeTruthy();
+  });
+
   it('shows age · city subtitle', () => {
     renderModal();
     expect(screen.getByText('28 · Munich')).toBeTruthy();

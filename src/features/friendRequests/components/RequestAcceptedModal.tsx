@@ -162,7 +162,7 @@ export function RequestAcceptedModal({
             />
           </Column>
 
-          {/* 2. Interpolated title — "You and {firstName} are now connected!" */}
+          {/* 2. Interpolated title — "{firstName} has accepted your connection request" */}
           <Heading
             variant="heading.md"
             align="center"

@@ -104,6 +104,28 @@ export const friendsApi = {
     });
     return Array.isArray(resp) ? resp : (resp.friends ?? []);
   },
+
+  /**
+   * `DELETE /friends/{userId}` — remove the friendship with the given user.
+   *
+   * The server call is idempotent — 200 is returned whether or not a
+   * friendship row existed. After the Aurora DELETE commits, the backend
+   * also flips `friendship_active=false` on the shared `ChatRooms`
+   * DynamoDB row so future `sendMessage` calls from either side return
+   * `RoomReadOnly`. See `knotify-backend/.../friends/handler.py`
+   * `_handle_delete_friend`.
+   *
+   * The response body (`{"deleted": true}` or with
+   * `chat_room_update_pending`) is ignored by the client — a 2xx status
+   * means the friendship is severed.
+   *
+   * @param userId - `user_id` of the counterpart to unfriend.
+   */
+  unfriend: (userId: string): Promise<void> =>
+    request<void>({
+      method: 'DELETE',
+      path: `/friends/${userId}`,
+    }),
 } as const;
 
 // ── Friend requests ───────────────────────────────────────────────────────────

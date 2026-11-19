@@ -242,6 +242,15 @@ export function IncomingRequestModal({
             {fullName}
           </Heading>
 
+          {/* 2a. Connection-request subtitle (e.g. "has sent you a connection request") */}
+          <Text
+            variant="body.sm"
+            color="secondary"
+            align="center"
+          >
+            {t('friendRequests.incoming.subtitle')}
+          </Text>
+
           {/* 3. Age · city subtitle (null-guarded) */}
           {subtitle.length > 0 && (
             <Text

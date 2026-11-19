@@ -35,6 +35,17 @@ export interface ChatRoom {
   readonly lastMessageSenderId: string | null;
   /** Message ID of the most recent message. Null when no messages yet. */
   readonly lastMessageId: string | null;
+  /**
+   * `true` when a live `friendships` row exists for the pair; `false` after
+   * unfriend or block (either side). When `false`, `sendMessage` from either
+   * participant returns `RoomReadOnly`. The frontend reads this flag to
+   * swap the composer for an `UnfriendedBanner` on `ChatRoomScreen`.
+   *
+   * Server contract: field is non-nullable (`Boolean!`) on the AppSync
+   * `ChatRoom` type. Kept optional here only so legacy fixtures that predate
+   * the flag type-check — all real server responses populate it.
+   */
+  readonly friendshipActive?: boolean;
   /** ISO-8601 creation timestamp. Not returned by `listMyRooms` / `createOrGetRoom` — optional for fixture flexibility only. */
   readonly createdAt?: string;
   /** ISO-8601 last-updated timestamp. Not present on the real schema (confirmed 2026-11-17 via `listMyRooms` validation error); kept optional to permit fixtures. */
