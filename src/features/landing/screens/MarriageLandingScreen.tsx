@@ -51,7 +51,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, ScrollView, View } from 'react-native';
+import { Alert, Dimensions, ScrollView, View } from 'react-native';
 import Animated, {
   Easing,
   runOnJS,
@@ -61,11 +61,18 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { EmptyState, LoadingState, Snackbar, Button } from '@/components';
 import { t } from '@/labels';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
-import { useSendFriendRequestMutation } from '@/features/friendRequests/api';
+import {
+  OUTGOING_REQUESTS_QUERY_KEY,
+  useSendFriendRequestMutation,
+} from '@/features/friendRequests/api';
+import { useFriendRequestPreflight } from '@/features/friendRequests/useFriendRequestPreflight';
+import { FRIENDS_QUERY_KEY } from '@/features/friends/api';
 import { useDeckQuery } from '@/features/landing/hooks/useDeckQuery';
 import type { DeckProfile } from '@/types/api/DeckProfile';
 import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
@@ -214,8 +221,23 @@ export function MarriageLandingScreen(): React.ReactElement {
   // ── Bookmarks state ─────────────────────────────────────────────────────────
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
 
-  // ── Friend request mutation ─────────────────────────────────────────────────
+  // ── Friend request mutation + preflight ─────────────────────────────────────
   const sendRequestMutation = useSendFriendRequestMutation();
+  const preflight = useFriendRequestPreflight();
+  const queryClient = useQueryClient();
+
+  // Keep the friends + outgoing-requests caches fresh on screen focus so the
+  // preflight check never fires against stale data. Without this, a user
+  // who leaves and returns to the deck could still see a preflight PASS
+  // for someone who accepted their request in the meantime (and is now a
+  // friend) — which would then be rejected by the backend's new 409
+  // `already_friends` branch.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: FRIENDS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
+    }, [queryClient]),
+  );
 
   // ── Deck data (real backend GET /match/deck) ────────────────────────────────
   const deckQuery = useDeckQuery();
@@ -375,11 +397,28 @@ export function MarriageLandingScreen(): React.ReactElement {
   }, [animateDeckTransition]);
 
   const handleLike = useCallback(() => {
+    // Preflight guard: if the current deck candidate is already a friend or
+    // has already been sent a pending request, show an alert and skip the
+    // modal entirely. The backend is the source of truth (returns 409
+    // already_friends / already_pending) — this is a UX improvement.
+    const target = deck[currentDeckIndex];
+    if (target !== undefined) {
+      const result = preflight(target.user_id);
+      if (!result.canSend) {
+        const fullName = `${target.first_name ?? ''} ${target.last_name ?? ''}`.trim();
+        Alert.alert(
+          t(`friendRequests.preflight.${result.reason}.title`),
+          t(`friendRequests.preflight.${result.reason}.message`).replace('{name}', fullName),
+        );
+        return;
+      }
+    }
+
     // Like opens the send-request confirmation modal. Only after the user
     // confirms twice AND the pleasewait animation completes does the deck
     // actually advance — see handleRequestConfirmed below.
     setRequestModalVisible(true);
-  }, []);
+  }, [currentDeckIndex, deck, preflight]);
 
   const handleRequestCancel = useCallback(() => {
     setRequestModalVisible(false);

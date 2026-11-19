@@ -91,6 +91,21 @@ jest.mock('@/features/friends/api', () => ({
   useFriendsQuery: jest.fn(),
 }));
 
+// useIncomingRequestsQuery now reads currentUserId via useOwnProfile to
+// filter incoming rows where from_user_id === currentUserId (safety net
+// for the backend direction-param bug). The listener also uses this hook
+// for its poll-based new-request detection (see
+// FriendRequestSubscriptionListener — "Poll-based incoming-request
+// detection"). Stub so the hook can run without a provider.
+jest.mock('@/state/ownProfile/OwnProfileProvider', () => ({
+  useOwnProfile: () => ({
+    profile: { user_id: 'u-me-001' },
+    status: 'ready',
+    error: null,
+    refresh: jest.fn(),
+  }),
+}));
+
 // Auth stub — controllable status
 let mockAuthStatus: 'authenticated' | 'unauthenticated' | 'loading' = 'authenticated';
 

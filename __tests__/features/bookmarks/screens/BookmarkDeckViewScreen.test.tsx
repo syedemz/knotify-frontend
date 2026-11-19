@@ -54,6 +54,23 @@ jest.mock('@/features/friendRequests/api', () => ({
   useAcceptFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useDeclineFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useCancelOutgoingRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  OUTGOING_REQUESTS_QUERY_KEY: ['friend-requests', 'outgoing'] as const,
+  INCOMING_REQUESTS_QUERY_KEY: ['friend-requests', 'incoming'] as const,
+}));
+
+// Preflight guard — default canSend=true.
+jest.mock('@/features/friendRequests/useFriendRequestPreflight', () => ({
+  useFriendRequestPreflight: () => () => ({ canSend: true }),
+}));
+
+// QueryClient + FRIENDS_QUERY_KEY stubs for the focus-driven invalidation.
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+}));
+jest.mock('@/features/friends/api', () => ({
+  FRIENDS_QUERY_KEY: ['friends'] as const,
+  useFriendsQuery: jest.fn(),
 }));
 
 // ── Navigation mock ───────────────────────────────────────────────────────────
@@ -74,6 +91,16 @@ jest.mock('@react-navigation/native', () => {
       name: 'BookmarkDeckViewScreen',
       params: { userId: 'aisha-test-id' },
     }),
+    // useFocusEffect fires the callback once on mount (mimics initial focus).
+    useFocusEffect: (cb: () => (() => void) | void) => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const Rct = require('react') as typeof import('react');
+      Rct.useEffect(() => {
+        const cleanup = cb();
+        return cleanup ?? undefined;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+    },
   };
 });
 

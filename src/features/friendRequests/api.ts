@@ -22,6 +22,7 @@ import type { Notification } from '@/services/graphql/types';
 
 import { friendRequestsApi } from '@/services/api/endpoints';
 import { FRIENDS_QUERY_KEY } from '@/features/friends/api';
+import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import type { FriendRequest } from '@/types/api/FriendRequest';
 
 // ── Query keys ────────────────────────────────────────────────────────────────
@@ -81,9 +82,22 @@ export const OUTGOING_REQUESTS_QUERY_KEY = ['friend-requests', 'outgoing'] as co
  *   `isLoading`, `isError`, `error`, and `refetch` surfaced to the caller.
  */
 export function useIncomingRequestsQuery() {
-  const result = useQuery<readonly FriendRequest[], Error>({
+  // Backend `_handle_get_friend_requests` currently ignores the
+  // `direction=incoming` query param and returns BOTH incoming + outgoing
+  // pending requests (knotify-backend TODO friend-request-correctness FR-1).
+  // Until the backend honours the contract, drop any row where
+  // `from_user_id === currentUserId` so the user never sees their own
+  // outgoing requests rendered as incoming. Safe to leave in place after
+  // the backend fix — becomes a no-op.
+  const { profile: ownProfile } = useOwnProfile();
+  const currentUserId = ownProfile?.user_id ?? '';
+  const result = useQuery<readonly FriendRequest[], Error, readonly FriendRequest[]>({
     queryKey: INCOMING_REQUESTS_QUERY_KEY,
     queryFn: () => friendRequestsApi.listIncoming(),
+    select: (data) => {
+      if (currentUserId === '') return data;
+      return data.filter((r) => r.from_user_id !== currentUserId);
+    },
   });
   // TEMP DEBUG — remove after diagnosing empty requests tab
   useEffect(() => {

@@ -42,6 +42,7 @@ import { useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
 import {
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
+  useIncomingRequestsQuery,
   useOnFriendRequestUpdatedSubscription,
   INCOMING_REQUESTS_QUERY_KEY,
 } from './api';
@@ -246,6 +247,63 @@ export function FriendRequestSubscriptionListener(): React.JSX.Element | null {
   // unauthenticated (see the return null below), so this hook only runs when
   // auth.status === 'authenticated'.
   useOnFriendRequestUpdatedSubscription(handleNotification, remountKey);
+
+  // ── Poll-based incoming-request detection ─────────────────────────────────
+  //
+  // The AppSync `onFriendRequestUpdated` subscription above ONLY fires for
+  // `type === 'friend_request_accepted'` today — the backend never writes a
+  // Notifications row on POST /friend-requests, so the received-request
+  // modal would never surface via push. See knotify-backend TODO
+  // `friend-request-correctness` (stories FR-5, FR-6) for the proper fix.
+  //
+  // Interim workaround: diff successive `['friend-requests','incoming']`
+  // query data against the previous snapshot. Any `request_id` that appears
+  // in the new snapshot but was NOT in the previous one = a brand-new
+  // incoming request → open `IncomingRequestModal` for the newest one.
+  //
+  // First-render safety: on the first fetch (when `seenRequestIdsRef` is
+  // null), seed the set from the current data but DO NOT fire the modal —
+  // any rows present at that point are pre-existing and the user already
+  // knows about them from the Requests tab.
+  //
+  // De-dupe with the AppSync path: once the backend FR-5 story lands,
+  // both this poll and the subscription may fire for the same request.
+  // `incomingModal.open` already uses latest-wins semantics (closes any
+  // prior modal before opening a new one), and the modal would just
+  // re-open with the same `{userId, requestId}` → visually a no-op.
+  const incomingQuery = useIncomingRequestsQuery();
+  const seenRequestIdsRef = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const data = incomingQuery.data;
+    if (data === undefined) return;
+
+    // Seed-only on first fetch — don't fire modal for pre-existing rows.
+    if (seenRequestIdsRef.current === null) {
+      seenRequestIdsRef.current = new Set(data.map((r) => r.request_id));
+      return;
+    }
+
+    // Collect new request_ids. Open the modal for the newest (highest
+    // created_at) so repeated polls don't flood the user with modals.
+    const seen = seenRequestIdsRef.current;
+    const freshlyNew = data.filter((r) => !seen.has(r.request_id));
+    if (freshlyNew.length === 0) return;
+
+    for (const r of freshlyNew) {
+      seen.add(r.request_id);
+    }
+
+    // Pick the most recent as the one to surface (ISO strings sort lex =
+    // chronological).
+    const newest = freshlyNew.reduce((a, b) =>
+      a.created_at > b.created_at ? a : b,
+    );
+
+    // Latest-wins — close any currently-displayed modal before opening.
+    incomingModal.close();
+    incomingModal.open(newest.from_user_id, newest.request_id);
+  }, [incomingQuery.data, incomingModal]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
