@@ -5,7 +5,7 @@
  *
  * (a) When auth status is 'unauthenticated', the listener renders null
  *     (no modals, no subscription).
- * (b) When a 'friend_request' notification fires with a valid payload and the
+ * (b) When a 'friend_request_received' notification fires with a valid payload and the
  *     profile resolves, IncomingRequestModal becomes visible.
  * (c) When a 'friend_request_accepted' notification fires with a valid payload
  *     and the profile resolves, RequestAcceptedModal becomes visible.
@@ -40,23 +40,38 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // ── Service boundary stubs ────────────────────────────────────────────────────
 
-// Captured subscription handlers so tests can fire events programmatically.
-let capturedSubHandler: {
-  next: (event: { data: { onFriendRequestUpdated: unknown } }) => void;
+// Captured subscription handlers per channel so tests can fire events on the
+// right AppSync subscription. The component subscribes to BOTH
+// `onFriendRequestUpdated` (for friend_request_accepted + dual-published
+// friend_request_received) and `onNotificationForMe` (for friend_request_received
+// via the generic channel) — each gets its own captured handler.
+type SubHandler = {
+  next: (event: { data: Record<string, unknown> }) => void;
   error: (err: unknown) => void;
-} | null = null;
+};
+
+let capturedHandlers: { onFriendRequestUpdated: SubHandler | null; onNotificationForMe: SubHandler | null } = {
+  onFriendRequestUpdated: null,
+  onNotificationForMe: null,
+};
+
+// Legacy alias — points at onFriendRequestUpdated for back-compat with tests
+// written before the second subscription existed.
+let capturedSubHandler: SubHandler | null = null;
 
 let subscribeCallCount = 0;
 let unsubscribeCallCount = 0;
 
 const mockUnsubscribe = jest.fn(() => { unsubscribeCallCount += 1; });
 
-const mockGraphql = jest.fn(() => ({
-  subscribe: (handlers: {
-    next: (event: { data: { onFriendRequestUpdated: unknown } }) => void;
-    error: (err: unknown) => void;
-  }) => {
-    capturedSubHandler = handlers;
+const mockGraphql = jest.fn(({ query }: { query: string }) => ({
+  subscribe: (handlers: SubHandler) => {
+    if (query.includes('OnFriendRequestUpdated')) {
+      capturedHandlers.onFriendRequestUpdated = handlers;
+      capturedSubHandler = handlers;
+    } else if (query.includes('OnNotificationForMe')) {
+      capturedHandlers.onNotificationForMe = handlers;
+    }
     subscribeCallCount += 1;
     return { unsubscribe: mockUnsubscribe };
   },
@@ -221,15 +236,21 @@ function makeWrapper(client: QueryClient) {
 }
 
 /**
- * Fires a subscription notification event programmatically.
- * The capturedSubHandler must be set by the subscription mount.
+ * Fires a subscription notification event programmatically on the
+ * onFriendRequestUpdated channel (default). Pass `channel: 'onNotificationForMe'`
+ * to fire on the generic-notifications channel the component also subscribes to.
  */
-function fireSubscriptionEvent(type: string, payload: string) {
-  if (!capturedSubHandler) throw new Error('No subscription handler captured — component not mounted?');
+function fireSubscriptionEvent(
+  type: string,
+  payload: string,
+  channel: 'onFriendRequestUpdated' | 'onNotificationForMe' = 'onFriendRequestUpdated',
+) {
+  const handler = capturedHandlers[channel];
+  if (!handler) throw new Error(`No ${channel} subscription handler captured — component not mounted?`);
   act(() => {
-    capturedSubHandler!.next({
+    handler.next({
       data: {
-        onFriendRequestUpdated: {
+        [channel]: {
           type,
           payload,
           createdAt: new Date().toISOString(),
@@ -249,6 +270,7 @@ let appStateListenerStub: jest.SpyInstance | null = null;
 beforeEach(() => {
   jest.clearAllMocks();
   capturedSubHandler = null;
+  capturedHandlers = { onFriendRequestUpdated: null, onNotificationForMe: null };
   subscribeCallCount = 0;
   unsubscribeCallCount = 0;
   mockAuthStatus = 'authenticated';
@@ -303,7 +325,7 @@ describe('(b) friend_request notification opens IncomingRequestModal', () => {
     expect(queryByTestId('incoming-request-modal')).toBeNull();
 
     // Fire subscription event
-    fireSubscriptionEvent('friend_request', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
+    fireSubscriptionEvent('friend_request_received', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
 
     // Wait for profile query to resolve and modal to become visible
     await waitFor(() => {
@@ -354,8 +376,8 @@ describe('(d) multiple rapid events — latest wins', () => {
     );
 
     // Fire first event then immediately second
-    fireSubscriptionEvent('friend_request', makeFriendRequestPayload(REQ_1, SENDER_1));
-    fireSubscriptionEvent('friend_request', makeFriendRequestPayload(REQ_2, SENDER_2));
+    fireSubscriptionEvent('friend_request_received', makeFriendRequestPayload(REQ_1, SENDER_1));
+    fireSubscriptionEvent('friend_request_received', makeFriendRequestPayload(REQ_2, SENDER_2));
 
     // After the second event, the pending state should hold SENDER_2
     await waitFor(() => {
@@ -377,7 +399,7 @@ describe('(e) IncomingRequestModal.onAccept wires accept mutation', () => {
       { wrapper: makeWrapper(client) },
     );
 
-    fireSubscriptionEvent('friend_request', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
+    fireSubscriptionEvent('friend_request_received', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
 
     await waitFor(() => {
       expect(getByTestId('incoming-request-accept-btn')).toBeTruthy();
@@ -409,7 +431,7 @@ describe('(f) IncomingRequestModal.onDecline wires decline mutation', () => {
       { wrapper: makeWrapper(client) },
     );
 
-    fireSubscriptionEvent('friend_request', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
+    fireSubscriptionEvent('friend_request_received', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
 
     await waitFor(() => {
       expect(getByTestId('incoming-request-decline-btn')).toBeTruthy();
@@ -467,7 +489,7 @@ describe('(h) invalid payload — parse failure skips modal and logs warning', (
       { wrapper: makeWrapper(client) },
     );
 
-    fireSubscriptionEvent('friend_request', 'this is not json {{{{');
+    fireSubscriptionEvent('friend_request_received', 'this is not json {{{{');
 
     await act(async () => {});
 
@@ -490,7 +512,7 @@ describe('(h) invalid payload — parse failure skips modal and logs warning', (
     );
 
     // Missing from_user_id and request_id
-    fireSubscriptionEvent('friend_request', JSON.stringify({ something_else: true }));
+    fireSubscriptionEvent('friend_request_received', JSON.stringify({ something_else: true }));
 
     await act(async () => {});
 
@@ -555,7 +577,7 @@ describe('(j) modal dismissal does not leak subscription', () => {
       { wrapper: makeWrapper(client) },
     );
 
-    fireSubscriptionEvent('friend_request', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
+    fireSubscriptionEvent('friend_request_received', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
 
     await waitFor(() => {
       expect(queryByTestId('incoming-request-modal')).not.toBeNull();
@@ -643,7 +665,7 @@ describe('(l) pending-until-resolved — modal deferred until profile query retu
       { wrapper: makeWrapper(client) },
     );
 
-    fireSubscriptionEvent('friend_request', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
+    fireSubscriptionEvent('friend_request_received', makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID));
 
     // Give React a tick to process
     await act(async () => {});

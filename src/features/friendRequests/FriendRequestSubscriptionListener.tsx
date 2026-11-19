@@ -44,6 +44,7 @@ import {
   useDeclineFriendRequestMutation,
   useIncomingRequestsQuery,
   useOnFriendRequestUpdatedSubscription,
+  useOnNotificationForMeSubscription,
   INCOMING_REQUESTS_QUERY_KEY,
 } from './api';
 import { IncomingRequestModal } from './components/IncomingRequestModal';
@@ -206,17 +207,20 @@ export function FriendRequestSubscriptionListener(): React.JSX.Element | null {
         return;
       }
 
-      if (notification.type === 'friend_request') {
+      if (notification.type === 'friend_request_received') {
         const requestId = typeof parsed['request_id'] === 'string' ? parsed['request_id'] : null;
         const fromUserId = typeof parsed['from_user_id'] === 'string' ? parsed['from_user_id'] : null;
         if (requestId === null || fromUserId === null) {
           console.warn(
-            '[FriendRequestSubscriptionListener] friend_request payload missing required fields',
+            '[FriendRequestSubscriptionListener] friend_request_received payload missing required fields',
             parsed,
           );
           return;
         }
         // Latest wins: replace any currently displayed incoming request.
+        // The backend dual-publishes this type to both onFriendRequestUpdated
+        // AND onNotificationForMe, so this handler may fire twice per request.
+        // close()→open() with the same {userId, requestId} is a visual no-op.
         incomingModal.close();
         incomingModal.open(fromUserId, requestId);
       } else if (notification.type === 'friend_request_accepted') {
@@ -241,25 +245,38 @@ export function FriendRequestSubscriptionListener(): React.JSX.Element | null {
     [incomingModal.close, incomingModal.open, acceptedModal.close, acceptedModal.open, queryClient],
   );
 
-  // The subscription hook is called unconditionally to satisfy Rules of Hooks.
-  // The actual subscription is established inside the hook's useEffect, which
-  // is guarded by the remountKey. The listener component is NOT mounted when
-  // unauthenticated (see the return null below), so this hook only runs when
-  // auth.status === 'authenticated'.
+  // Both subscription hooks are called unconditionally to satisfy Rules of
+  // Hooks. The actual subscriptions are established inside each hook's
+  // useEffect, guarded by the remountKey. The listener component is NOT
+  // mounted when unauthenticated (see the return null below), so these hooks
+  // only run when auth.status === 'authenticated'.
+  //
+  // Two independent AppSync channels for defense in depth:
+  //  - onFriendRequestUpdated receives `friend_request_accepted` and (via the
+  //    backend dual-publish) `friend_request_received`.
+  //  - onNotificationForMe receives `friend_request_received` (generic
+  //    channel), plus bookmark/match/etc. that this listener ignores.
+  // handleNotification is the same function for both — latest-wins modal
+  // semantics ensure a double delivery is a visual no-op.
   useOnFriendRequestUpdatedSubscription(handleNotification, remountKey);
+  useOnNotificationForMeSubscription(handleNotification, remountKey);
 
   // ── Poll-based incoming-request detection ─────────────────────────────────
   //
-  // The AppSync `onFriendRequestUpdated` subscription above ONLY fires for
-  // `type === 'friend_request_accepted'` today — the backend never writes a
-  // Notifications row on POST /friend-requests, so the received-request
-  // modal would never surface via push. See knotify-backend TODO
-  // `friend-request-correctness` (stories FR-5, FR-6) for the proper fix.
+  // Historically the AppSync subscriptions above did not deliver
+  // `friend_request_received` events (backend wrote no Notifications row,
+  // then wrote one but on a channel this listener didn't subscribe to), and
+  // this diff-the-cache fallback was the only path. Both gaps are now fixed:
+  // the backend writes the row (FR-5) and the publisher dual-publishes to
+  // onFriendRequestUpdated AND onNotificationForMe, both of which this
+  // listener subscribes to. This fallback stays as defense-in-depth for
+  // scenarios where push fails (e.g. AppSync idle disconnect, publisher
+  // outage) — the poll still catches new requests on cache refresh.
   //
-  // Interim workaround: diff successive `['friend-requests','incoming']`
-  // query data against the previous snapshot. Any `request_id` that appears
-  // in the new snapshot but was NOT in the previous one = a brand-new
-  // incoming request → open `IncomingRequestModal` for the newest one.
+  // Mechanism: diff successive `['friend-requests','incoming']` query data
+  // against the previous snapshot. Any `request_id` that appears in the new
+  // snapshot but was NOT in the previous one = a brand-new incoming request
+  // → open `IncomingRequestModal` for the newest one.
   //
   // First-render safety: on the first fetch (when `seenRequestIdsRef` is
   // null), seed the set from the current data but DO NOT fire the modal —
