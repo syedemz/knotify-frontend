@@ -37,7 +37,18 @@ export function ChatStack(): React.JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ChatListScreen" component={ChatListScreen} />
-      <Stack.Screen name="ChatRoomScreen" component={ChatRoomScreen} />
+      <Stack.Screen
+        name="ChatRoomScreen"
+        component={ChatRoomScreen}
+        options={{
+          // Match the screen's own fixed dark base. When the KeyboardAvoidingView
+          // inside ChatRoomScreen resizes (behavior="height" on Android), it can
+          // momentarily expose the native stack's default white container bg
+          // during/after the keyboard animation. A dark container bg ensures no
+          // white strip appears once the keyboard dismisses.
+          contentStyle: { backgroundColor: '#0B141A' },
+        }}
+      />
     </Stack.Navigator>
   );
 }

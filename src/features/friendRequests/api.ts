@@ -36,6 +36,18 @@ import type { FriendRequest } from '@/types/api/FriendRequest';
  */
 export const INCOMING_REQUESTS_QUERY_KEY = ['friend-requests', 'incoming'] as const;
 
+// TEMP DEBUG — remove after diagnosing empty requests tab
+function tempLogIncoming(data: readonly FriendRequest[] | undefined, err: unknown) {
+  if (err) {
+    const e = err as { name?: string; message?: string; status?: number; code?: string };
+    // eslint-disable-next-line no-console
+    console.warn('[TEMP] listIncoming ERROR:', JSON.stringify({ name: e?.name, message: e?.message, status: e?.status, code: e?.code }));
+  } else if (data !== undefined) {
+    // eslint-disable-next-line no-console
+    console.warn('[TEMP] listIncoming SUCCESS, count=', data.length, 'rows=', JSON.stringify(data));
+  }
+}
+
 /**
  * TanStack Query key for the signed-in user's outgoing friend requests.
  *
@@ -69,10 +81,15 @@ export const OUTGOING_REQUESTS_QUERY_KEY = ['friend-requests', 'outgoing'] as co
  *   `isLoading`, `isError`, `error`, and `refetch` surfaced to the caller.
  */
 export function useIncomingRequestsQuery() {
-  return useQuery<readonly FriendRequest[], Error>({
+  const result = useQuery<readonly FriendRequest[], Error>({
     queryKey: INCOMING_REQUESTS_QUERY_KEY,
     queryFn: () => friendRequestsApi.listIncoming(),
   });
+  // TEMP DEBUG — remove after diagnosing empty requests tab
+  useEffect(() => {
+    tempLogIncoming(result.data, result.error);
+  }, [result.data, result.error]);
+  return result;
 }
 
 /**
@@ -137,9 +154,26 @@ export interface SendFriendRequestVars {
 export function useSendFriendRequestMutation() {
   const queryClient = useQueryClient();
   return useMutation<FriendRequest, Error, SendFriendRequestVars>({
-    mutationFn: ({ toUserId }) => friendRequestsApi.send(toUserId),
-    onSuccess: () => {
+    mutationFn: ({ toUserId }) => {
+      // eslint-disable-next-line no-console
+      console.warn('[TEMP] sendFriendRequest FIRING, toUserId=', toUserId);
+      return friendRequestsApi.send(toUserId);
+    },
+    onSuccess: (data) => {
+      // eslint-disable-next-line no-console
+      console.warn('[TEMP] sendFriendRequest SUCCESS', JSON.stringify(data));
       void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
+    },
+    onError: (err) => {
+      const e = err as unknown as { name?: string; message?: string; status?: number; code?: string; body?: unknown };
+      // eslint-disable-next-line no-console
+      console.warn('[TEMP] sendFriendRequest ERROR:', JSON.stringify({
+        name: e?.name,
+        message: e?.message,
+        status: e?.status,
+        code: e?.code,
+        body: e?.body,
+      }, null, 2));
     },
   });
 }

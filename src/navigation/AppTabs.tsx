@@ -251,11 +251,23 @@ export function AppTabs(): React.JSX.Element {
       <Tab.Screen
         name="Chat"
         component={ChatStack}
-        options={{
-          tabBarLabel: t('nav.tabs.chat'),
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <MessageCircle color={color} size={size} />
-          ),
+        options={({ route }) => {
+          // Reclaim the tab-bar slot when ChatRoomScreen is the nested focused
+          // route. Returning our custom `CollapsingTabBar` as null only hides
+          // the bar visually — React Navigation still reserves the layout slot
+          // and the composer ends up sitting above a blank strip. Setting
+          // `tabBarStyle: { display: 'none' }` tells the navigator to fully
+          // remove the slot so ChatRoomScreen's KeyboardAvoidingView expands
+          // all the way down to the gesture/home area.
+          const nested = getFocusedRouteNameFromRoute(route) ?? 'ChatListScreen';
+          const hide = nested === 'ChatRoomScreen';
+          return {
+            tabBarLabel: t('nav.tabs.chat'),
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+              <MessageCircle color={color} size={size} />
+            ),
+            tabBarStyle: hide ? { display: 'none' as const } : undefined,
+          };
         }}
       />
       <Tab.Screen

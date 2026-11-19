@@ -59,6 +59,7 @@ import {
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
 } from '@/features/friendRequests/api';
+import { useProfileQuery } from '@/features/profile/api';
 import type { Friend } from '@/types/api/Friend';
 import type { FriendRequest } from '@/types/api/FriendRequest';
 import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
@@ -197,60 +198,14 @@ export function ExploreHomeScreen(): React.ReactElement {
   );
 
   const renderRequestRow = useCallback(
-    ({ item }: { item: FriendRequest }) => {
-      // For the Requests tab we show the sender's user_id as a placeholder
-      // until useProfileQuery is wired in a future story (16.8 owns the
-      // full listener + profile lookup). For now we display a minimal row.
-      const displayName = item.from_user_id;
-
-      return (
-        // Outer Row uses sibling structure (Note 1):
-        // - Left: TouchableArea wrapping thumbnail + name column.
-        // - Right: sibling Row with Accept/Decline buttons.
-        <Row paddingX="lg" paddingY="md" gap="md" align="center" justify="space-between">
-          {/* Left: row body — tappable column */}
-          <TouchableArea
-            onPress={() => handleRequestRowBodyPress(item.from_user_id)}
-            accessibilityLabel={displayName}
-            testID={`request-row-body-${item.from_user_id}`}
-          >
-            <Row gap="md" align="center">
-              <ProfileThumbnailCircle
-                uri=""
-                size={48}
-                accessibilityLabel={displayName}
-              />
-              <Column gap="xs">
-                <Heading variant="heading.sm">{displayName}</Heading>
-                <Text variant="label.sm" color="secondary">
-                  {t('explore.requests.sentYou')}
-                </Text>
-              </Column>
-            </Row>
-          </TouchableArea>
-
-          {/* Right: Accept + Decline buttons — sibling to TouchableArea */}
-          <Row gap="sm" align="center">
-            <Button
-              label={t('explore.requests.accept')}
-              variant="primary"
-              size="sm"
-              fullWidth={false}
-              onPress={() => handleAcceptRequest(item.request_id)}
-              testID={`request-accept-${item.from_user_id}`}
-            />
-            <Button
-              label={t('explore.requests.decline')}
-              variant="ghost"
-              size="sm"
-              fullWidth={false}
-              onPress={() => handleDeclineRequest(item.request_id)}
-              testID={`request-decline-${item.from_user_id}`}
-            />
-          </Row>
-        </Row>
-      );
-    },
+    ({ item }: { item: FriendRequest }) => (
+      <IncomingRequestRow
+        item={item}
+        onBodyPress={handleRequestRowBodyPress}
+        onAccept={handleAcceptRequest}
+        onDecline={handleDeclineRequest}
+      />
+    ),
     [handleRequestRowBodyPress, handleAcceptRequest, handleDeclineRequest],
   );
 
@@ -433,3 +388,80 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 });
+
+// ── IncomingRequestRow ────────────────────────────────────────────────────────
+
+/**
+ * One row of the Requests subtab. Resolves the sender's profile via
+ * `useProfileQuery(from_user_id)` so the row shows a real name + avatar.
+ *
+ * Extracted as its own component so the per-row `useProfileQuery` call
+ * stays Rules-of-Hooks-safe (one hook call per row, stable order).
+ */
+interface IncomingRequestRowProps {
+  readonly item: FriendRequest;
+  readonly onBodyPress: (userId: string) => void;
+  readonly onAccept: (requestId: string) => void;
+  readonly onDecline: (requestId: string) => void;
+}
+
+function IncomingRequestRow({
+  item,
+  onBodyPress,
+  onAccept,
+  onDecline,
+}: IncomingRequestRowProps): React.ReactElement {
+  const profileQuery = useProfileQuery(item.from_user_id);
+  const profile = profileQuery.data ?? null;
+
+  const firstName = profile?.first_name ?? '';
+  const lastName = profile?.last_name ?? '';
+  // Never flash the raw user_id — stay blank until the profile query resolves.
+  const fullName = firstName.length > 0 || lastName.length > 0
+    ? `${firstName} ${lastName}`.trim()
+    : '';
+  const photoUri = profile?.photo_url ?? '';
+
+  return (
+    <Row paddingX="lg" paddingY="md" gap="md" align="center" justify="space-between">
+      <TouchableArea
+        onPress={() => onBodyPress(item.from_user_id)}
+        accessibilityLabel={fullName}
+        testID={`request-row-body-${item.from_user_id}`}
+      >
+        <Row gap="md" align="center">
+          <ProfileThumbnailCircle
+            uri={photoUri}
+            size={48}
+            accessibilityLabel={fullName}
+          />
+          <Column gap="xs">
+            <Heading variant="heading.sm">{fullName}</Heading>
+            <Text variant="label.sm" color="secondary">
+              {t('explore.requests.sentYou')}
+            </Text>
+          </Column>
+        </Row>
+      </TouchableArea>
+
+      <Row gap="sm" align="center">
+        <Button
+          label={t('explore.requests.accept')}
+          variant="primary"
+          size="sm"
+          fullWidth={false}
+          onPress={() => onAccept(item.request_id)}
+          testID={`request-accept-${item.from_user_id}`}
+        />
+        <Button
+          label={t('explore.requests.decline')}
+          variant="ghost"
+          size="sm"
+          fullWidth={false}
+          onPress={() => onDecline(item.request_id)}
+          testID={`request-decline-${item.from_user_id}`}
+        />
+      </Row>
+    </Row>
+  );
+}

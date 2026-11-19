@@ -9,9 +9,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text as RNText } from 'react-native';
 
-import { Text } from '@/components';
 import { useTheme } from '@/theme';
 import { t } from '@/labels';
 import type { Theme } from '@/theme/theme';
@@ -56,13 +55,12 @@ export function TypingIndicatorRow({ friendName }: TypingIndicatorRowProps): Rea
 
   return (
     <View style={styles.row} testID="typing-indicator-row">
-      <Text
-        variant="body.sm"
-        color="tertiary"
+      <RNText
         accessibilityLabel={label}
+        style={styles.label}
       >
         {label}
-      </Text>
+      </RNText>
     </View>
   );
 }
@@ -74,7 +72,16 @@ function createStyles(theme: Theme) {
     row: {
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.xs,
-      backgroundColor: theme.colors.bg.primary,
+      // Transparent — ChatRoomScreen wraps us in its ImageBackground pattern,
+      // so the pattern shows through behind this row (WhatsApp-style).
+      backgroundColor: 'transparent',
+    },
+    // Fixed light colour — the chat screen's dark pattern background is
+    // independent of app theme, so the typing-row text must be readable on it.
+    label: {
+      color: '#E9EDEF',
+      fontSize: 13,
+      fontStyle: 'italic',
     },
   });
 }

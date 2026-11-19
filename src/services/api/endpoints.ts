@@ -97,8 +97,13 @@ export const friendsApi = {
    *
    * @returns An array of {@link Friend} profiles (may be empty).
    */
-  list: (): Promise<readonly Friend[]> =>
-    request<readonly Friend[]>({ method: 'GET', path: '/friends' }),
+  list: async (): Promise<readonly Friend[]> => {
+    const resp = await request<{ friends?: Friend[] } | Friend[]>({
+      method: 'GET',
+      path: '/friends',
+    });
+    return Array.isArray(resp) ? resp : (resp.friends ?? []);
+  },
 } as const;
 
 // ── Friend requests ───────────────────────────────────────────────────────────
@@ -119,12 +124,14 @@ export const friendRequestsApi = {
    *
    * @returns An array of incoming {@link FriendRequest} rows (may be empty).
    */
-  listIncoming: (): Promise<readonly FriendRequest[]> =>
-    request<readonly FriendRequest[]>({
+  listIncoming: async (): Promise<readonly FriendRequest[]> => {
+    const resp = await request<{ friend_requests?: FriendRequest[] } | FriendRequest[]>({
       method: 'GET',
       path: '/friend-requests',
       query: { direction: 'incoming' },
-    }),
+    });
+    return Array.isArray(resp) ? resp : (resp.friend_requests ?? []);
+  },
 
   /**
    * `GET /friend-requests?direction=outgoing` — fetch pending friend requests
@@ -135,12 +142,14 @@ export const friendRequestsApi = {
    *
    * @returns An array of outgoing {@link FriendRequest} rows (may be empty).
    */
-  listOutgoing: (): Promise<readonly FriendRequest[]> =>
-    request<readonly FriendRequest[]>({
+  listOutgoing: async (): Promise<readonly FriendRequest[]> => {
+    const resp = await request<{ friend_requests?: FriendRequest[] } | FriendRequest[]>({
       method: 'GET',
       path: '/friend-requests',
       query: { direction: 'outgoing' },
-    }),
+    });
+    return Array.isArray(resp) ? resp : (resp.friend_requests ?? []);
+  },
 
   /**
    * `POST /friend-requests` — send a new friend request to the given user.
@@ -157,7 +166,7 @@ export const friendRequestsApi = {
     request<FriendRequest>({
       method: 'POST',
       path: '/friend-requests',
-      body: { to_user_id: toUserId },
+      body: { toUserId },
     }),
 
   /**
@@ -233,8 +242,13 @@ export const blocksApi = {
    *
    * @returns An array of {@link BlockedUser} records (may be empty).
    */
-  list: (): Promise<readonly BlockedUser[]> =>
-    request<readonly BlockedUser[]>({ method: 'GET', path: '/blocks' }),
+  list: async (): Promise<readonly BlockedUser[]> => {
+    const resp = await request<{ blocks?: BlockedUser[] } | BlockedUser[]>({
+      method: 'GET',
+      path: '/blocks',
+    });
+    return Array.isArray(resp) ? resp : (resp.blocks ?? []);
+  },
 
   /**
    * `POST /blocks` — block a user.

@@ -98,7 +98,7 @@ const LIST_MY_ROOMS_QUERY = /* GraphQL */ `
 const MESSAGES_BY_CHAT_ROOM_QUERY = /* GraphQL */ `
   query MessagesByChatRoom(
     $roomId: ID!
-    $createdAtGt: String
+    $createdAtGt: AWSDateTime
     $limit: Int
     $nextToken: String
   ) {
@@ -225,15 +225,30 @@ export function useMessagesQuery(roomId: string) {
     queryKey: messagesQueryKey(roomId),
     queryFn: async ({ pageParam }): Promise<MessageConnection> => {
       const client = getAppsyncClient();
-      const response = (await client.graphql({
-        query: MESSAGES_BY_CHAT_ROOM_QUERY,
-        variables: {
-          roomId,
-          limit: 30,
-          nextToken: pageParam.nextToken ?? null,
-        },
-      })) as { data: { messagesByChatRoom: MessageConnection } };
-      return response.data.messagesByChatRoom;
+      try {
+        const response = (await client.graphql({
+          query: MESSAGES_BY_CHAT_ROOM_QUERY,
+          variables: {
+            roomId,
+            limit: 30,
+            nextToken: pageParam.nextToken ?? null,
+          },
+        })) as { data: { messagesByChatRoom: MessageConnection } };
+        // eslint-disable-next-line no-console
+        console.warn('[TEMP] messagesByChatRoom SUCCESS roomId=', roomId, 'response=', JSON.stringify(response));
+        return response.data.messagesByChatRoom;
+      } catch (err) {
+        const e = err as { errors?: unknown[]; message?: string; data?: unknown };
+        const first = Array.isArray(e?.errors) && e.errors.length > 0 ? e.errors[0] as Record<string, unknown> : null;
+        // eslint-disable-next-line no-console
+        console.warn('[TEMP] messagesByChatRoom ERROR roomId=', roomId, JSON.stringify({
+          message: e?.message,
+          data: e?.data,
+          errorsLen: Array.isArray(e?.errors) ? e.errors.length : -1,
+          firstError: first ? { message: first['message'], errorType: first['errorType'], path: first['path'] } : null,
+        }, null, 2));
+        throw err;
+      }
     },
     initialPageParam: { nextToken: undefined },
     getNextPageParam: (lastPage): MessagesPageParam | undefined => {
@@ -376,7 +391,7 @@ export function useSendMessageMutation(currentUserId: string) {
           if (old === undefined) {
             // No existing cache: create a synthetic first page.
             return {
-              pages: [{ items: [chatMessageToFakeMessage(optimistic)], nextToken: null }],
+              pages: [{ items: [chatMessageToFakeMessage(optimistic, currentUserId)], nextToken: null }],
               pageParams: [{ nextToken: undefined }],
             };
           }
@@ -387,7 +402,7 @@ export function useSendMessageMutation(currentUserId: string) {
           }
           const updatedLastPage: MessageConnection = {
             ...lastPage,
-            items: [...lastPage.items, chatMessageToFakeMessage(optimistic)],
+            items: [...lastPage.items, chatMessageToFakeMessage(optimistic, currentUserId)],
           };
           return {
             ...old,
@@ -437,12 +452,26 @@ export function useSendMessageMutation(currentUserId: string) {
           // Suppress unused warning — we store the adapted form indirectly.
           void serverChatMsg;
 
+          // Race-safe replace: if the subscription fired FIRST with the
+          // server-echoed Message, the real messageId is already in the cache.
+          // Replacing the optimistic entry with the same messageId would
+          // produce two items with identical keys → React "same key" error.
+          // Dedupe during the walk: replace the optimistic entry only if
+          // the real messageId is not already present.
+          const realExistsAlready = old.pages.some((page) =>
+            page.items.some((item) => item.messageId === fakeServerMsg.messageId),
+          );
+
           const updatedPages = old.pages.map((page) => ({
             ...page,
-            items: page.items.map((item) =>
-              // The optimistic item has messageId === localId (from makeOptimisticFakeMessage).
-              item.messageId === localId ? fakeServerMsg : item,
-            ),
+            items: realExistsAlready
+              ? // Subscription already placed the real message — drop the
+                // optimistic entry (whose messageId === localId).
+                page.items.filter((item) => item.messageId !== localId)
+              : // Standard path: swap optimistic for the server-echoed Message.
+                page.items.map((item) =>
+                  item.messageId === localId ? fakeServerMsg : item,
+                ),
           }));
 
           return { ...old, pages: updatedPages };
@@ -519,9 +548,23 @@ export function useOnMessageInRoomSubscription(
         const incoming = event?.data?.onMessageInRoom;
         if (!incoming) return;
 
-        // Dedupe: skip if the message is already in the cache.
-        if (knownIdsRef.current.has(incoming.messageId)) return;
-
+        // Dedupe: always scan the current cache, not just knownIdsRef.
+        // Other writers (useSendMessageMutation.onSuccess) also insert into
+        // the cache without updating the ref, so trusting the ref alone
+        // causes duplicate inserts when the server-echoed message arrives
+        // via BOTH the mutation response AND this subscription.
+        const current = queryClient.getQueryData<{ pages: MessageConnection[] }>(
+          messagesQueryKey(roomId),
+        );
+        if (current) {
+          for (const page of current.pages) {
+            for (const item of page.items) {
+              if (item.messageId === incoming.messageId) {
+                return;
+              }
+            }
+          }
+        }
         knownIdsRef.current.add(incoming.messageId);
 
         // Append to the last page of the infinite list.
@@ -576,15 +619,16 @@ export function useOnMessageInRoomSubscription(
  * @returns A `Message`-shaped object compatible with the cache.
  * @internal
  */
-function chatMessageToFakeMessage(chatMsg: ChatMessage): Message {
+function chatMessageToFakeMessage(chatMsg: ChatMessage, senderId: string): Message {
   return {
     // Use the client-side id as a temporary messageId so onSuccess can match it.
     messageId: chatMsg.id,
     // roomId is unknown at this point; the cache is keyed by roomId externally.
     roomId: '',
-    // senderId will be derived from currentUserId by the adapter, but we store
-    // a placeholder here since the cache shape requires it.
-    senderId: '__optimistic__',
+    // senderId is the signed-in user — the adapter uses this to render the
+    // bubble as sent (right/pink). A placeholder value would make the adapter
+    // render the optimistic bubble as received until the server echo arrives.
+    senderId,
     content: chatMsg.text,
     contentType: 'text',
     // ISO string for a timestamp-based createdAt so sorting is consistent.

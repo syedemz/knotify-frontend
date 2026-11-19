@@ -37,6 +37,7 @@ import {
   AppState,
   FlatList,
   ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -152,6 +153,30 @@ export function ChatRoomScreen(): React.ReactElement {
   const blockMutation = useBlockUserMutation();
 
   const [composerText, setComposerText] = useState('');
+
+  // ── Keyboard height tracker (Android) ──────────────────────────────────────
+  //
+  // On iOS we rely on KeyboardAvoidingView below. On Android, neither the
+  // manifest's `adjustResize` nor `KeyboardAvoidingView` behavior variants
+  // handle this screen's layout reliably (adjustResize alone lets the keyboard
+  // cover the composer; KAV leaves a stuck strip after keyboard dismiss on
+  // modern Android — see niddah4 / niddah5 reproductions on 2026-11-17).
+  // Manual tracking via `Keyboard` listeners is the only approach that opens
+  // AND closes cleanly.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // ── Subscription remount key ──────────────────────────────────────────────
   //
@@ -501,13 +526,16 @@ export function ChatRoomScreen(): React.ReactElement {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  // iOS wraps in KeyboardAvoidingView with behavior="padding" because iOS does
+  // not resize the window when the keyboard appears. Android passes undefined
+  // — the manifest's `windowSoftInputMode="adjustResize"` resizes the window,
+  // and the nested ImageBackground + FlatList layout shrinks + restores
+  // cleanly. Combining KAV with adjustResize on Android leaves a stuck strip
+  // at the bottom after the keyboard dismisses (known double-adjust bug —
+  // see `niddah5.png` repro 2026-11-17).
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      // iOS uses 'padding' to add bottom padding equal to the keyboard height.
-      // On Android we pass `undefined` so KeyboardAvoidingView becomes a
-      // passthrough — the manifest's `windowSoftInputMode="adjustResize"` already
-      // resizes the window to make room for the keyboard.
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Header ─────────────────────────────────────────────────── */}
@@ -558,96 +586,136 @@ export function ChatRoomScreen(): React.ReactElement {
       </View>
 
       {/* ── Message thread ──────────────────────────────────────────── */}
-      <View style={styles.threadContainer}>
-        <ImageBackground
-          source={BG_DARK}
-          resizeMode="repeat"
-          style={styles.threadBackground}
-        >
-          {/*
-            Inverted list rendering the DESCENDING-order copy of `messages`
-            (see `messagesDescending` useMemo above). Result: newest just
-            above the composer, oldest at the top of the scrollback.
-          */}
-          <FlatList
-            testID="chat-room-flatlist"
-            data={messagesDescending}
-            keyExtractor={keyExtractor}
-            renderItem={renderBubble}
-            inverted={true}
-            contentContainerStyle={styles.listContent}
-            initialNumToRender={30}
-          />
-        </ImageBackground>
-      </View>
+      {/*
+        Chat area: a single ImageBackground wraps BOTH the message list AND
+        the composer so the dark pattern shows through behind the pill
+        instead of butting up against a solid-dark footer strip (WhatsApp
+        aesthetic — pill floats over the pattern).
+       */}
+      <ImageBackground
+        source={BG_DARK}
+        resizeMode="repeat"
+        style={styles.chatArea}
+      >
+        {/*
+          Inverted list rendering the DESCENDING-order copy of `messages`
+          (see `messagesDescending` useMemo above). Result: newest just
+          above the composer, oldest at the top of the scrollback.
+        */}
+        <FlatList
+          testID="chat-room-flatlist"
+          data={messagesDescending}
+          keyExtractor={keyExtractor}
+          renderItem={renderBubble}
+          inverted={true}
+          contentContainerStyle={styles.listContent}
+          initialNumToRender={30}
+          style={styles.list}
+        />
 
-      {/* ── Typing indicator row (16.CH2) ──────────────────────────── */}
-      {/* profile is non-null here (past the null guard above). */}
-      {isCounterpartTyping && (
-        <TypingIndicatorRow friendName={profile.first_name ?? ''} />
-      )}
-
-      {/* ── Composer ────────────────────────────────────────────────── */}
-      <View style={[styles.composer, { paddingBottom: insets.bottom + theme.spacing.sm }]}>
-        {/* Input pill */}
-        <View style={styles.inputPill}>
-          <RNTextInput
-            testID="chat-room-input"
-            style={styles.textInput}
-            value={composerText}
-            onChangeText={handleComposerChange}
-            placeholder={t('chat.room.composerPlaceholder')}
-            placeholderTextColor={theme.colors.text.tertiary}
-            multiline={true}
-            maxLength={1000}
-            returnKeyType="default"
-          />
-        </View>
-
-        {/* Send / Mic circular button */}
-        {hasText ? (
-          <TouchableArea
-            onPress={handleSend}
-            accessibilityLabel={t('chat.room.sendAccessibility')}
-            testID="chat-room-send-btn"
-          >
-            <View style={styles.circularBtn}>
-              <Send
-                size={22}
-                color={theme.colors.text.inverse}
-                strokeWidth={2}
-              />
-            </View>
-          </TouchableArea>
-        ) : (
-          <TouchableArea
-            onPress={() => {
-              // Mic is a no-op in phase 15/16 — voice messages are not yet implemented.
-            }}
-            accessibilityLabel={t('chat.room.micAccessibility')}
-            testID="chat-room-mic-btn"
-          >
-            <View style={styles.circularBtn}>
-              <Mic
-                size={22}
-                color={theme.colors.text.inverse}
-                strokeWidth={2}
-              />
-            </View>
-          </TouchableArea>
+        {/* ── Typing indicator row (16.CH2) ──────────────────────────── */}
+        {/* profile is non-null here (past the null guard above). */}
+        {isCounterpartTyping && (
+          <TypingIndicatorRow friendName={profile.first_name ?? ''} />
         )}
-      </View>
+
+        {/* ── Composer (floats over the pattern) ────────────────────── */}
+        {/*
+          Android: paddingBottom = max(insets.bottom + sm, keyboardHeight).
+          When the keyboard is hidden, keyboardHeight = 0 so only the
+          safe-area + visual padding applies. When it opens, the composer
+          lifts by exactly the keyboard height, keeping the pill visible
+          above the IME. This replaces the broken KeyboardAvoidingView +
+          adjustResize pipeline on Android.
+          iOS: KeyboardAvoidingView (behavior="padding") lifts the whole root.
+        */}
+        <View
+          style={[
+            styles.composer,
+            {
+              // When keyboard is open on Android, Keyboard.endCoordinates.height
+              // reports the IME area but on some devices it excludes the
+              // suggestion-bar / gesture-inset strip at the top of the IME.
+              // Adding `insets.bottom` gives us enough margin that the pill
+              // always sits clear of the keyboard top, matching WhatsApp's
+              // visual gap.
+              paddingBottom:
+                Platform.OS === 'android' && keyboardHeight > 0
+                  ? keyboardHeight + insets.bottom + theme.spacing.sm
+                  : insets.bottom + theme.spacing.sm,
+            },
+          ]}
+        >
+          {/* Input pill */}
+          <View style={styles.inputPill}>
+            <RNTextInput
+              testID="chat-room-input"
+              style={styles.textInput}
+              value={composerText}
+              onChangeText={handleComposerChange}
+              placeholder={t('chat.room.composerPlaceholder')}
+              placeholderTextColor="#8696A0"
+              multiline={true}
+              maxLength={1000}
+              returnKeyType="default"
+            />
+          </View>
+
+          {/* Send / Mic circular button */}
+          {hasText ? (
+            <TouchableArea
+              onPress={handleSend}
+              accessibilityLabel={t('chat.room.sendAccessibility')}
+              testID="chat-room-send-btn"
+            >
+              <View style={styles.circularBtn}>
+                <Send
+                  size={22}
+                  color={theme.colors.text.inverse}
+                  strokeWidth={2}
+                />
+              </View>
+            </TouchableArea>
+          ) : (
+            <TouchableArea
+              onPress={() => {
+                // Mic is a no-op in phase 15/16 — voice messages are not yet implemented.
+              }}
+              accessibilityLabel={t('chat.room.micAccessibility')}
+              testID="chat-room-mic-btn"
+            >
+              <View style={styles.circularBtn}>
+                <Mic
+                  size={22}
+                  color={theme.colors.text.inverse}
+                  strokeWidth={2}
+                />
+              </View>
+            </TouchableArea>
+          )}
+        </View>
+      </ImageBackground>
     </KeyboardAvoidingView>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
+// Chat-screen palette — fixed dark colors regardless of app theme, matching
+// the dark-pattern bgDark.jpg background so there are no white flashes when
+// the keyboard animates or when the text input grows/shrinks.
+const CHAT_BG_DARK = '#0B141A';       // Base dark — blends with the pattern.
+const CHAT_PILL_BG = '#1F2C33';       // Pill fill — subtly lighter than base.
+const CHAT_TEXT_PRIMARY = '#E9EDEF';  // Input text on pill.
+const CHAT_PLACEHOLDER = '#8696A0';   // Placeholder colour.
+
 function createStyles(theme: Theme) {
   return StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: theme.colors.bg.primary,
+      // Fixed dark base so keyboard-animation frames never reveal a white
+      // underlay. Matches the ImageBackground pattern base colour.
+      backgroundColor: CHAT_BG_DARK,
     },
     // ── Header ──────────────────────────────────────────────────────────────
     header: {
@@ -669,11 +737,11 @@ function createStyles(theme: Theme) {
       flex: 1,
       minWidth: 0,
     },
-    // ── Thread ───────────────────────────────────────────────────────────────
-    threadContainer: {
+    // ── Chat area (ImageBackground wraps list + composer) ────────────────────
+    chatArea: {
       flex: 1,
     },
-    threadBackground: {
+    list: {
       flex: 1,
     },
     listContent: {
@@ -683,15 +751,19 @@ function createStyles(theme: Theme) {
     composer: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      paddingHorizontal: theme.spacing.md,
+      // Tighter horizontal padding and gap so the pill reaches closer to the
+      // screen edges (WhatsApp-style — more room to type).
+      paddingHorizontal: theme.spacing.sm,
       paddingTop: theme.spacing.sm,
-      backgroundColor: theme.colors.bg.primary,
-      gap: theme.spacing.sm,
+      // Transparent so the ImageBackground pattern shows through — pill
+      // floats over the pattern (WhatsApp-style).
+      backgroundColor: 'transparent',
+      gap: theme.spacing.xs,
     },
     inputPill: {
       flex: 1,
       borderRadius: theme.radii.pill,
-      backgroundColor: theme.colors.bg.surface,
+      backgroundColor: CHAT_PILL_BG,
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.sm,
       minHeight: 44,
@@ -699,7 +771,7 @@ function createStyles(theme: Theme) {
     },
     textInput: {
       ...textStyles.body.md,
-      color: theme.colors.text.primary,
+      color: CHAT_TEXT_PRIMARY,
       // Remove default TextInput padding on Android
       padding: 0,
       margin: 0,
@@ -714,3 +786,10 @@ function createStyles(theme: Theme) {
     },
   });
 }
+
+/**
+ * Exposed for `ChatRoomScreen` consumers who want the fixed dark base colour
+ * (e.g. the `TypingIndicatorRow` underlay — must match the composer so its
+ * background doesn't flash during the keyboard animation).
+ */
+export const CHAT_SCREEN_BG_DARK = CHAT_BG_DARK;

@@ -24,7 +24,24 @@
       "Bash(git fetch *)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k\\) for k in d.keys\\(\\) if k.startswith\\('explore'\\)]\")",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in ['user_id','first_name','last_name','age','job_title','photos','photo_url']}, indent=2\\)\\)\")",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(gh pr *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'tests: {d[\\\\\"numTotalTests\\\\\"]}, pass: {d[\\\\\"numPassedTests\\\\\"]}'\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'total tests: {d[\\\\\"numTotalTests\\\\\"]}, pass: {d[\\\\\"numPassedTests\\\\\"]}, fail: {d[\\\\\"numFailedTests\\\\\"]}'\\)\")",
+      "Bash(node -e \"const a = require\\('aws-amplify/api'\\); console.log\\(Object.keys\\(a\\).filter\\(k => k.includes\\('generate'\\) || k.includes\\('Generate'\\) || k.includes\\('Client'\\)\\).join\\(', '\\)\\)\")",
+      "Bash(node -e \"const a = require\\('aws-amplify'\\); console.log\\(Object.keys\\(a\\).slice\\(0, 30\\).join\\(', '\\)\\)\")",
+      "Bash(node *)",
+      "Bash(xargs grep *)",
+      "Bash(grep -r 'DevTriggersPanel' src/)",
+      "Bash(echo \"grep exit:$?\")",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot\")",
+      "Bash(export PATH=\"/c/Users/syede/AppData/Local/Android/Sdk/platform-tools:$JAVA_HOME/bin:$PATH\")",
+      "Bash(export ANDROID_SERIAL=000323572000090)",
+      "Bash(npx expo *)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

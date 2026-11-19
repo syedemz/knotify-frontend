@@ -75,9 +75,12 @@ export function ChatListRow({ room, currentUserId, onPress }: ChatListRowProps):
   const photoPath = profile?.photo_url ?? '';
   const firstName = profile?.first_name ?? '';
   const lastName = profile?.last_name ?? '';
+  // Never show the raw user_id — leave the name blank while the profile
+  // query is loading rather than flash the UUID. Once resolved, prefer
+  // first+last; if both are null on the backend, still render empty.
   const fullName = firstName.length > 0 || lastName.length > 0
     ? `${firstName} ${lastName}`.trim()
-    : counterpartUserId;
+    : '';
 
   const accessibilityLabel = t('chat.list.rowAccessibility')
     .replace('{firstName}', firstName)
