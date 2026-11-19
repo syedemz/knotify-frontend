@@ -47,6 +47,7 @@ import { EmptyState, Button } from '@/components';
 import { t } from '@/labels';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
 import {
+  INCOMING_REQUESTS_QUERY_KEY,
   OUTGOING_REQUESTS_QUERY_KEY,
   useSendFriendRequestMutation,
 } from '@/features/friendRequests/api';
@@ -102,11 +103,12 @@ export function BookmarkDeckViewScreen(): React.ReactElement {
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
 
-  // Keep friends + outgoing-requests caches fresh on focus so the preflight
-  // check never fires against stale data. Matches MarriageLandingScreen.
+  // Keep friends + incoming/outgoing-requests caches fresh on focus so the
+  // preflight check never fires against stale data. Matches MarriageLandingScreen.
   useFocusEffect(
     useCallback(() => {
       void queryClient.invalidateQueries({ queryKey: FRIENDS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: INCOMING_REQUESTS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
     }, [queryClient]),
   );

@@ -2,17 +2,17 @@
  * Unit tests for `useFriendRequestPreflight`.
  *
  * Covers:
- *  (a) `canSend: true` when both caches are empty (fail-open).
- *  (b) `canSend: true` when both caches are `undefined` (never fetched).
+ *  (a) `canSend: true` when all caches are empty (fail-open).
+ *  (b) `canSend: true` when caches are `undefined` (never fetched).
  *  (c) `canSend: false, reason: 'already_friends'` when target is in
  *      `['friends']` cache.
- *  (d) `canSend: false, reason: 'already_sent'` when a pending outgoing
- *      request to target exists.
- *  (e) `already_friends` takes precedence over `already_sent` when both
- *      conditions are true (shouldn't happen in practice but defines the
- *      contract).
- *  (f) An outgoing request with `status !== 'pending'` is ignored.
- *  (g) Empty `targetUserId` returns `{ canSend: true }`.
+ *  (d) `canSend: false, reason: 'already_received'` when a pending incoming
+ *      request FROM target exists.
+ *  (e) `canSend: false, reason: 'already_sent'` when a pending outgoing
+ *      request TO target exists.
+ *  (f) Precedence: `already_friends` > `already_received` > `already_sent`.
+ *  (g) Incoming/outgoing requests with `status !== 'pending'` are ignored.
+ *  (h) Empty `targetUserId` returns `{ canSend: true }`.
  */
 
 import React from 'react';
@@ -21,7 +21,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useFriendRequestPreflight } from '@/features/friendRequests/useFriendRequestPreflight';
 import { FRIENDS_QUERY_KEY } from '@/features/friends/api';
-import { OUTGOING_REQUESTS_QUERY_KEY } from '@/features/friendRequests/api';
+import {
+  INCOMING_REQUESTS_QUERY_KEY,
+  OUTGOING_REQUESTS_QUERY_KEY,
+} from '@/features/friendRequests/api';
 import type { Friend } from '@/types/api/Friend';
 import type { FriendRequest } from '@/types/api/FriendRequest';
 
@@ -69,10 +72,25 @@ function makeOutgoingRequest(
   };
 }
 
+function makeIncomingRequest(
+  request_id: string,
+  from_user_id: string,
+  status: FriendRequest['status'] = 'pending',
+): FriendRequest {
+  return {
+    request_id,
+    from_user_id,
+    to_user_id: 'u-me-001',
+    status,
+    created_at: '2026-11-19T10:00:00.000Z',
+  };
+}
+
 // ── Helper ───────────────────────────────────────────────────────────────────
 
 function makeWrapperWithClient(seed?: {
   friends?: readonly Friend[];
+  incoming?: readonly FriendRequest[];
   outgoing?: readonly FriendRequest[];
 }) {
   const client = new QueryClient({
@@ -80,6 +98,9 @@ function makeWrapperWithClient(seed?: {
   });
   if (seed?.friends !== undefined) {
     client.setQueryData(FRIENDS_QUERY_KEY, seed.friends);
+  }
+  if (seed?.incoming !== undefined) {
+    client.setQueryData(INCOMING_REQUESTS_QUERY_KEY, seed.incoming);
   }
   if (seed?.outgoing !== undefined) {
     client.setQueryData(OUTGOING_REQUESTS_QUERY_KEY, seed.outgoing);
@@ -121,6 +142,44 @@ describe('useFriendRequestPreflight — already_friends', () => {
   it('returns canSend: true when target is not in the friends cache', () => {
     const Wrapper = makeWrapperWithClient({
       friends: [makeFriend('u-aisha')],
+      outgoing: [],
+    });
+    const { result } = renderHook(() => useFriendRequestPreflight(), { wrapper: Wrapper });
+    expect(result.current('u-target-001')).toEqual({ canSend: true });
+  });
+});
+
+describe('useFriendRequestPreflight — already_received', () => {
+  it('returns canSend: false, reason: already_received when a pending incoming from target exists', () => {
+    const Wrapper = makeWrapperWithClient({
+      friends: [],
+      incoming: [makeIncomingRequest('req-001', 'u-target-001')],
+      outgoing: [],
+    });
+    const { result } = renderHook(() => useFriendRequestPreflight(), { wrapper: Wrapper });
+    expect(result.current('u-target-001')).toEqual({
+      canSend: false,
+      reason: 'already_received',
+    });
+  });
+
+  it('ignores incoming requests with status !== pending (e.g. after decline)', () => {
+    const Wrapper = makeWrapperWithClient({
+      friends: [],
+      incoming: [
+        makeIncomingRequest('req-001', 'u-target-001', 'declined'),
+        makeIncomingRequest('req-002', 'u-target-001', 'cancelled'),
+      ],
+      outgoing: [],
+    });
+    const { result } = renderHook(() => useFriendRequestPreflight(), { wrapper: Wrapper });
+    expect(result.current('u-target-001')).toEqual({ canSend: true });
+  });
+
+  it('ignores pending incoming requests from a different user', () => {
+    const Wrapper = makeWrapperWithClient({
+      friends: [],
+      incoming: [makeIncomingRequest('req-001', 'u-other-002')],
       outgoing: [],
     });
     const { result } = renderHook(() => useFriendRequestPreflight(), { wrapper: Wrapper });
@@ -175,13 +234,43 @@ describe('useFriendRequestPreflight — precedence', () => {
       reason: 'already_friends',
     });
   });
+
+  it('already_friends takes precedence over already_received when both are true', () => {
+    const Wrapper = makeWrapperWithClient({
+      friends: [makeFriend('u-target-001')],
+      incoming: [makeIncomingRequest('req-001', 'u-target-001')],
+    });
+    const { result } = renderHook(() => useFriendRequestPreflight(), { wrapper: Wrapper });
+    expect(result.current('u-target-001')).toEqual({
+      canSend: false,
+      reason: 'already_friends',
+    });
+  });
+
+  it('already_received takes precedence over already_sent when both are true', () => {
+    // Bidirectional pending requests — mirrors the production bug where both
+    // users send each other requests before either accepts. The incoming
+    // takes precedence because accepting the other side's request is the
+    // right action; sending a duplicate reverse is not.
+    const Wrapper = makeWrapperWithClient({
+      friends: [],
+      incoming: [makeIncomingRequest('req-in-001', 'u-target-001')],
+      outgoing: [makeOutgoingRequest('req-out-001', 'u-target-001')],
+    });
+    const { result } = renderHook(() => useFriendRequestPreflight(), { wrapper: Wrapper });
+    expect(result.current('u-target-001')).toEqual({
+      canSend: false,
+      reason: 'already_received',
+    });
+  });
 });
 
 describe('useFriendRequestPreflight — defensive paths', () => {
   it('returns canSend: true when targetUserId is empty', () => {
     const Wrapper = makeWrapperWithClient({
       friends: [makeFriend('')],
-      outgoing: [makeOutgoingRequest('req-001', '')],
+      incoming: [makeIncomingRequest('req-001', '')],
+      outgoing: [makeOutgoingRequest('req-002', '')],
     });
     const { result } = renderHook(() => useFriendRequestPreflight(), { wrapper: Wrapper });
     expect(result.current('')).toEqual({ canSend: true });

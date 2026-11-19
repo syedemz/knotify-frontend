@@ -68,6 +68,7 @@ import { EmptyState, LoadingState, Snackbar, Button } from '@/components';
 import { t } from '@/labels';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
 import {
+  INCOMING_REQUESTS_QUERY_KEY,
   OUTGOING_REQUESTS_QUERY_KEY,
   useSendFriendRequestMutation,
 } from '@/features/friendRequests/api';
@@ -226,15 +227,17 @@ export function MarriageLandingScreen(): React.ReactElement {
   const preflight = useFriendRequestPreflight();
   const queryClient = useQueryClient();
 
-  // Keep the friends + outgoing-requests caches fresh on screen focus so the
-  // preflight check never fires against stale data. Without this, a user
-  // who leaves and returns to the deck could still see a preflight PASS
-  // for someone who accepted their request in the meantime (and is now a
-  // friend) — which would then be rejected by the backend's new 409
-  // `already_friends` branch.
+  // Keep the friends + incoming/outgoing-requests caches fresh on screen
+  // focus so the preflight check never fires against stale data. Without
+  // this, a user who leaves and returns to the deck could still see a
+  // preflight PASS for someone who accepted their request in the meantime
+  // (and is now a friend) or who sent them a request while they were
+  // elsewhere in the app — either of which would then be rejected by the
+  // backend (409 `already_friends` or `reverse_pending`).
   useFocusEffect(
     useCallback(() => {
       void queryClient.invalidateQueries({ queryKey: FRIENDS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: INCOMING_REQUESTS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
     }, [queryClient]),
   );

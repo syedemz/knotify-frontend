@@ -2,20 +2,23 @@
  * `useFriendRequestPreflight` — client-side pre-flight guard for
  * `useSendFriendRequestMutation`.
  *
- * Reads the TanStack caches for `['friends']` and
- * `['friend-requests','outgoing']` and reports whether the caller is allowed
- * to send a friend request to the given target.
+ * Reads the TanStack caches for `['friends']`,
+ * `['friend-requests','incoming']` and `['friend-requests','outgoing']` and
+ * reports whether the caller is allowed to send a friend request to the
+ * given target.
  *
  * **Not a replacement for backend validation.** The backend 409 responses
  * (`already_friends`, `reverse_pending`, `already_pending`) remain the
  * source of truth — this hook only improves UX by preventing the
  * `SendRequestModal` from opening in cases where we already know the
- * request would be rejected.
+ * request would be rejected. The `already_received` reason here maps to
+ * the backend's `reverse_pending` 409.
  *
  * Cache freshness is maintained by the focus-driven refetch set up in
  * `fix/unfriend-notify-and-refetch` (PR #162) plus mutation-side
- * invalidations: `['friends']` and `['friend-requests','outgoing']` are
- * both invalidated on the relevant mutations.
+ * invalidations: `['friends']`, `['friend-requests','incoming']` and
+ * `['friend-requests','outgoing']` are all invalidated on the relevant
+ * mutations.
  *
  * **Fail-open:** if either cache is `undefined` (first load, user logged in
  * but data not yet fetched), the preflight returns `{ canSend: true }` so
@@ -29,7 +32,10 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { FRIENDS_QUERY_KEY } from '@/features/friends/api';
-import { OUTGOING_REQUESTS_QUERY_KEY } from '@/features/friendRequests/api';
+import {
+  INCOMING_REQUESTS_QUERY_KEY,
+  OUTGOING_REQUESTS_QUERY_KEY,
+} from '@/features/friendRequests/api';
 import type { Friend } from '@/types/api/Friend';
 import type { FriendRequest } from '@/types/api/FriendRequest';
 
@@ -39,9 +45,15 @@ import type { FriendRequest } from '@/types/api/FriendRequest';
  * Reason a pre-flight check blocks a send attempt.
  *
  * - `'already_friends'`: the target is already in the caller's friends list.
+ * - `'already_received'`: the target already has a pending incoming request
+ *   to the caller — the caller should accept or decline it instead of
+ *   sending their own. Matches the backend's `reverse_pending` 409.
  * - `'already_sent'`: the caller has a pending outgoing request to the target.
  */
-export type PreflightBlockReason = 'already_friends' | 'already_sent';
+export type PreflightBlockReason =
+  | 'already_friends'
+  | 'already_received'
+  | 'already_sent';
 
 /**
  * Result of a pre-flight check.
@@ -102,6 +114,22 @@ export function useFriendRequestPreflight(): PreflightCheck {
       const friends = queryClient.getQueryData<readonly Friend[]>(FRIENDS_QUERY_KEY);
       if (friends !== undefined && friends.some((f) => f.user_id === targetUserId)) {
         return { canSend: false, reason: 'already_friends' };
+      }
+
+      // Incoming check runs before outgoing: if the target has already sent us
+      // a request, accepting (or declining) it is the correct action, not
+      // sending a duplicate reverse request. Mirrors the backend's
+      // `reverse_pending` 409 path in _handle_post_friend_requests.
+      const incoming = queryClient.getQueryData<readonly FriendRequest[]>(
+        INCOMING_REQUESTS_QUERY_KEY,
+      );
+      if (
+        incoming !== undefined &&
+        incoming.some(
+          (r) => r.from_user_id === targetUserId && r.status === 'pending',
+        )
+      ) {
+        return { canSend: false, reason: 'already_received' };
       }
 
       const outgoing = queryClient.getQueryData<readonly FriendRequest[]>(

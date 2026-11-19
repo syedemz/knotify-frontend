@@ -705,6 +705,10 @@
         "title": "Already connected",
         "message": "You are already connected to {name}."
       },
+      "already_received": {
+        "title": "Request already received",
+        "message": "You have already received a connection request from {name}. Accept or decline it from your requests tab."
+      },
       "already_sent": {
         "title": "Request already sent",
         "message": "You have already sent {name} a connection request."
