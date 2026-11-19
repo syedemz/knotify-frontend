@@ -37,14 +37,21 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
 
 import { EmptyState, Button } from '@/components';
 import { t } from '@/labels';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
-import { useSendFriendRequestMutation } from '@/features/friendRequests/api';
+import {
+  OUTGOING_REQUESTS_QUERY_KEY,
+  useSendFriendRequestMutation,
+} from '@/features/friendRequests/api';
+import { useFriendRequestPreflight } from '@/features/friendRequests/useFriendRequestPreflight';
+import { FRIENDS_QUERY_KEY } from '@/features/friends/api';
 import type { ExploreStackParamList } from '@/navigation/types';
 import { DeckCard } from '@/features/landing/components/DeckCard';
 import type { DummyDeckProfile } from '@/types/DummyDeckProfile';
@@ -88,10 +95,21 @@ export function BookmarkDeckViewScreen(): React.ReactElement {
   const { getBookmark } = useBookmarks();
   const profile: DummyDeckProfile | undefined = getBookmark(userId);
 
-  // ── Friend request mutation ─────────────────────────────────────────────────
+  // ── Friend request mutation + preflight ─────────────────────────────────────
   const sendRequestMutation = useSendFriendRequestMutation();
+  const preflight = useFriendRequestPreflight();
+  const queryClient = useQueryClient();
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
+
+  // Keep friends + outgoing-requests caches fresh on focus so the preflight
+  // check never fires against stale data. Matches MarriageLandingScreen.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: FRIENDS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
+    }, [queryClient]),
+  );
 
   // ── Tab-bar-hidden lifecycle reset ─────────────────────────────────────────
   // Reset to 0 on mount (arrive with tab bar visible) and on unmount (so
@@ -128,8 +146,21 @@ export function BookmarkDeckViewScreen(): React.ReactElement {
   }, [navigation]);
 
   const handleFabPress = useCallback(() => {
+    // Preflight guard: skip the modal if we already know the backend would
+    // reject (already friends / already sent).
+    if (profile !== undefined) {
+      const result = preflight(profile.user_id);
+      if (!result.canSend) {
+        const fullName = `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim();
+        Alert.alert(
+          t(`friendRequests.preflight.${result.reason}.title`),
+          t(`friendRequests.preflight.${result.reason}.message`).replace('{name}', fullName),
+        );
+        return;
+      }
+    }
     setModalVisible(true);
-  }, []);
+  }, [preflight, profile]);
 
   const handleCancel = useCallback(() => {
     setModalVisible(false);

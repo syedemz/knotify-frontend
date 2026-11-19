@@ -699,6 +699,16 @@
       "subtitle": "You can start a chat now.",
       "sayHiLabel": "Say hi",
       "notNowLabel": "Not now"
+    },
+    "preflight": {
+      "already_friends": {
+        "title": "Already connected",
+        "message": "You are already connected to {name}."
+      },
+      "already_sent": {
+        "title": "Request already sent",
+        "message": "You have already sent {name} a connection request."
+      }
     }
   },
   "blocks": {

@@ -47,6 +47,21 @@ jest.mock('@/services/graphql/appsyncClient', () => ({
   _resetAppsyncClientForTests: jest.fn(),
 }));
 
+// useIncomingRequestsQuery now reads currentUserId via useOwnProfile to
+// filter out rows where from_user_id === currentUserId (safety net for the
+// backend direction-param bug — knotify-backend TODO FR-1). Stub so the
+// filter runs with a known currentUserId. Tests that need to assert on the
+// filter override this value per-test.
+const mockOwnProfileUserId = { current: 'u-me-001' };
+jest.mock('@/state/ownProfile/OwnProfileProvider', () => ({
+  useOwnProfile: () => ({
+    profile: { user_id: mockOwnProfileUserId.current },
+    status: 'ready',
+    error: null,
+    refresh: jest.fn(),
+  }),
+}));
+
 // ── Imports (after mock declaration) ─────────────────────────────────────────
 
 import {

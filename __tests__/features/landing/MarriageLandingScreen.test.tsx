@@ -103,6 +103,41 @@ jest.mock('@/features/friendRequests/api', () => ({
   useAcceptFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useDeclineFriendRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useCancelOutgoingRequestMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  OUTGOING_REQUESTS_QUERY_KEY: ['friend-requests', 'outgoing'] as const,
+  INCOMING_REQUESTS_QUERY_KEY: ['friend-requests', 'incoming'] as const,
+}));
+
+// Preflight guard — returns `canSend: true` by default. Individual tests
+// can override by capturing the mock and reconfiguring.
+const mockPreflight = jest.fn(() => ({ canSend: true }));
+jest.mock('@/features/friendRequests/useFriendRequestPreflight', () => ({
+  useFriendRequestPreflight: () => mockPreflight,
+}));
+
+// useFocusEffect fires the callback once on mount (mimics initial focus).
+// useQueryClient stub for the focus-driven invalidation.
+const mockInvalidateQueries = jest.fn();
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+}));
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useFocusEffect: (cb: () => (() => void) | void) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Rct = require('react') as typeof import('react');
+    Rct.useEffect(() => {
+      const cleanup = cb();
+      return cleanup ?? undefined;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+  },
+}));
+
+// FRIENDS_QUERY_KEY referenced by the focus-refetch block.
+jest.mock('@/features/friends/api', () => ({
+  FRIENDS_QUERY_KEY: ['friends'] as const,
+  useFriendsQuery: jest.fn(),
 }));
 
 // ── useBookmarks mock ─────────────────────────────────────────────────────────

@@ -699,6 +699,16 @@
       "subtitle": "ابھی گفتگو شروع کریں۔",
       "sayHiLabel": "ہیلو کہیں",
       "notNowLabel": "ابھی نہیں"
+    },
+    "preflight": {
+      "already_friends": {
+        "title": "پہلے سے منسلک",
+        "message": "آپ پہلے سے {name} سے منسلک ہیں۔"
+      },
+      "already_sent": {
+        "title": "درخواست پہلے سے بھیجی گئی",
+        "message": "آپ پہلے ہی {name} کو کنکشن کی درخواست بھیج چکے ہیں۔"
+      }
     }
   },
   "blocks": {

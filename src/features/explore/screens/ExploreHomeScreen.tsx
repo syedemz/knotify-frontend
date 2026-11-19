@@ -57,6 +57,7 @@ import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
 import { FRIENDS_QUERY_KEY, useFriendsQuery } from '@/features/friends/api';
 import {
   INCOMING_REQUESTS_QUERY_KEY,
+  OUTGOING_REQUESTS_QUERY_KEY,
   useIncomingRequestsQuery,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
@@ -110,6 +111,7 @@ export function ExploreHomeScreen(): React.ReactElement {
     useCallback(() => {
       void queryClient.invalidateQueries({ queryKey: FRIENDS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: INCOMING_REQUESTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
     }, [queryClient]),
   );
 
