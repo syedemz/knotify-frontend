@@ -70,9 +70,11 @@ import { TypingIndicatorRow } from '@/features/chat/components/TypingIndicatorRo
 import { useProfileQuery } from '@/features/profile/api';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import { useBlockUserMutation } from '@/features/blocks/api';
+import { useUnfriendMutation } from '@/features/friends/api';
 import { adaptMessageToChatMessage } from '@/features/chat/shapeAdapters';
 import { ProfileThumbnailCircle } from '@/features/profile/components/ProfileThumbnailCircle';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
+import { UnfriendedBanner } from '@/features/chat/components/UnfriendedBanner';
 import { useTheme } from '@/theme';
 import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
@@ -151,6 +153,12 @@ export function ChatRoomScreen(): React.ReactElement {
 
   // Block mutation (story 16.10): single-item action sheet on triple-dot.
   const blockMutation = useBlockUserMutation();
+
+  // Unfriend mutation: adds a second destructive item to the action sheet.
+  // Backend severs the `friendships` row and flips `friendship_active=false`
+  // on the shared ChatRooms row so neither side can send new messages, but
+  // the room record and message history are preserved.
+  const unfriendMutation = useUnfriendMutation();
 
   const [composerText, setComposerText] = useState('');
 
@@ -409,13 +417,36 @@ export function ChatRoomScreen(): React.ReactElement {
   }, [navigation]);
 
   const handleMenuPress = useCallback(() => {
-    // Single-item action sheet (story 16.10 AC 2).
+    // Two-item action sheet: Unfriend + Block, each with a two-step confirm.
     // counterpartUserId is derived before this handler fires (see useMemo above).
     // Alert.alert is the accepted cross-platform pattern for this phase.
     Alert.alert(
       t('blocks.action.sheetTitle'),
       undefined,
       [
+        {
+          text: t('friends.action.unfriendLabel'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('friends.action.confirmTitle'),
+              t('friends.action.confirmMessage'),
+              [
+                { text: t('friends.action.cancel'), style: 'cancel' },
+                {
+                  text: t('friends.action.confirmUnfriend'),
+                  style: 'destructive',
+                  onPress: () => {
+                    if (counterpartUserId !== '') {
+                      unfriendMutation.mutate({ userId: counterpartUserId });
+                    }
+                    navigation.goBack();
+                  },
+                },
+              ],
+            );
+          },
+        },
         {
           text: t('blocks.action.blockLabel'),
           style: 'destructive',
@@ -446,7 +477,7 @@ export function ChatRoomScreen(): React.ReactElement {
     // room record and currentUserId are stable. We include it in deps rather
     // than using a ref because the hook order is unconditional and the dep
     // array keeps the closure fresh.
-  }, [blockMutation, counterpartUserId, navigation]);
+  }, [blockMutation, unfriendMutation, counterpartUserId, navigation]);
 
   const handleSend = useCallback(async () => {
     const trimmed = composerText.trim();
@@ -523,6 +554,17 @@ export function ChatRoomScreen(): React.ReactElement {
   const photoPath = profile.photo_url ?? '';
   const fullName = `${profile.first_name} ${profile.last_name}`;
   const hasText = composerText.trim().length > 0;
+
+  // Read-only state: the backend flips `friendship_active=false` on the shared
+  // ChatRooms row when either side unfriends or blocks. `sendMessage` from
+  // either participant then returns `RoomReadOnly`. We render a banner in
+  // place of the composer and skip the typing-indicator row so the surface
+  // matches the server-side capability.
+  //
+  // `room` is `null` while rooms query is in flight but we've already
+  // returned above for `roomsQuery.isLoading`, so we treat `null` here as
+  // "flag not available → assume active" to avoid flashing the banner.
+  const isReadOnly = room?.friendshipActive === false;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -615,12 +657,18 @@ export function ChatRoomScreen(): React.ReactElement {
 
         {/* ── Typing indicator row (16.CH2) ──────────────────────────── */}
         {/* profile is non-null here (past the null guard above). */}
-        {isCounterpartTyping && (
+        {/* Hidden in read-only state — neither side can send, so typing is moot. */}
+        {!isReadOnly && isCounterpartTyping && (
           <TypingIndicatorRow friendName={profile.first_name ?? ''} />
         )}
 
-        {/* ── Composer (floats over the pattern) ────────────────────── */}
+        {/* ── Composer or UnfriendedBanner (floats over the pattern) ─ */}
         {/*
+          When the friendship is severed (unfriend / block from either side),
+          the backend sets `friendship_active=false` on the shared ChatRooms
+          row and `sendMessage` returns `RoomReadOnly`. We swap the composer
+          for `UnfriendedBanner` so the UI matches the server capability.
+
           Android: paddingBottom = max(insets.bottom + sm, keyboardHeight).
           When the keyboard is hidden, keyboardHeight = 0 so only the
           safe-area + visual padding applies. When it opens, the composer
@@ -629,71 +677,75 @@ export function ChatRoomScreen(): React.ReactElement {
           adjustResize pipeline on Android.
           iOS: KeyboardAvoidingView (behavior="padding") lifts the whole root.
         */}
-        <View
-          style={[
-            styles.composer,
-            {
-              // When keyboard is open on Android, Keyboard.endCoordinates.height
-              // reports the IME area but on some devices it excludes the
-              // suggestion-bar / gesture-inset strip at the top of the IME.
-              // Adding `insets.bottom` gives us enough margin that the pill
-              // always sits clear of the keyboard top, matching WhatsApp's
-              // visual gap.
-              paddingBottom:
-                Platform.OS === 'android' && keyboardHeight > 0
-                  ? keyboardHeight + insets.bottom + theme.spacing.sm
-                  : insets.bottom + theme.spacing.sm,
-            },
-          ]}
-        >
-          {/* Input pill */}
-          <View style={styles.inputPill}>
-            <RNTextInput
-              testID="chat-room-input"
-              style={styles.textInput}
-              value={composerText}
-              onChangeText={handleComposerChange}
-              placeholder={t('chat.room.composerPlaceholder')}
-              placeholderTextColor="#8696A0"
-              multiline={true}
-              maxLength={1000}
-              returnKeyType="default"
-            />
-          </View>
+        {isReadOnly ? (
+          <UnfriendedBanner friendName={profile.first_name ?? ''} />
+        ) : (
+          <View
+            style={[
+              styles.composer,
+              {
+                // When keyboard is open on Android, Keyboard.endCoordinates.height
+                // reports the IME area but on some devices it excludes the
+                // suggestion-bar / gesture-inset strip at the top of the IME.
+                // Adding `insets.bottom` gives us enough margin that the pill
+                // always sits clear of the keyboard top, matching WhatsApp's
+                // visual gap.
+                paddingBottom:
+                  Platform.OS === 'android' && keyboardHeight > 0
+                    ? keyboardHeight + insets.bottom + theme.spacing.sm
+                    : insets.bottom + theme.spacing.sm,
+              },
+            ]}
+          >
+            {/* Input pill */}
+            <View style={styles.inputPill}>
+              <RNTextInput
+                testID="chat-room-input"
+                style={styles.textInput}
+                value={composerText}
+                onChangeText={handleComposerChange}
+                placeholder={t('chat.room.composerPlaceholder')}
+                placeholderTextColor="#8696A0"
+                multiline={true}
+                maxLength={1000}
+                returnKeyType="default"
+              />
+            </View>
 
-          {/* Send / Mic circular button */}
-          {hasText ? (
-            <TouchableArea
-              onPress={handleSend}
-              accessibilityLabel={t('chat.room.sendAccessibility')}
-              testID="chat-room-send-btn"
-            >
-              <View style={styles.circularBtn}>
-                <Send
-                  size={22}
-                  color={theme.colors.text.inverse}
-                  strokeWidth={2}
-                />
-              </View>
-            </TouchableArea>
-          ) : (
-            <TouchableArea
-              onPress={() => {
-                // Mic is a no-op in phase 15/16 — voice messages are not yet implemented.
-              }}
-              accessibilityLabel={t('chat.room.micAccessibility')}
-              testID="chat-room-mic-btn"
-            >
-              <View style={styles.circularBtn}>
-                <Mic
-                  size={22}
-                  color={theme.colors.text.inverse}
-                  strokeWidth={2}
-                />
-              </View>
-            </TouchableArea>
-          )}
-        </View>
+            {/* Send / Mic circular button */}
+            {hasText ? (
+              <TouchableArea
+                onPress={handleSend}
+                accessibilityLabel={t('chat.room.sendAccessibility')}
+                testID="chat-room-send-btn"
+              >
+                <View style={styles.circularBtn}>
+                  <Send
+                    size={22}
+                    color={theme.colors.text.inverse}
+                    strokeWidth={2}
+                  />
+                </View>
+              </TouchableArea>
+            ) : (
+              <TouchableArea
+                onPress={() => {
+                  // Mic is a no-op in phase 15/16 — voice messages are not yet implemented.
+                }}
+                accessibilityLabel={t('chat.room.micAccessibility')}
+                testID="chat-room-mic-btn"
+              >
+                <View style={styles.circularBtn}>
+                  <Mic
+                    size={22}
+                    color={theme.colors.text.inverse}
+                    strokeWidth={2}
+                  />
+                </View>
+              </TouchableArea>
+            )}
+          </View>
+        )}
       </ImageBackground>
     </KeyboardAvoidingView>
   );

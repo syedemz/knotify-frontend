@@ -134,6 +134,7 @@ let mockRoomsQueryResult: RoomsQueryResult = {
     lastMessageAt: null,
     lastMessageSenderId: null,
     lastMessageId: null,
+    friendshipActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }],
@@ -199,6 +200,19 @@ jest.mock('@/features/blocks/api', () => ({
     mutate: mockBlockMutate,
     isPending: false,
   }),
+}));
+
+// ── useUnfriendMutation mock ─────────────────────────────────────────────────
+
+const mockUnfriendMutate = jest.fn();
+
+jest.mock('@/features/friends/api', () => ({
+  useUnfriendMutation: () => ({
+    mutate: mockUnfriendMutate,
+    isPending: false,
+  }),
+  FRIENDS_QUERY_KEY: ['friends'] as const,
+  useFriendsQuery: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 jest.mock('@/features/chat/api', () => ({
@@ -320,6 +334,7 @@ beforeEach(() => {
   mockUseOnTypingInRoomSubscription.mockClear();
   mockSetTypingMutate.mockClear();
   mockBlockMutate.mockClear();
+  mockUnfriendMutate.mockClear();
   capturedTypingEventCallback = null;
 
   // Default: Mehvish profile resolved, two test messages
@@ -1150,19 +1165,23 @@ describe('ChatRoomScreen — AC (w): unmount fires final setTyping(false)', () =
   );
 });
 
-// ── AC (story 16.10): Block action via triple-dot menu in ChatRoomScreen ────────
+// ── AC (story 16.10 + unfriend): action sheet via triple-dot menu ──────────────
 //
-// The triple-dot (chat-room-menu-btn) previously was a no-op. Story 16.10 wires
-// it to an Alert.alert action sheet with a single "Block" option. Confirm →
-// blockMutation.mutate({ userId: counterpartUserId }) + navigation.goBack().
+// The triple-dot (chat-room-menu-btn) opens an Alert.alert action sheet with
+// two destructive options and a cancel:
+//   index 0: Unfriend (destructive)
+//   index 1: Block (destructive)
+//   index 2: Cancel
+// Each destructive option opens a two-step confirm Alert; confirming fires
+// the matching mutation + navigation.goBack().
 
-describe('ChatRoomScreen — block action via triple-dot menu (story 16.10)', () => {
+describe('ChatRoomScreen — action-sheet via triple-dot menu', () => {
   it('given ChatRoomScreen is rendered, then chat-room-menu-btn is present', () => {
     const { getByTestId } = renderScreen();
     expect(getByTestId('chat-room-menu-btn')).toBeTruthy();
   });
 
-  it('tapping the menu button opens Alert.alert with Block option', () => {
+  it('tapping the menu button opens Alert.alert with Options title', () => {
     const alertSpy = jest.spyOn(Alert, 'alert');
     const { getByTestId } = renderScreen();
     fireEvent.press(getByTestId('chat-room-menu-btn'));
@@ -1171,14 +1190,14 @@ describe('ChatRoomScreen — block action via triple-dot menu (story 16.10)', ()
     expect(title).toBe('Options');
   });
 
-  it('tapping Block in the action sheet opens a confirm Alert', () => {
-    // Action sheet: index 0 = "Block" (destructive). On first Alert: press Block.
-    // This triggers the second Alert (confirm dialog) to appear.
+  // ── Unfriend path ──────────────────────────────────────────────────────────
+
+  it('tapping Unfriend in the action sheet opens the unfriend confirm dialog', () => {
     const capturedTitles: string[] = [];
     jest.spyOn(Alert, 'alert').mockImplementation(
       (title, _msg, buttons) => {
         capturedTitles.push(title);
-        // On first call (action sheet): press "Block" to trigger the confirm dialog.
+        // Press action-sheet index 0 (Unfriend) to trigger the confirm dialog.
         if (capturedTitles.length === 1) {
           const btns = buttons as Array<{ onPress?: () => void }>;
           btns[0]?.onPress?.();
@@ -1187,13 +1206,12 @@ describe('ChatRoomScreen — block action via triple-dot menu (story 16.10)', ()
     );
     const { getByTestId } = renderScreen();
     fireEvent.press(getByTestId('chat-room-menu-btn'));
-    // Both the action-sheet and the confirm dialog should have been shown.
     expect(capturedTitles).toContain('Options');
-    expect(capturedTitles).toContain('Block this user?');
+    expect(capturedTitles).toContain('Unfriend this user?');
   });
 
-  it('confirming Block calls blockMutation.mutate with counterpartUserId', () => {
-    // Action sheet: index 0 = "Block". Confirm dialog: index 1 = confirm "Block".
+  it('confirming Unfriend calls unfriendMutation.mutate with counterpartUserId', () => {
+    // Action sheet index 0 = Unfriend. Confirm dialog: index 1 = confirm "Unfriend".
     let alertCallCount = 0;
     jest.spyOn(Alert, 'alert').mockImplementation(
       (_title, _msg, buttons) => {
@@ -1208,11 +1226,12 @@ describe('ChatRoomScreen — block action via triple-dot menu (story 16.10)', ()
     );
     const { getByTestId } = renderScreen();
     fireEvent.press(getByTestId('chat-room-menu-btn'));
-    expect(mockBlockMutate).toHaveBeenCalledTimes(1);
-    expect(mockBlockMutate).toHaveBeenCalledWith({ userId: COUNTERPART_USER_ID });
+    expect(mockUnfriendMutate).toHaveBeenCalledTimes(1);
+    expect(mockUnfriendMutate).toHaveBeenCalledWith({ userId: COUNTERPART_USER_ID });
+    expect(mockBlockMutate).not.toHaveBeenCalled();
   });
 
-  it('confirming Block calls navigation.goBack()', () => {
+  it('confirming Unfriend calls navigation.goBack()', () => {
     let alertCallCount = 0;
     jest.spyOn(Alert, 'alert').mockImplementation(
       (_title, _msg, buttons) => {
@@ -1228,5 +1247,175 @@ describe('ChatRoomScreen — block action via triple-dot menu (story 16.10)', ()
     const { getByTestId } = renderScreen();
     fireEvent.press(getByTestId('chat-room-menu-btn'));
     expect(mockGoBack).toHaveBeenCalled();
+  });
+
+  it('cancelling the Unfriend confirm does NOT call unfriendMutation', () => {
+    let alertCallCount = 0;
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        alertCallCount += 1;
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        if (alertCallCount === 1) {
+          // Press Unfriend
+          btns[0]?.onPress?.();
+        } else {
+          // Press Cancel (index 0 on the confirm dialog)
+          btns[0]?.onPress?.();
+        }
+      },
+    );
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    expect(mockUnfriendMutate).not.toHaveBeenCalled();
+  });
+
+  // ── Block path (now at action-sheet index 1) ───────────────────────────────
+
+  it('tapping Block (index 1) in the action sheet opens the block confirm dialog', () => {
+    const capturedTitles: string[] = [];
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (title, _msg, buttons) => {
+        capturedTitles.push(title);
+        if (capturedTitles.length === 1) {
+          const btns = buttons as Array<{ onPress?: () => void }>;
+          btns[1]?.onPress?.();
+        }
+      },
+    );
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    expect(capturedTitles).toContain('Options');
+    expect(capturedTitles).toContain('Block this user?');
+  });
+
+  it('confirming Block calls blockMutation.mutate with counterpartUserId', () => {
+    let alertCallCount = 0;
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        alertCallCount += 1;
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        if (alertCallCount === 1) {
+          // Action sheet: press Block (index 1)
+          btns[1]?.onPress?.();
+        } else {
+          // Confirm dialog: press confirm (index 1)
+          btns[1]?.onPress?.();
+        }
+      },
+    );
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    expect(mockBlockMutate).toHaveBeenCalledTimes(1);
+    expect(mockBlockMutate).toHaveBeenCalledWith({ userId: COUNTERPART_USER_ID });
+    expect(mockUnfriendMutate).not.toHaveBeenCalled();
+  });
+
+  it('confirming Block calls navigation.goBack()', () => {
+    let alertCallCount = 0;
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _msg, buttons) => {
+        alertCallCount += 1;
+        const btns = buttons as Array<{ onPress?: () => void }>;
+        if (alertCallCount === 1) {
+          btns[1]?.onPress?.();
+        } else {
+          btns[1]?.onPress?.();
+        }
+      },
+    );
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('chat-room-menu-btn'));
+    expect(mockGoBack).toHaveBeenCalled();
+  });
+});
+
+// ── AC (unfriend): read-only state when friendshipActive === false ─────────────
+//
+// When the backend has set `friendship_active=false` on the shared ChatRooms
+// row (after either side unfriended), the ChatRoomScreen replaces its composer
+// with an UnfriendedBanner and suppresses the typing-indicator row. The banner
+// is the only in-UI notification the ex-friend receives.
+
+describe('ChatRoomScreen — read-only state (friendshipActive=false)', () => {
+  function makeReadOnlyRoomsResult() {
+    return {
+      data: [{
+        roomId: ROOM_ID,
+        userA: CURRENT_USER_ID,
+        userB: COUNTERPART_USER_ID,
+        lastMessagePreview: 'Hi',
+        lastMessageAt: null,
+        lastMessageSenderId: null,
+        lastMessageId: null,
+        friendshipActive: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }],
+      isLoading: false,
+      isError: false,
+    };
+  }
+
+  it('given friendshipActive=false, when ChatRoomScreen renders, then UnfriendedBanner is shown', () => {
+    mockRoomsQueryResult = makeReadOnlyRoomsResult();
+    const { getByTestId } = renderScreen();
+    expect(getByTestId('unfriended-banner')).toBeTruthy();
+  });
+
+  it('given friendshipActive=false, when ChatRoomScreen renders, then composer input and buttons are absent', () => {
+    mockRoomsQueryResult = makeReadOnlyRoomsResult();
+    const { queryByTestId } = renderScreen();
+    expect(queryByTestId('chat-room-input')).toBeNull();
+    expect(queryByTestId('chat-room-send-btn')).toBeNull();
+    expect(queryByTestId('chat-room-mic-btn')).toBeNull();
+  });
+
+  it('given friendshipActive=false, then typing-indicator does NOT render even on inbound typing event', () => {
+    mockRoomsQueryResult = makeReadOnlyRoomsResult();
+    const { queryByTestId } = renderScreen();
+
+    // Fire a counterpart typing event. In an active room this would render
+    // the TypingIndicatorRow; in read-only state it must stay suppressed.
+    act(() => {
+      capturedTypingEventCallback?.({
+        roomId: ROOM_ID,
+        userId: COUNTERPART_USER_ID,
+        isTyping: true,
+      });
+    });
+
+    expect(queryByTestId('typing-indicator-row')).toBeNull();
+  });
+
+  it('given friendshipActive=true (default), then UnfriendedBanner is absent', () => {
+    const { queryByTestId } = renderScreen();
+    expect(queryByTestId('unfriended-banner')).toBeNull();
+  });
+
+  it('given friendshipActive=true (default), then composer is still rendered', () => {
+    const { getByTestId } = renderScreen();
+    expect(getByTestId('chat-room-input')).toBeTruthy();
+  });
+
+  it('given friendshipActive is undefined (legacy fixture), then composer is still rendered (defaults to active)', () => {
+    mockRoomsQueryResult = {
+      data: [{
+        roomId: ROOM_ID,
+        userA: CURRENT_USER_ID,
+        userB: COUNTERPART_USER_ID,
+        lastMessagePreview: 'Hi',
+        lastMessageAt: null,
+        lastMessageSenderId: null,
+        lastMessageId: null,
+        // No friendshipActive key — legacy fixture
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }],
+      isLoading: false,
+      isError: false,
+    };
+    const { getByTestId, queryByTestId } = renderScreen();
+    expect(getByTestId('chat-room-input')).toBeTruthy();
+    expect(queryByTestId('unfriended-banner')).toBeNull();
   });
 });

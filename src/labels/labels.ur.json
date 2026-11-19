@@ -610,6 +610,13 @@
       "emptyDescription": "دوستی کی درخواست قبول کریں تاکہ یہاں پروفائلز نظر آئیں۔",
       "errorTitle": "دوست لوڈ نہیں ہو سکے",
       "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔"
+    },
+    "action": {
+      "unfriendLabel": "دوستی ختم کریں",
+      "confirmTitle": "اس صارف سے دوستی ختم کریں؟",
+      "confirmMessage": "آپ اب منسلک نہیں رہیں گے۔ چیٹ کی تاریخ محفوظ رہے گی، لیکن آپ میں سے کوئی بھی نیا پیغام نہیں بھیج سکے گا۔",
+      "confirmUnfriend": "دوستی ختم کریں",
+      "cancel": "منسوخ کریں"
     }
   },
   "explore": {
@@ -665,13 +672,14 @@
       "editedSuffix": "· ترمیم شدہ",
       "errorTitle": "پیغامات لوڈ نہیں ہو سکے",
       "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
-      "typing": "{friend} ٹائپ کر رہا ہے…"
+      "typing": "{friend} ٹائپ کر رہا ہے…",
+      "unfriendedBanner": "آپ اور {firstName} اب منسلک نہیں ہیں"
     }
   },
   "friendRequests": {
     "incoming": {
       "title": "دوستی کی درخواست",
-      "subtitle": "آپ سے جڑنا چاہتے ہیں",
+      "subtitle": "نے آپ کو کنکشن کی درخواست بھیجی ہے",
       "acceptLabel": "قبول کریں",
       "declineLabel": "رد کریں",
       "viewFullProfileLabel": "مکمل پروفائل دیکھیں",
@@ -679,7 +687,7 @@
       "declinedToast": "درخواست مسترد کر دی گئی"
     },
     "accepted": {
-      "title": "آپ اور {{firstName}} اب منسلک ہیں!",
+      "title": "{{firstName}} نے آپ کی کنکشن کی درخواست قبول کر لی ہے",
       "subtitle": "ابھی گفتگو شروع کریں۔",
       "sayHiLabel": "ہیلو کہیں",
       "notNowLabel": "ابھی نہیں"

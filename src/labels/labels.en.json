@@ -610,6 +610,13 @@
       "emptyDescription": "Accept a friend request to see profiles here.",
       "errorTitle": "Could not load friends",
       "errorDescription": "Check your connection and try again."
+    },
+    "action": {
+      "unfriendLabel": "Unfriend",
+      "confirmTitle": "Unfriend this user?",
+      "confirmMessage": "You will no longer be connected. The chat history stays, but neither of you will be able to send new messages.",
+      "confirmUnfriend": "Unfriend",
+      "cancel": "Cancel"
     }
   },
   "explore": {
@@ -665,13 +672,14 @@
       "editedSuffix": "· edited",
       "errorTitle": "Could not load messages",
       "errorDescription": "Check your connection and try again.",
-      "typing": "{friend} is typing…"
+      "typing": "{friend} is typing…",
+      "unfriendedBanner": "You and {firstName} are no longer connected"
     }
   },
   "friendRequests": {
     "incoming": {
       "title": "Friend Request",
-      "subtitle": "wants to connect with you",
+      "subtitle": "has sent you a connection request",
       "acceptLabel": "Accept",
       "declineLabel": "Decline",
       "viewFullProfileLabel": "View full profile",
@@ -679,7 +687,7 @@
       "declinedToast": "Request declined"
     },
     "accepted": {
-      "title": "You and {{firstName}} are now connected!",
+      "title": "{{firstName}} has accepted your connection request",
       "subtitle": "You can start a chat now.",
       "sayHiLabel": "Say hi",
       "notNowLabel": "Not now"
