@@ -146,7 +146,7 @@ export interface MessageRead {
  * parsing `Notification.payload`.
  */
 export type NotificationType =
-  | 'friend_request'
+  | 'friend_request_received'
   | 'friend_request_accepted'
   | 'profile_view'
   | 'room_deactivated'
@@ -165,7 +165,7 @@ export interface Notification {
   /**
    * Stringified JSON payload. Schema varies by `type`:
    *
-   * - `'friend_request'`: `{ request_id: string; from_user_id: string }`
+   * - `'friend_request_received'`: `{ request_id: string; from_user_id: string }`
    * - `'friend_request_accepted'`: `{ from_user_id: string }` (from_user_id is the acceptor)
    * - Others: opaque — do not parse unless the schema is known.
    */

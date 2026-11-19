@@ -346,6 +346,16 @@ const ON_FRIEND_REQUEST_UPDATED_SUBSCRIPTION = /* GraphQL */ `
   }
 `;
 
+const ON_NOTIFICATION_FOR_ME_SUBSCRIPTION = /* GraphQL */ `
+  subscription OnNotificationForMe {
+    onNotificationForMe {
+      type
+      payload
+      createdAt
+    }
+  }
+`;
+
 /**
  * Subscribes to the identity-scoped `onFriendRequestUpdated: Notification`
  * AppSync subscription and delivers incoming events to the provided callback.
@@ -397,6 +407,59 @@ export function useOnFriendRequestUpdatedSubscription(
       },
       error: (err: unknown) => {
         console.warn('[useOnFriendRequestUpdatedSubscription] subscription error', err);
+      },
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
+  }, [remountKey]);
+}
+
+/**
+ * Subscribes to the identity-scoped `onNotificationForMe: Notification` AppSync
+ * subscription — the generic notification channel used by non-accepted event
+ * types (`friend_request_received`, `bookmark`, `match`, etc.).
+ *
+ * Mirrors {@link useOnFriendRequestUpdatedSubscription} in structure. The two
+ * subscriptions are independent AppSync channels — a client that cares about
+ * `friend_request_received` subscribes to both for defense in depth, because
+ * the backend dual-publishes that type to both channels (publisher story:
+ * `fix/notifications-publisher-layer-and-dual-publish`). Latest-wins modal
+ * semantics in the host ensure a double delivery is a visual no-op.
+ *
+ * @param onEvent - Callback invoked for each inbound `Notification`.
+ * @param remountKey - Bump to force subscription teardown + re-establish.
+ */
+export function useOnNotificationForMeSubscription(
+  onEvent: (notification: Notification) => void,
+  remountKey: number = 0,
+): void {
+  const onEventRef = useRef(onEvent);
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  });
+
+  useEffect(() => {
+    const client = getAppsyncClient();
+
+    const sub = (
+      client.graphql({
+        query: ON_NOTIFICATION_FOR_ME_SUBSCRIPTION,
+      }) as unknown as {
+        subscribe: (handlers: {
+          next: (event: { data: { onNotificationForMe: Notification | null } }) => void;
+          error: (err: unknown) => void;
+        }) => { unsubscribe: () => void };
+      }
+    ).subscribe({
+      next: (event) => {
+        const notification = event?.data?.onNotificationForMe;
+        if (!notification) return;
+        onEventRef.current(notification);
+      },
+      error: (err: unknown) => {
+        console.warn('[useOnNotificationForMeSubscription] subscription error', err);
       },
     });
 
