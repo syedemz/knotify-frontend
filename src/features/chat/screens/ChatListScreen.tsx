@@ -23,12 +23,13 @@
 import React, { useCallback } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Heading, EmptyState, LoadingState, ErrorState } from '@/components';
 import { t } from '@/labels';
-import { useRoomsQuery } from '@/features/chat/api';
+import { ROOMS_QUERY_KEY, useRoomsQuery } from '@/features/chat/api';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import type { ChatRoom } from '@/services/graphql/types';
 import type { ChatStackParamList } from '@/navigation/types';
@@ -52,12 +53,23 @@ type ChatListNav = NativeStackNavigationProp<ChatStackParamList, 'ChatListScreen
 export function ChatListScreen(): React.ReactElement {
   const navigation = useNavigation<ChatListNav>();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const roomsQuery = useRoomsQuery();
   const rooms = roomsQuery.data ?? [];
 
   // The signed-in user's id — used by ChatListRow to derive the counterpart.
   const { profile: ownProfile } = useOwnProfile();
   const currentUserId = ownProfile?.user_id ?? '';
+
+  // Refetch rooms every time this screen focuses. The counterpart may have
+  // unfriended or blocked us while we were on another tab; the only way
+  // we'll see their row drop (or flip to read-only) without a dedicated
+  // push notification is to re-query here.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: ROOMS_QUERY_KEY });
+    }, [queryClient]),
+  );
 
   // ── Row press handler ──────────────────────────────────────────────────────
 

@@ -246,11 +246,13 @@ jest.mock('@/features/chat/api', () => ({
 // ── useQueryClient mock ───────────────────────────────────────────────────────
 
 const mockInvalidateQueries = jest.fn();
+const mockGetQueryData = jest.fn();
 
 jest.mock('@tanstack/react-query', () => ({
   ...jest.requireActual('@tanstack/react-query'),
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
+    getQueryData: mockGetQueryData,
   }),
 }));
 
@@ -335,6 +337,13 @@ beforeEach(() => {
   mockSetTypingMutate.mockClear();
   mockBlockMutate.mockClear();
   mockUnfriendMutate.mockClear();
+  mockGetQueryData.mockReset();
+  // Default: counterpart profile hydrated for the unfriended-alert copy.
+  mockGetQueryData.mockImplementation((key: readonly unknown[]) =>
+    Array.isArray(key) && key[0] === 'profile' && key[1] === COUNTERPART_USER_ID
+      ? { first_name: 'Friend', last_name: 'Doe' }
+      : undefined,
+  );
   capturedTypingEventCallback = null;
 
   // Default: Mehvish profile resolved, two test messages
@@ -723,21 +732,14 @@ describe('ChatRoomScreen — AC (n): AppState resume invalidates messages cache 
     () => {
       renderScreen();
 
+      // The focus-driven refetch (via useFocusEffect in ChatRoomScreen) fires
+      // on mount and invalidates ['rooms']. Snapshot the call-count now so we
+      // only inspect calls triggered by the subsequent AppState emit.
+      const callsBeforeAppStateEmit = mockInvalidateQueries.mock.calls.length;
+
       // Simulate the AppState transition: background → active.
       act(() => {
-        // AppState.currentState is 'active' by default in tests; we need to
-        // simulate a transition from a non-active state to active.
-        // The screen's useEffect registers a listener via AppState.addEventListener.
-        // We trigger it by directly invoking the registered handler.
-        const handlers = (AppState as any)._eventHandlers?.change ??
-          (AppState as any)._listenerMap?.get('change') ??
-          [];
-        // If we cannot directly trigger the listener, we emit via the mock.
         // React Native's AppState in jest is a mock — emit directly.
-        const changeListeners = (AppState as any)._listenerMap?.change ?? handlers;
-
-        // Retrieve the last registered 'change' listener (from the screen's useEffect).
-        // Fall back to triggering via AppState.emit (available in RN jest mock).
         const rnMock = AppState as any;
         if (typeof rnMock.emit === 'function') {
           // Simulate transition: set currentState to 'background' first so the
@@ -747,11 +749,10 @@ describe('ChatRoomScreen — AC (n): AppState resume invalidates messages cache 
         }
       });
 
-      // After transitioning to 'active', invalidateQueries should have been called
-      // with the messages key for this room.
-      const callArgs = mockInvalidateQueries.mock.calls;
-      if (callArgs.length > 0) {
-        const foundMessagesKey = callArgs.some(
+      // Only look at calls made AFTER the AppState emit.
+      const callsAfterEmit = mockInvalidateQueries.mock.calls.slice(callsBeforeAppStateEmit);
+      if (callsAfterEmit.length > 0) {
+        const foundMessagesKey = callsAfterEmit.some(
           (call: any[]) =>
             call[0] &&
             typeof call[0] === 'object' &&
@@ -1417,5 +1418,120 @@ describe('ChatRoomScreen — read-only state (friendshipActive=false)', () => {
     const { getByTestId, queryByTestId } = renderScreen();
     expect(getByTestId('chat-room-input')).toBeTruthy();
     expect(queryByTestId('unfriended-banner')).toBeNull();
+  });
+});
+
+// ── Focus-driven rooms refetch ───────────────────────────────────────────────
+//
+// On every mount (treated as a focus event by the useFocusEffect mock),
+// ChatRoomScreen invalidates ['rooms'] so the room's friendshipActive flag is
+// re-read. Without this, a user who stays inside the room while the
+// counterpart unfriends from another device has no way to learn the
+// friendship was severed until they try to send and hit the RoomReadOnly
+// branch.
+
+describe('ChatRoomScreen — focus refetch', () => {
+  it('invalidates ["rooms"] on mount (focus)', () => {
+    renderScreen();
+    const found = mockInvalidateQueries.mock.calls.some(
+      (call: any[]) =>
+        call[0] &&
+        typeof call[0] === 'object' &&
+        Array.isArray((call[0] as any).queryKey) &&
+        (call[0] as any).queryKey.length === 1 &&
+        (call[0] as any).queryKey[0] === 'rooms',
+    );
+    expect(found).toBe(true);
+  });
+});
+
+// ── Send failure branches ────────────────────────────────────────────────────
+//
+// handleSend's catch block now:
+// - On RoomReadOnly: Alert.alert with the unfriended copy + invalidate
+//   ['rooms'], ['friends'], ['profile', counterpartUserId].
+// - On any other error: Alert.alert with the generic send-failed copy; no
+//   cache invalidations.
+
+describe('ChatRoomScreen — send failure: RoomReadOnly', () => {
+  it('alerts the user and invalidates rooms/friends/profile when sendMessage errorType is RoomReadOnly (top-level shape)', async () => {
+    mockMutateAsync.mockRejectedValueOnce(
+      Object.assign(new Error('RoomReadOnly'), { errorType: 'RoomReadOnly' }),
+    );
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    alertSpy.mockClear();
+
+    const { getByTestId } = renderScreen();
+    fireEvent.changeText(getByTestId('chat-room-input'), 'Hey');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('chat-room-send-btn'));
+    });
+
+    // Alert fires with the unfriended-alert title
+    expect(alertSpy).toHaveBeenCalledWith('No longer connected', expect.any(String));
+
+    const invalidations = mockInvalidateQueries.mock.calls.map(
+      (c: any[]) => (c[0] as any).queryKey,
+    );
+    const hasKey = (k: readonly unknown[]) =>
+      invalidations.some(
+        (q: unknown[]) =>
+          Array.isArray(q) &&
+          q.length === k.length &&
+          k.every((part, i) => part === q[i]),
+      );
+    expect(hasKey(['rooms'])).toBe(true);
+    expect(hasKey(['friends'])).toBe(true);
+    expect(hasKey(['profile', COUNTERPART_USER_ID])).toBe(true);
+  });
+
+  it('alerts the user and invalidates rooms/friends/profile when sendMessage error carries errorType in errors[]', async () => {
+    mockMutateAsync.mockRejectedValueOnce(
+      Object.assign(new Error('RoomReadOnly'), {
+        errors: [{ errorType: 'RoomReadOnly', message: 'read only' }],
+      }),
+    );
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    alertSpy.mockClear();
+
+    const { getByTestId } = renderScreen();
+    fireEvent.changeText(getByTestId('chat-room-input'), 'Hey');
+    await act(async () => {
+      fireEvent.press(getByTestId('chat-room-send-btn'));
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith('No longer connected', expect.any(String));
+    const invalidations = mockInvalidateQueries.mock.calls.map(
+      (c: any[]) => (c[0] as any).queryKey,
+    );
+    expect(invalidations).toEqual(
+      expect.arrayContaining([
+        ['rooms'],
+        ['friends'],
+        ['profile', COUNTERPART_USER_ID],
+      ]),
+    );
+  });
+});
+
+describe('ChatRoomScreen — send failure: generic (non-RoomReadOnly)', () => {
+  it('alerts with the send-failed copy and does NOT invalidate any cache on non-RoomReadOnly errors', async () => {
+    mockMutateAsync.mockRejectedValueOnce(new Error('Network error'));
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    alertSpy.mockClear();
+
+    const { getByTestId } = renderScreen();
+    fireEvent.changeText(getByTestId('chat-room-input'), 'Hey');
+
+    const invalidationsBefore = mockInvalidateQueries.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.press(getByTestId('chat-room-send-btn'));
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith('Message not sent', expect.any(String));
+    // No new invalidations after the send attempt.
+    expect(mockInvalidateQueries.mock.calls.length).toBe(invalidationsBefore);
   });
 });

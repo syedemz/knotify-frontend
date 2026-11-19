@@ -673,7 +673,15 @@
       "errorTitle": "پیغامات لوڈ نہیں ہو سکے",
       "errorDescription": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
       "typing": "{friend} ٹائپ کر رہا ہے…",
-      "unfriendedBanner": "آپ اور {firstName} اب منسلک نہیں ہیں"
+      "unfriendedBanner": "آپ اور {firstName} اب منسلک نہیں ہیں",
+      "unfriendedAlert": {
+        "title": "اب منسلک نہیں",
+        "message": "آپ اور {firstName} اب منسلک نہیں ہیں۔"
+      },
+      "sendFailed": {
+        "title": "پیغام نہیں بھیجا گیا",
+        "message": "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔"
+      }
     }
   },
   "friendRequests": {

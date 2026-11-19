@@ -21,7 +21,8 @@
 import React, { useCallback, useMemo } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import {
@@ -33,7 +34,7 @@ import {
 } from '@/components';
 import { Avatar } from '@/components/Avatar';
 import { t } from '@/labels';
-import { useFriendsQuery } from '@/features/friends/api';
+import { FRIENDS_QUERY_KEY, useFriendsQuery } from '@/features/friends/api';
 import { useTheme } from '@/theme';
 import type { Theme } from '@/theme/theme';
 import type { Friend } from '@/types/api/Friend';
@@ -58,9 +59,20 @@ export function FriendsListScreen(): React.ReactElement {
   const navigation = useNavigation<ExploreNav>();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const queryClient = useQueryClient();
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
 
   const { data: friends, isLoading, isError, refetch } = useFriendsQuery();
+
+  // Refetch friends every time this screen focuses. The counterpart may have
+  // unfriended us while we were on another tab; without this invalidation
+  // their row would remain visible until TanStack's staleTime expires
+  // (default 5 min). Matches the ChatListScreen focus pattern.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: FRIENDS_QUERY_KEY });
+    }, [queryClient]),
+  );
 
   // ── Row navigation ──────────────────────────────────────────────────────────
 
