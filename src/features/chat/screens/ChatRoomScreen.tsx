@@ -81,6 +81,35 @@ import type { Theme } from '@/theme/theme';
 import type { TypingEvent } from '@/services/graphql/types';
 import type { ChatStackParamList } from '@/navigation/types';
 import type { ChatMessage } from '@/types/ChatMessage';
+import type { UserProfile } from '@/types/api/UserProfile';
+
+// ── Error-type sniff for AppSync sendMessage rejections ────────────────────────
+//
+// `sendMessage` rejects with `errorType: 'RoomReadOnly'` when the shared
+// ChatRooms row has `friendship_active=false` — i.e. either side has
+// unfriended or blocked. The error can arrive in two shapes depending on
+// how aws-amplify wraps the response:
+//   1. `err.errorType === 'RoomReadOnly'` (top-level field, our own wrapping)
+//   2. `err.errors[i].errorType === 'RoomReadOnly'` (raw Amplify GraphQL error)
+// This helper inspects both so the caller doesn't have to care.
+function isRoomReadOnlyError(err: unknown): boolean {
+  if (err === null || typeof err !== 'object') return false;
+  const asRecord = err as Record<string, unknown>;
+  if (asRecord['errorType'] === 'RoomReadOnly') return true;
+  const errorsArray = asRecord['errors'];
+  if (Array.isArray(errorsArray)) {
+    for (const item of errorsArray) {
+      if (
+        item !== null &&
+        typeof item === 'object' &&
+        (item as Record<string, unknown>)['errorType'] === 'RoomReadOnly'
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 // ── Bundled background image ──────────────────────────────────────────────────
 //
@@ -498,10 +527,48 @@ export function ChatRoomScreen(): React.ReactElement {
       setComposerText('');
     } catch (err) {
       // The optimistic rollback is handled by useSendMessageMutation.onError.
-      // Log here so the error is not silently swallowed in development.
+      // Now also surface the failure so the user is not left wondering why
+      // their message vanished.
+      if (isRoomReadOnlyError(err)) {
+        // Friendship was severed server-side (unfriend / block from either
+        // side). Invalidate the stale caches so the room's friendshipActive
+        // flag refreshes and the UnfriendedBanner + friends-list pruning
+        // reflect reality the moment the user dismisses the alert.
+        const cachedProfile = queryClient.getQueryData<UserProfile>([
+          'profile',
+          counterpartUserId,
+        ]);
+        const firstName = cachedProfile?.first_name ?? '';
+        Alert.alert(
+          t('chat.room.unfriendedAlert.title'),
+          t('chat.room.unfriendedAlert.message').replace('{firstName}', firstName),
+        );
+        void queryClient.invalidateQueries({ queryKey: ['rooms'] });
+        void queryClient.invalidateQueries({ queryKey: ['friends'] });
+        void queryClient.invalidateQueries({ queryKey: ['profile', counterpartUserId] });
+      } else {
+        Alert.alert(
+          t('chat.room.sendFailed.title'),
+          t('chat.room.sendFailed.message'),
+        );
+      }
       console.warn('[ChatRoomScreen] sendMessage failed — rollback applied', err);
     }
-  }, [composerText, roomId, sendMutation]);
+  }, [composerText, roomId, sendMutation, queryClient, counterpartUserId]);
+
+  // ── Focus-driven rooms refetch ─────────────────────────────────────────────
+  //
+  // On every focus of this screen, invalidate `['rooms']` so the ChatRoom's
+  // `friendshipActive` flag is re-read. Without this, a user who stays
+  // inside the room while the counterpart unfriends from another device has
+  // no way to learn the friendship was severed until they try to send and
+  // hit the RoomReadOnly branch above. The AppState-resume path already
+  // handles backgrounding; this covers the within-session navigation case.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    }, [queryClient]),
+  );
 
   const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 

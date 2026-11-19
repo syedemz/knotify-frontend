@@ -36,7 +36,8 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import {
@@ -53,8 +54,9 @@ import {
 } from '@/components';
 import { t } from '@/labels';
 import { useBookmarks } from '@/state/bookmarks/BookmarksProvider';
-import { useFriendsQuery } from '@/features/friends/api';
+import { FRIENDS_QUERY_KEY, useFriendsQuery } from '@/features/friends/api';
 import {
+  INCOMING_REQUESTS_QUERY_KEY,
   useIncomingRequestsQuery,
   useAcceptFriendRequestMutation,
   useDeclineFriendRequestMutation,
@@ -91,6 +93,7 @@ type TabKey = 'friends' | 'requests' | 'bookmarks';
 export function ExploreHomeScreen(): React.ReactElement {
   const navigation = useNavigation<ExploreNav>();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
   // ── Data hooks ─────────────────────────────────────────────────────────────
   const friendsQuery = useFriendsQuery();
@@ -98,6 +101,17 @@ export function ExploreHomeScreen(): React.ReactElement {
   const acceptMutation = useAcceptFriendRequestMutation();
   const declineMutation = useDeclineFriendRequestMutation();
   const { bookmarks } = useBookmarks();
+
+  // Refetch friends + incoming requests every time this screen focuses so a
+  // counterpart's unfriend / block (performed from another device) is
+  // reflected in the Friends tab without waiting for TanStack's default
+  // staleTime window to elapse.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: FRIENDS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: INCOMING_REQUESTS_QUERY_KEY });
+    }, [queryClient]),
+  );
 
   const friends = friendsQuery.data ?? [];
   const requests = requestsQuery.data ?? [];

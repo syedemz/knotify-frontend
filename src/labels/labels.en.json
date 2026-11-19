@@ -673,7 +673,15 @@
       "errorTitle": "Could not load messages",
       "errorDescription": "Check your connection and try again.",
       "typing": "{friend} is typing…",
-      "unfriendedBanner": "You and {firstName} are no longer connected"
+      "unfriendedBanner": "You and {firstName} are no longer connected",
+      "unfriendedAlert": {
+        "title": "No longer connected",
+        "message": "You and {firstName} are no longer connected."
+      },
+      "sendFailed": {
+        "title": "Message not sent",
+        "message": "Check your connection and try again."
+      }
     }
   },
   "friendRequests": {

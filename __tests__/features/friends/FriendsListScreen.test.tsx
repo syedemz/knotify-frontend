@@ -89,6 +89,25 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
     navigate: mockNavigate,
   }),
+  // useFocusEffect: fire the callback once on mount (mimicking initial focus).
+  useFocusEffect: (cb: () => (() => void) | void) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Rct = require('react') as typeof import('react');
+    Rct.useEffect(() => {
+      const cleanup = cb();
+      return cleanup ?? undefined;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+  },
+}));
+
+// ── QueryClient mock (for the useFocusEffect refetch) ────────────────────────
+
+const mockInvalidateQueries = jest.fn();
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -172,6 +191,16 @@ beforeEach(() => {
     error: null,
     refetch: jest.fn(),
   };
+});
+
+// ── Focus-driven refetch ─────────────────────────────────────────────────────
+
+describe('FriendsListScreen — focus refetch', () => {
+  it('invalidates ["friends"] on screen focus', () => {
+    mockQueryReturn = { ...mockQueryReturn, data: [] };
+    renderScreen();
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['friends'] });
+  });
 });
 
 // ── (a) Loading state ─────────────────────────────────────────────────────────

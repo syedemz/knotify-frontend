@@ -102,6 +102,22 @@ let mockRoomsQueryResult: {
 
 jest.mock('@/features/chat/api', () => ({
   useRoomsQuery: () => mockRoomsQueryResult,
+  ROOMS_QUERY_KEY: ['rooms'] as const,
+}));
+
+// ── Mock useQueryClient + useFocusEffect ─────────────────────────────────────
+//
+// ChatListScreen now calls `useQueryClient().invalidateQueries({ queryKey:
+// ROOMS_QUERY_KEY })` from within a useFocusEffect so the rooms list
+// refetches when the user focuses the tab (e.g. after being unfriended from
+// another device). The raw hooks require a provider; stub both so the test
+// renders in isolation.
+
+const mockInvalidateQueries = jest.fn();
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
 // ── Mock useOwnProfile ────────────────────────────────────────────────────────
@@ -124,6 +140,17 @@ jest.mock('@react-navigation/native', () => ({
     navigate: mockNavigate,
     goBack: jest.fn(),
   }),
+  // useFocusEffect: fire the callback once on mount (mimicking real behaviour
+  // on initial focus). No cleanup semantics are needed for these tests.
+  useFocusEffect: (cb: () => (() => void) | void) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Rct = require('react') as typeof import('react');
+    Rct.useEffect(() => {
+      const cleanup = cb();
+      return cleanup ?? undefined;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+  },
 }));
 
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
@@ -146,6 +173,16 @@ function renderScreen() {
 beforeEach(() => {
   mockRoomsQueryResult = { data: [TEST_ROOM], isLoading: false, isError: false };
   mockNavigate.mockClear();
+  mockInvalidateQueries.mockClear();
+});
+
+// ── useFocusEffect wiring ────────────────────────────────────────────────────
+
+describe('ChatListScreen — focus refetch', () => {
+  it('invalidates ["rooms"] on screen focus', () => {
+    renderScreen();
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['rooms'] });
+  });
 });
 
 // ── AC (a): Room row rendered with correct room prop ─────────────────────────

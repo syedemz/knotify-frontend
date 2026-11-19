@@ -171,9 +171,25 @@ jest.mock('@react-navigation/native', () => ({
     navigate: mockNavigate,
     goBack: mockGoBack,
   }),
-  useFocusEffect: (_cb: () => void) => {
-    // no-op: pendingToast is removed in 16.FR3
+  // Fire the callback once on mount so the focus-driven invalidation runs.
+  useFocusEffect: (cb: () => (() => void) | void) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Rct = require('react') as typeof import('react');
+    Rct.useEffect(() => {
+      const cleanup = cb();
+      return cleanup ?? undefined;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
   },
+}));
+
+// ── QueryClient mock (for the useFocusEffect refetch) ────────────────────────
+
+const mockInvalidateQueries = jest.fn();
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
 // ── Render helper ──────────────────────────────────────────────────────────────
