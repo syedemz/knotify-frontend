@@ -37,6 +37,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/state/auth/AuthProvider';
+import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import { useProfileQuery } from '@/features/profile/api';
 import { useOpenChatRoom } from '@/features/chat/navigation/openChatRoom';
 import {
@@ -167,6 +168,8 @@ function useAcceptedModalState() {
  */
 export function FriendRequestSubscriptionListener(): React.JSX.Element | null {
   const { status } = useAuth();
+  const { profile: ownProfile } = useOwnProfile();
+  const currentUserId = ownProfile?.user_id ?? '';
   const queryClient = useQueryClient();
   const openChatRoom = useOpenChatRoom();
   const acceptMutation = useAcceptFriendRequestMutation();
@@ -217,6 +220,19 @@ export function FriendRequestSubscriptionListener(): React.JSX.Element | null {
           );
           return;
         }
+        // Defense-in-depth: drop self-originated events. The backend's
+        // AppSync setSubscriptionFilter (userId == identity.sub, registered
+        // on the subscription resolver response templates) is the primary
+        // guard — AppSync will not send these events to the originator at
+        // all. This client-side check protects against a regression on the
+        // backend filter AND against the on-device case where an event
+        // delivered before the filter was deployed (or from a replay)
+        // could otherwise misfire a modal naming the current user as the
+        // sender. Matches the same from_user_id !== currentUserId guard
+        // useIncomingRequestsQuery applies to the REST payload.
+        if (currentUserId !== '' && fromUserId === currentUserId) {
+          return;
+        }
         // Latest wins: replace any currently displayed incoming request.
         // The backend dual-publishes this type to both onFriendRequestUpdated
         // AND onNotificationForMe, so this handler may fire twice per request.
@@ -232,6 +248,11 @@ export function FriendRequestSubscriptionListener(): React.JSX.Element | null {
           );
           return;
         }
+        // Defense-in-depth: drop self-originated events (acceptor == self).
+        // See rationale on the friend_request_received branch above.
+        if (currentUserId !== '' && fromUserId === currentUserId) {
+          return;
+        }
         // Latest wins: replace any currently displayed accepted modal.
         acceptedModal.close();
         acceptedModal.open(fromUserId);
@@ -242,7 +263,7 @@ export function FriendRequestSubscriptionListener(): React.JSX.Element | null {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [incomingModal.close, incomingModal.open, acceptedModal.close, acceptedModal.open, queryClient],
+    [incomingModal.close, incomingModal.open, acceptedModal.close, acceptedModal.open, queryClient, currentUserId],
   );
 
   // Both subscription hooks are called unconditionally to satisfy Rules of
