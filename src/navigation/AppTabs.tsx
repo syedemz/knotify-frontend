@@ -50,7 +50,7 @@ import { MenuStack } from './MenuStack';
 import { ExploreStack } from './ExploreStack';
 import { ChatStack } from './ChatStack';
 import { tabBarHidden } from '@/state/ui/tabBarHidden';
-import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
+import { resolvePhotoOrGenderPlaceholder } from '@/assets/dummyPhotoRegistry';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 import { FriendRequestSubscriptionListener } from '@/features/friendRequests/FriendRequestSubscriptionListener';
 import type { AppTabsParamList } from './types';
@@ -212,11 +212,18 @@ const styles = {
  */
 export function AppTabs(): React.JSX.Element {
   // Menu tab avatar comes from the real own-profile when available. When
-  // `photo_url` is null (phase-12 photo upload backend still placeholder),
-  // `resolveDummyPhoto` returns `undefined` → `MenuTabIcon` falls back to the
-  // Menu lucide icon.
+  // `photo_url` is null (phase-12 photo upload backend still placeholder)
+  // the resolver falls back to the gender-appropriate placeholder image
+  // (`Male1.png` / `Female3.png`) so the tab icon shows a real face rather
+  // than the generic Menu lucide icon. When the own-profile itself hasn't
+  // resolved yet (initial load), both inputs are `undefined` and the
+  // resolver returns `undefined` → `MenuTabIcon` still falls back to the
+  // lucide icon.
   const { profile } = useOwnProfile();
-  const menuAvatarSource = resolveDummyPhoto(profile?.photo_url ?? undefined);
+  const menuAvatarSource = resolvePhotoOrGenderPlaceholder(
+    profile?.photo_url ?? undefined,
+    profile?.sex ?? undefined,
+  );
 
   return (
     <>

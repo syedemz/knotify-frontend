@@ -34,7 +34,7 @@ import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
 import type { UserProfile } from '@/types/api/UserProfile';
 import type { DummyOverlay, ProfileViewer } from '@/types/DummyOverlay';
-import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
+import { resolvePhotoOrGenderPlaceholder } from '@/assets/dummyPhotoRegistry';
 import { CountryFlag } from '@/components/CountryFlag';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -58,7 +58,9 @@ export function HeroBlock({ profile, viewer }: HeroBlockProps): React.ReactEleme
   }
 
   const photoPath = profile.photos?.[0] ?? profile.photo_url ?? undefined;
-  const photoSource = resolveDummyPhoto(photoPath);
+  // Fall back to the gender placeholder when no real photo exists — the user
+  // hasn't uploaded yet (real photo pipeline lands in a later phase).
+  const photoSource = resolvePhotoOrGenderPlaceholder(photoPath, profile.sex);
   const cityCountry =
     profile.current_residence_city !== null &&
     profile.current_residence_country !== null

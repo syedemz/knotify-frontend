@@ -58,3 +58,58 @@ export function resolveDummyPhoto(
   }
   return undefined;
 }
+
+// ---------------------------------------------------------------------------
+// Gender-based placeholder photos
+//
+// Real photo upload is not yet wired (deferred to a later phase). Until then,
+// every user profile displayed in the UI — deck candidates, profile view,
+// chat thumbnails / headers, self profile — needs a photo to render. Rather
+// than show a blank circle when `photo_url` is null, each profile falls back
+// to a gender-appropriate placeholder image: `Male1.png` for male users,
+// `Female3.png` for female users.
+//
+// The two placeholders are the same assets already registered in REGISTRY
+// above for the dummy-profile fixtures — reusing the same `require()`
+// handles avoids duplicate bundling.
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalised sex values accepted by {@link resolveGenderPlaceholder} and
+ * {@link resolvePhotoOrGenderPlaceholder}. Matches the enum on
+ * `UserProfile.sex` and `DummyDeckProfile.sex`.
+ */
+export type Sex = 'Male' | 'Female';
+
+/**
+ * Returns the gender-appropriate placeholder image handle, or `undefined`
+ * when `sex` is null / unknown.
+ *
+ * - `'Male'` → `assets/male/Male1.png`
+ * - `'Female'` → `assets/female/Female3.png`
+ * - `null` / `undefined` → `undefined` (caller decides fallback)
+ */
+export function resolveGenderPlaceholder(
+  sex: Sex | null | undefined,
+): number | undefined {
+  if (sex === 'Male') return REGISTRY['assets/male/Male1.png'];
+  if (sex === 'Female') return REGISTRY['assets/female/Female3.png'];
+  return undefined;
+}
+
+/**
+ * Convenience wrapper: resolve `path` through {@link resolveDummyPhoto} and,
+ * on miss, fall back to {@link resolveGenderPlaceholder}.
+ *
+ * Returns `undefined` only when both paths fail — real callers should always
+ * pass a known `sex` so they never see the undefined branch until real photo
+ * upload lands and `sex` becomes optional.
+ */
+export function resolvePhotoOrGenderPlaceholder(
+  path: string | null | undefined,
+  sex: Sex | null | undefined,
+): number | { uri: string } | undefined {
+  const photo = resolveDummyPhoto(path);
+  if (photo !== undefined) return photo;
+  return resolveGenderPlaceholder(sex);
+}

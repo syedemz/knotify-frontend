@@ -45,6 +45,7 @@ import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
 
 import { ShareProfileButton } from '../components/ShareProfileButton';
 import { AppearanceSection } from '../components/AppearanceSection';
+import { AccountSection } from '../components/AccountSection';
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 
@@ -237,6 +238,9 @@ export function MyProfileScreen(): React.ReactElement {
 
           {/* Appearance — light / dark / system theme selector */}
           <AppearanceSection />
+
+          {/* Account — logout action (destructive, two-step confirm) */}
+          <AccountSection />
         </ScrollView>
       )}
     </View>

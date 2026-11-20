@@ -82,6 +82,21 @@ jest.mock('@/state/ownProfile/OwnProfileProvider', () => {
   };
 });
 
+// ── AuthProvider mock ─────────────────────────────────────────────────────────
+//
+// AccountSection (mounted on the Edit tab) calls useAuth().signOut(). Without
+// a mock the hook throws because tests don't wrap the screen in AuthProvider.
+jest.mock('@/state/auth/AuthProvider', () => ({
+  useAuth: () => ({
+    status: 'authenticated' as const,
+    session: null,
+    profileComplete: true,
+    signIn: jest.fn(),
+    signOut: jest.fn().mockResolvedValue(undefined),
+    refresh: jest.fn(),
+  }),
+}));
+
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 
 // ── Render helper ──────────────────────────────────────────────────────────────
