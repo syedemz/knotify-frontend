@@ -404,8 +404,40 @@ export function ChatRoomScreen(): React.ReactElement {
     }, [roomId]),
   );
 
+  // Refresh the messages cache on focus so any messages that arrived while
+  // this screen was unmounted (or while the user was on another tab) are
+  // picked up. The `onMessageInRoom` subscription only populates the cache
+  // while the screen is mounted; without this invalidation the 5-minute
+  // staleTime from QueryProvider lets TanStack serve stale pages that
+  // omit messages the counterpart sent while the user was off-room.
+  //
+  // Observed 2026-11-20: niddah sent a message while emad was on Home.
+  // ChatListScreen's preview refreshed (that screen already invalidates
+  // ROOMS_QUERY_KEY on focus), but when emad entered the room the new
+  // message was missing until the 5-minute window expired. Mirrors
+  // ChatListScreen's useFocusEffect at the ROOMS_QUERY_KEY level.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: messagesQueryKey(roomId) });
+    }, [roomId, queryClient]),
+  );
+
   // Flatten pages of messages into a single array and adapt to ChatMessage.
-  // The infinite query pages are ordered oldest-first; flatten preserves that.
+  //
+  // The server returns messages newest-first (chat_resolver uses
+  // ScanIndexForward=false on ChatMessages). TanStack InfiniteQuery stores
+  // pages in fetch order, so `pages[0]` is the first (newest) page and
+  // subsequent pages are older batches. flatMap preserves that order, so
+  // `messages` is globally descending (newest at index 0, oldest at the
+  // end). This matches what `FlatList inverted` expects — data[0] renders
+  // at the bottom of the screen, i.e. newest just above the composer.
+  //
+  // DO NOT re-reverse here. Prior to 2026-11-20 this code assumed pages
+  // were oldest-first and reversed the array, which combined with
+  // `inverted` produced a double-inversion: newest ended up at the TOP
+  // of the screen and oldest at the bottom. See
+  // useSendMessageMutation.onMutate for the matching prepend-to-first-page
+  // contract that keeps new sends at the correct end.
   const messages: readonly ChatMessage[] = useMemo(() => {
     if (messagesQuery.data === undefined) return [];
 
@@ -438,8 +470,9 @@ export function ChatRoomScreen(): React.ReactElement {
     return adapted;
   }, [messagesQuery.data, currentUserId, lastReadMessageCreatedAt]);
 
-  // Reverse for the inverted FlatList (newest at index 0 = bottom of screen).
-  const messagesDescending = useMemo(() => [...messages].reverse(), [messages]);
+  // messages is already in the order FlatList inverted wants (newest at index 0).
+  // Kept as a separate name so the `data=` prop below reads clearly.
+  const messagesDescending = messages;
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -707,8 +740,9 @@ export function ChatRoomScreen(): React.ReactElement {
         style={styles.chatArea}
       >
         {/*
-          Inverted list rendering the DESCENDING-order copy of `messages`
-          (see `messagesDescending` useMemo above). Result: newest just
+          Inverted list rendering the globally descending `messages` array
+          directly (server already returns newest-first; see the `messages`
+          useMemo above for the ordering contract). Result: newest just
           above the composer, oldest at the top of the scrollback.
         */}
         <FlatList

@@ -386,7 +386,22 @@ export function useSendMessageMutation(currentUserId: string) {
       const localId = generateLocalId();
       const optimistic = makeOptimisticChatMessage(localId, content);
 
-      // Append the optimistic entry to the last page of the infinite list.
+      // Prepend the optimistic entry to the first page of the infinite list.
+      //
+      // The server returns messages newest-first (chat_resolver uses
+      // ScanIndexForward=false on the ChatMessages Query), so across the
+      // entire infinite list `pages[0]` is the newest page and within each
+      // page `items[0]` is the newest message. The newly-sent message must
+      // therefore land at index 0 of `pages[0].items` for the flattened
+      // array to stay globally descending — which `FlatList inverted` then
+      // renders with newest at the bottom of the screen.
+      //
+      // Prior to 2026-11-20 the code appended to the last page, which only
+      // happened to render at the bottom because ChatRoomScreen was double-
+      // reversing: it reversed the already-descending `messages` array
+      // before passing it to the inverted list. That bug is fixed in
+      // tandem with this change; the two must move together or sends will
+      // appear at the wrong end of the thread.
       queryClient.setQueryData<{ pages: MessageConnection[]; pageParams: unknown[] }>(
         messagesQueryKey(roomId),
         (old) => {
@@ -398,17 +413,17 @@ export function useSendMessageMutation(currentUserId: string) {
             };
           }
           const pages = old.pages;
-          const lastPage = pages[pages.length - 1];
-          if (lastPage === undefined) {
+          const firstPage = pages[0];
+          if (firstPage === undefined) {
             return old;
           }
-          const updatedLastPage: MessageConnection = {
-            ...lastPage,
-            items: [...lastPage.items, chatMessageToFakeMessage(optimistic, currentUserId)],
+          const updatedFirstPage: MessageConnection = {
+            ...firstPage,
+            items: [chatMessageToFakeMessage(optimistic, currentUserId), ...firstPage.items],
           };
           return {
             ...old,
-            pages: [...pages.slice(0, pages.length - 1), updatedLastPage],
+            pages: [updatedFirstPage, ...pages.slice(1)],
           };
         },
       );
@@ -569,7 +584,12 @@ export function useOnMessageInRoomSubscription(
         }
         knownIdsRef.current.add(incoming.messageId);
 
-        // Append to the last page of the infinite list.
+        // Prepend to the first page of the infinite list. See the matching
+        // comment on useSendMessageMutation.onMutate for why first-page +
+        // prepend is the correct position: pages are globally descending
+        // (newest first), FlatList inverted renders data[0] at the bottom,
+        // so the new message must land at pages[0].items[0] to render at
+        // the visual bottom of the thread.
         queryClient.setQueryData<{ pages: MessageConnection[]; pageParams: unknown[] }>(
           messagesQueryKey(roomId),
           (old) => {
@@ -580,15 +600,15 @@ export function useOnMessageInRoomSubscription(
               };
             }
             const pages = old.pages;
-            const lastPage = pages[pages.length - 1];
-            if (lastPage === undefined) return old;
-            const updatedLast: MessageConnection = {
-              ...lastPage,
-              items: [...lastPage.items, incoming],
+            const firstPage = pages[0];
+            if (firstPage === undefined) return old;
+            const updatedFirst: MessageConnection = {
+              ...firstPage,
+              items: [incoming, ...firstPage.items],
             };
             return {
               ...old,
-              pages: [...pages.slice(0, pages.length - 1), updatedLast],
+              pages: [updatedFirst, ...pages.slice(1)],
             };
           },
         );

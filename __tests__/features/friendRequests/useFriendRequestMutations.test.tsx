@@ -6,6 +6,11 @@
  * (b) `useSendFriendRequestMutation` — 409 Conflict surfaces the ApiError in
  *     `mutation.error` WITHOUT throwing to an error boundary; callsite reads
  *     `error.status === 409` to detect "already sent" per §11.2.8.
+ * (b2) `useSendFriendRequestMutation` — optimistic insert into the outgoing
+ *     cache so `useFriendRequestPreflight` sees the pending row before the
+ *     server echoes back. Fixes the duplicate-send bug observed 2026-11-20
+ *     where preflight fail-opened on an undefined cache. Includes rollback
+ *     on error and swap-for-server-row on success.
  * (c) `useAcceptFriendRequestMutation` — success + incoming AND friends caches
  *     invalidated.
  * (d) `useAcceptFriendRequestMutation` — optimistic removal: targeted row
@@ -282,6 +287,165 @@ describe('useSendFriendRequestMutation — 409 Conflict', () => {
       return Array.isArray(key) && key[1] === 'outgoing';
     });
     expect(outgoingInvalidation).toBe(false);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// (b2) useSendFriendRequestMutation — optimistic insert into outgoing cache
+//
+// Preflight (useFriendRequestPreflight) reads the OUTGOING_REQUESTS_QUERY_KEY
+// cache to decide whether to block a duplicate send. Prior to 2026-11-20 the
+// mutation only invalidated the cache on success — but invalidation is a
+// no-op when no observer has mounted useOutgoingRequestsQuery this session
+// (the common case for a user who has never opened the Requests tab). That
+// let a second tap on the same deck card pass preflight and fire a doomed
+// request. The optimistic insert makes the cache non-undefined immediately
+// so subsequent preflights see the pending row.
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('useSendFriendRequestMutation — optimistic insert into outgoing cache', () => {
+  it('given mutate is called with no prior outgoing cache, then an optimistic pending row is inserted synchronously so preflight can see it', async () => {
+    // Never-settling promise so we can inspect the interim cache state before
+    // the server would respond.
+    let resolveSend!: (v: unknown) => void;
+    mockSend.mockReturnValueOnce(new Promise((res) => { resolveSend = res; }));
+
+    const client = makeClient();
+    const { result } = renderHook(() => useSendFriendRequestMutation(), {
+      wrapper: makeWrapper(client),
+    });
+
+    // Preconditions: no cache entry for outgoing requests — this is the
+    // bug-trigger state (user never visited Outgoing tab this session).
+    expect(client.getQueryData(OUTGOING_REQUESTS_QUERY_KEY)).toBeUndefined();
+
+    act(() => {
+      result.current.mutate({ toUserId: 'u-sara-002' });
+    });
+
+    // onMutate should have populated the cache with a single optimistic row
+    // while the request is still in flight.
+    await waitFor(() => {
+      const cached = client.getQueryData<readonly FriendRequest[]>(
+        OUTGOING_REQUESTS_QUERY_KEY,
+      );
+      return cached !== undefined && cached.length === 1;
+    });
+
+    const cached = client.getQueryData<readonly FriendRequest[]>(
+      OUTGOING_REQUESTS_QUERY_KEY,
+    );
+    expect(cached).toBeDefined();
+    expect(cached).toHaveLength(1);
+    const [row] = cached!;
+    expect(row?.to_user_id).toBe('u-sara-002');
+    expect(row?.status).toBe('pending');
+    // Marker prefix on the synthetic request_id so a swap is unambiguous.
+    expect(row?.request_id.startsWith('local-optimistic-')).toBe(true);
+
+    // Cleanup so Jest doesn't warn about open handles.
+    resolveSend(makeRequest({ to_user_id: 'u-sara-002' }));
+  });
+
+  it('given existing outgoing rows in cache, then the optimistic row is appended without removing prior rows', async () => {
+    let resolveSend!: (v: unknown) => void;
+    mockSend.mockReturnValueOnce(new Promise((res) => { resolveSend = res; }));
+
+    const client = makeClient();
+    const priorRow = makeRequest({
+      request_id: 'req-prior-001',
+      to_user_id: 'u-other-010',
+      status: 'pending',
+    });
+    client.setQueryData(OUTGOING_REQUESTS_QUERY_KEY, [priorRow]);
+
+    const { result } = renderHook(() => useSendFriendRequestMutation(), {
+      wrapper: makeWrapper(client),
+    });
+
+    act(() => {
+      result.current.mutate({ toUserId: 'u-sara-002' });
+    });
+
+    await waitFor(() => {
+      const cached = client.getQueryData<readonly FriendRequest[]>(
+        OUTGOING_REQUESTS_QUERY_KEY,
+      );
+      return cached !== undefined && cached.length === 2;
+    });
+
+    const cached = client.getQueryData<readonly FriendRequest[]>(
+      OUTGOING_REQUESTS_QUERY_KEY,
+    );
+    expect(cached).toHaveLength(2);
+    expect(cached![0]?.request_id).toBe('req-prior-001');
+    expect(cached![1]?.to_user_id).toBe('u-sara-002');
+
+    resolveSend(makeRequest({ to_user_id: 'u-sara-002' }));
+  });
+
+  it('given server rejects with 409, then onError rolls back the optimistic insert to the pre-mutation snapshot', async () => {
+    const conflict = Object.assign(new Error('already_pending'), {
+      status: 409,
+      code: 'UNKNOWN',
+    });
+    mockSend.mockRejectedValueOnce(conflict);
+
+    const client = makeClient();
+    const priorRow = makeRequest({
+      request_id: 'req-prior-001',
+      to_user_id: 'u-other-010',
+      status: 'pending',
+    });
+    client.setQueryData(OUTGOING_REQUESTS_QUERY_KEY, [priorRow]);
+
+    const { result } = renderHook(() => useSendFriendRequestMutation(), {
+      wrapper: makeWrapper(client),
+    });
+
+    act(() => {
+      result.current.mutate({ toUserId: 'u-sara-002' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    // The optimistic row must be gone and the prior row intact.
+    const cached = client.getQueryData<readonly FriendRequest[]>(
+      OUTGOING_REQUESTS_QUERY_KEY,
+    );
+    expect(cached).toEqual([priorRow]);
+  });
+
+  it('given server succeeds, then onSuccess swaps the optimistic row for the server-returned row (no duplicate)', async () => {
+    const serverRow = makeRequest({
+      request_id: 'req-real-abc',
+      to_user_id: 'u-sara-002',
+      status: 'pending',
+    });
+    mockSend.mockResolvedValueOnce(serverRow);
+
+    const client = makeClient();
+    const { result } = renderHook(() => useSendFriendRequestMutation(), {
+      wrapper: makeWrapper(client),
+    });
+
+    act(() => {
+      result.current.mutate({ toUserId: 'u-sara-002' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    const cached = client.getQueryData<readonly FriendRequest[]>(
+      OUTGOING_REQUESTS_QUERY_KEY,
+    );
+    expect(cached).toHaveLength(1);
+    expect(cached![0]?.request_id).toBe('req-real-abc');
+    // No local-optimistic marker should remain in the cache.
+    expect(cached!.every((r) => !r.request_id.startsWith('local-optimistic-'))).toBe(true);
   });
 });
 

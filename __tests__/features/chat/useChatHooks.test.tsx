@@ -9,7 +9,9 @@
  * (d) useCreateOrGetRoomMutation — success + rooms cache invalidation.
  * (e) useSendMessageMutation — optimistic append, rollback on error,
  *     replacement with server echo on success, rooms cache invalidation.
- * (f) useOnMessageInRoomSubscription — cache append on new message, dedupe
+ * (f) useOnMessageInRoomSubscription — cache prepend on new message
+ *     (server returns newest-first; new items land at pages[0].items[0] so
+ *     the inverted FlatList renders them at the visual bottom), dedupe
  *     when messageId already in cache, rooms cache invalidation on new message.
  *
  * Story 16.CH1 AC coverage:
@@ -493,11 +495,11 @@ describe('useSendMessageMutation — server echo replaces optimistic entry', () 
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// (f) useOnMessageInRoomSubscription — cache append + dedupe
+// (f) useOnMessageInRoomSubscription — cache prepend + dedupe
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('useOnMessageInRoomSubscription — cache append on new message', () => {
-  it('given a new message arrives via subscription, then it is appended to the cache', async () => {
+describe('useOnMessageInRoomSubscription — cache prepend on new message', () => {
+  it('given a new message arrives via subscription, then it is prepended to pages[0].items so the inverted list renders it at the bottom of the thread', async () => {
     // Set up the mock subscription: graphql() returns an object with subscribe().
     let capturedNextHandler!: (event: { data: { onMessageInRoom: Message | null } }) => void;
     const unsubscribeMock = jest.fn();
@@ -509,7 +511,10 @@ describe('useOnMessageInRoomSubscription — cache append on new message', () =>
     });
 
     const client = makeClient();
-    // Seed an existing message.
+    // Seed an existing (older) message. Server order is newest-first so an
+    // older message lives at index 0 of its page only when it is the single
+    // message in the thread; after the subscription fires the new (newer)
+    // message must take over index 0.
     const existingMsg = makeServerMessage({ messageId: 'msg-existing-001' });
     client.setQueryData(messagesQueryKey(ROOM_ID), {
       pages: [{ items: [existingMsg], nextToken: null }],
@@ -543,7 +548,12 @@ describe('useOnMessageInRoomSubscription — cache append on new message', () =>
     );
     const items = cached?.pages.flatMap((p) => p.items) ?? [];
     expect(items).toHaveLength(2);
-    expect(items[1]?.messageId).toBe('msg-new-002');
+    // New message at index 0 (newest-first), existing older message at index 1.
+    // This is the invariant ChatRoomScreen relies on to render with
+    // `<FlatList inverted>` — data[0] is drawn at the visual bottom of the
+    // screen, which is where the newest message belongs.
+    expect(items[0]?.messageId).toBe('msg-new-002');
+    expect(items[1]?.messageId).toBe('msg-existing-001');
   });
 
   it('given a subscription message with an already-known messageId, then it is NOT appended (dedupe)', async () => {

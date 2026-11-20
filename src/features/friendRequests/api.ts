@@ -16,13 +16,16 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAppsyncClient } from '@/services/graphql/appsyncClient';
 import type { Notification } from '@/services/graphql/types';
 
 import { friendRequestsApi } from '@/services/api/endpoints';
+import { ApiError } from '@/services/api/errors';
 import { FRIENDS_QUERY_KEY } from '@/features/friends/api';
 import { useOwnProfile } from '@/state/ownProfile/OwnProfileProvider';
+import { t } from '@/labels';
 import type { FriendRequest } from '@/types/api/FriendRequest';
 
 // ── Query keys ────────────────────────────────────────────────────────────────
@@ -145,40 +148,107 @@ export interface SendFriendRequestVars {
 }
 
 /**
+ * Context stored during the optimistic update so onError can roll back and
+ * onSuccess can swap the optimistic row for the server-returned row.
+ */
+interface SendFriendRequestOptimisticContext {
+  /** Snapshot of the outgoing list before the optimistic insert. */
+  readonly previous: readonly FriendRequest[] | undefined;
+  /** Synthetic request_id for the optimistic row; used to match on swap/rollback. */
+  readonly optimisticRequestId: string;
+}
+
+/**
  * Sends a friend request to another user via `POST /friend-requests`.
  *
- * On success, invalidates `['friend-requests', 'outgoing']` so the outgoing
- * list reflects the newly-created row.
+ * Uses an optimistic cache update so a subsequent preflight check — which
+ * reads the `['friend-requests', 'outgoing']` cache — immediately sees a
+ * pending outbound row for `toUserId` and blocks a second send attempt.
+ * Without this, the preflight fail-opens whenever the outgoing query has
+ * never been fetched (no observer, invalidation is a no-op), which
+ * previously let the user re-send to the same target and only discover
+ * the backend's 409 as a silent snackbar.
  *
- * On 409 Conflict (a request to that user is already pending), the mutation
- * enters its `error` state with the original {@link ApiError}. The callsite
- * reads `mutation.error` and checks `(error as ApiError).status === 409` (or
- * `ApiError.code`) to render an "already sent" affordance rather than an
- * error banner.  This matches the §11.2.8 dedupe spec.
- *
- * @example
- * ```tsx
- * const send = useSendFriendRequestMutation();
- * send.mutate({ toUserId: 'u-123' });
- * if (send.error instanceof ApiError && send.error.status === 409) {
- *   // render "already sent" state
- * }
- * ```
+ * - `onMutate`: cancels in-flight refetches, snapshots the outgoing cache,
+ *   and inserts a synthetic `FriendRequest` with status `'pending'` and
+ *   `to_user_id === toUserId` so preflight can see it.
+ * - `onSuccess`: swaps the optimistic row for the server-returned row
+ *   (matched by `optimisticRequestId`), then invalidates
+ *   `['friend-requests', 'outgoing']` so any active observer reconciles
+ *   with the server.
+ * - `onError`: restores the snapshot. On an `ApiError` with status 409
+ *   (`already_pending` / `reverse_pending`), surfaces a user-visible
+ *   `Alert` using the same copy the preflight hook uses, so a race (two
+ *   taps before the optimistic insert lands, or a replay from another
+ *   device) still produces a clean user-facing message instead of a
+ *   silent failure.
  */
 export function useSendFriendRequestMutation() {
   const queryClient = useQueryClient();
-  return useMutation<FriendRequest, Error, SendFriendRequestVars>({
+  return useMutation<FriendRequest, Error, SendFriendRequestVars, SendFriendRequestOptimisticContext>({
     mutationFn: ({ toUserId }) => {
       // eslint-disable-next-line no-console
       console.warn('[TEMP] sendFriendRequest FIRING, toUserId=', toUserId);
       return friendRequestsApi.send(toUserId);
     },
-    onSuccess: (data) => {
+    onMutate: async ({ toUserId }) => {
+      await queryClient.cancelQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
+
+      const previous = queryClient.getQueryData<readonly FriendRequest[]>(
+        OUTGOING_REQUESTS_QUERY_KEY,
+      );
+
+      // Synthetic request_id — prefixed so it cannot collide with a real
+      // backend UUID/ULID and so the swap in onSuccess is unambiguous.
+      const optimisticRequestId = `local-optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const optimisticRow: FriendRequest = {
+        request_id: optimisticRequestId,
+        // from_user_id is only used by the incoming-list filter; for an
+        // outgoing row the preflight reads to_user_id + status. Leave blank
+        // to make the local-only nature obvious if it ever shows up in a UI.
+        from_user_id: '',
+        to_user_id: toUserId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      };
+
+      // If no cache entry exists yet (no observer has mounted
+      // useOutgoingRequestsQuery this session), seed it with just the
+      // optimistic row so preflight can read it on the next tap. This is
+      // the cache-undefined case that previously caused the duplicate-send
+      // bug — preflight fail-opens on undefined and a repeat tap went
+      // through to the backend.
+      queryClient.setQueryData<readonly FriendRequest[]>(
+        OUTGOING_REQUESTS_QUERY_KEY,
+        previous === undefined ? [optimisticRow] : [...previous, optimisticRow],
+      );
+
+      return { previous, optimisticRequestId };
+    },
+    onSuccess: (serverRow, _vars, context) => {
       // eslint-disable-next-line no-console
-      console.warn('[TEMP] sendFriendRequest SUCCESS', JSON.stringify(data));
+      console.warn('[TEMP] sendFriendRequest SUCCESS', JSON.stringify(serverRow));
+
+      if (context !== undefined) {
+        queryClient.setQueryData<readonly FriendRequest[]>(
+          OUTGOING_REQUESTS_QUERY_KEY,
+          (current) => {
+            if (current === undefined) return [serverRow];
+            // Swap by the synthetic optimistic id; if (for some reason) the
+            // optimistic row is no longer present, append the server row
+            // rather than silently dropping it.
+            const withoutOptimistic = current.filter(
+              (r) => r.request_id !== context.optimisticRequestId,
+            );
+            return [...withoutOptimistic, serverRow];
+          },
+        );
+      }
+
       void queryClient.invalidateQueries({ queryKey: OUTGOING_REQUESTS_QUERY_KEY });
     },
-    onError: (err) => {
+    onError: (err, _vars, context) => {
       const e = err as unknown as { name?: string; message?: string; status?: number; code?: string; body?: unknown };
       // eslint-disable-next-line no-console
       console.warn('[TEMP] sendFriendRequest ERROR:', JSON.stringify({
@@ -188,6 +258,38 @@ export function useSendFriendRequestMutation() {
         code: e?.code,
         body: e?.body,
       }, null, 2));
+
+      // Roll back the optimistic insert so preflight does not permanently
+      // see a pending row that never made it to the server.
+      if (context !== undefined) {
+        queryClient.setQueryData<readonly FriendRequest[] | undefined>(
+          OUTGOING_REQUESTS_QUERY_KEY,
+          context.previous,
+        );
+      }
+
+      // Surface a friendly alert for the known dedupe conflicts so the user
+      // learns why the send failed instead of just seeing the generic
+      // "likeSent" snackbar from the caller. The backend returns a plain
+      // body `{"error": "already_pending"}` or `{"error": "reverse_pending"}`;
+      // `normalizeErrorResponse` lifts that into `ApiError.message`.
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.message;
+        if (body === 'already_pending') {
+          Alert.alert(
+            t('friendRequests.preflight.already_sent.title'),
+            // No target name is known at this layer; the hook's job is only
+            // to signal "already sent". The caller can override onError
+            // with a name-enriched alert if it wants a more specific copy.
+            t('friendRequests.preflight.already_sent.message').replace('{name}', 'this user'),
+          );
+        } else if (body === 'reverse_pending') {
+          Alert.alert(
+            t('friendRequests.preflight.already_received.title'),
+            t('friendRequests.preflight.already_received.message').replace('{name}', 'this user'),
+          );
+        }
+      }
     },
   });
 }
