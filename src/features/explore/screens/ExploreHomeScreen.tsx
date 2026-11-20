@@ -204,6 +204,7 @@ export function ExploreHomeScreen(): React.ReactElement {
               uri={photoPath}
               size={48}
               accessibilityLabel={fullName}
+              fallbackSex={item.sex}
             />
             <Heading variant="heading.sm">{fullName}</Heading>
           </Row>
@@ -450,6 +451,7 @@ function IncomingRequestRow({
             uri={photoUri}
             size={48}
             accessibilityLabel={fullName}
+            fallbackSex={profile?.sex ?? null}
           />
           <Column gap="xs">
             <Heading variant="heading.sm">{fullName}</Heading>

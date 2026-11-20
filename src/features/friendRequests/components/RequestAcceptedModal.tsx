@@ -159,6 +159,7 @@ export function RequestAcceptedModal({
               initials={`${(profile.first_name ?? '?')[0] ?? '?'}${(profile.last_name ?? '')[0] ?? ''}`}
               size="xl"
               accessibilityLabel={`${profile.first_name} ${profile.last_name}`}
+              fallbackSex={profile.sex}
             />
           </Column>
 
