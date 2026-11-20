@@ -674,3 +674,75 @@ describe('(l) pending-until-resolved — modal deferred until profile query retu
     expect(queryByTestId('incoming-request-modal')).toBeNull();
   });
 });
+
+// ── (m) Self-originated event dropped — defense-in-depth for backend filter ──
+//
+// The OwnProfile mock at the top of this file resolves user_id == 'u-me-001'.
+// A self-originated friend_request_received payload has from_user_id == self;
+// a self-originated friend_request_accepted payload (acceptor == self) is the
+// symmetric case. The backend's setSubscriptionFilter (userId == identity.sub)
+// is the primary guard, but if it regresses or an event arrives from a replay
+// path before the filter was deployed, the handler must drop the event rather
+// than show the current user a modal about themselves.
+
+describe('(m) self-originated events are dropped (defense-in-depth)', () => {
+  const SELF_USER_ID = 'u-me-001';
+
+  it('given friend_request_received fires with from_user_id === currentUserId, no IncomingRequestModal opens', async () => {
+    const client = makeClient();
+    mockGetProfileById.mockResolvedValue(makeUserProfile({ user_id: SELF_USER_ID }));
+
+    const { queryByTestId } = render(
+      React.createElement(FriendRequestSubscriptionListener),
+      { wrapper: makeWrapper(client) },
+    );
+
+    fireSubscriptionEvent(
+      'friend_request_received',
+      makeFriendRequestPayload(REQUEST_ID, SELF_USER_ID),
+    );
+
+    await act(async () => {});
+
+    expect(queryByTestId('incoming-request-modal')).toBeNull();
+  });
+
+  it('given friend_request_accepted fires with from_user_id === currentUserId, no RequestAcceptedModal opens', async () => {
+    const client = makeClient();
+    mockGetProfileById.mockResolvedValue(makeUserProfile({ user_id: SELF_USER_ID }));
+
+    const { queryByTestId } = render(
+      React.createElement(FriendRequestSubscriptionListener),
+      { wrapper: makeWrapper(client) },
+    );
+
+    fireSubscriptionEvent(
+      'friend_request_accepted',
+      makeFriendRequestAcceptedPayload(SELF_USER_ID),
+    );
+
+    await act(async () => {});
+
+    expect(queryByTestId('request-accepted-modal')).toBeNull();
+  });
+
+  it('given a legitimate event from another user fires, modal still opens (negative control)', async () => {
+    const client = makeClient();
+    mockGetProfileById.mockResolvedValue(makeUserProfile({ user_id: SENDER_USER_ID }));
+
+    const { queryByTestId } = render(
+      React.createElement(FriendRequestSubscriptionListener),
+      { wrapper: makeWrapper(client) },
+    );
+
+    // SENDER_USER_ID ('u-sender-001') != SELF_USER_ID ('u-me-001')
+    fireSubscriptionEvent(
+      'friend_request_received',
+      makeFriendRequestPayload(REQUEST_ID, SENDER_USER_ID),
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('incoming-request-modal')).not.toBeNull();
+    });
+  });
+});
