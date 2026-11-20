@@ -231,6 +231,7 @@ export function IncomingRequestModal({
               initials={`${(profile.first_name ?? '?')[0] ?? '?'}${(profile.last_name ?? '')[0] ?? ''}`}
               size="xl"
               accessibilityLabel={fullName}
+              fallbackSex={profile.sex}
             />
           </View>
 

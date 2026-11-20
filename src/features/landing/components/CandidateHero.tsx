@@ -29,7 +29,7 @@ import { useTheme } from '@/theme';
 import { textStyles } from '@/theme/typography';
 import type { Theme } from '@/theme/theme';
 import { t } from '@/labels';
-import { resolveDummyPhoto } from '@/assets/dummyPhotoRegistry';
+import { resolvePhotoOrGenderPlaceholder } from '@/assets/dummyPhotoRegistry';
 import { CountryFlag } from '@/components/CountryFlag';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -58,6 +58,13 @@ export interface CandidateHeroProfile {
   readonly photos?: string[] | null;
   readonly photo_url: string | null | undefined;
   readonly faceSelfieUri?: string | null;
+  /**
+   * Used to pick the gender-appropriate placeholder image when neither
+   * `photos[0]` nor `photo_url` resolves to a real asset (pre-photo-upload
+   * phase). Both JSON-derived (`'Male' | 'Female'`) and `UserProfile`-derived
+   * (`'Male' | 'Female' | null`) shapes assign.
+   */
+  readonly sex?: 'Male' | 'Female' | null;
   /**
    * Optional display-only field bag for overlay bubbles (active-today dot,
    * membership-tier badge). Optional so callers without this block compile
@@ -101,7 +108,8 @@ export function CandidateHero({ profile }: CandidateHeroProps): React.ReactEleme
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const photoPath = profile.photos?.[0] ?? profile.photo_url ?? undefined;
-  const photoSource = resolveDummyPhoto(photoPath);
+  // Gender placeholder when no real photo is available (pre-photo-upload phase).
+  const photoSource = resolvePhotoOrGenderPlaceholder(photoPath, profile.sex);
   const hasVerified = profile.faceSelfieUri != null;
 
   const cityCountry =

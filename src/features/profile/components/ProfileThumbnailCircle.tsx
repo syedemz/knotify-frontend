@@ -16,6 +16,7 @@ import { Pencil } from 'lucide-react-native';
 import { Avatar } from '@/components/Avatar';
 import { useTheme } from '@/theme';
 import type { Theme } from '@/theme/theme';
+import type { Sex } from '@/assets/dummyPhotoRegistry';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,12 @@ export interface ProfileThumbnailCircleProps {
    * Optional test identifier forwarded to the outermost element.
    */
   readonly testID?: string;
+  /**
+   * Fallback gender placeholder forwarded to the underlying `<Avatar />`.
+   * When `uri` does not resolve, the gender-appropriate placeholder image
+   * renders instead of initials. See `Avatar.fallbackSex` for details.
+   */
+  readonly fallbackSex?: Sex | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -95,6 +102,7 @@ export function ProfileThumbnailCircle({
   size = DEFAULT_SIZE,
   accessibilityLabel = 'Profile photo',
   testID,
+  fallbackSex,
 }: ProfileThumbnailCircleProps): React.ReactElement {
   const theme = useTheme();
 
@@ -123,6 +131,7 @@ export function ProfileThumbnailCircle({
         uri={uri}
         size={avatarSizePreset}
         accessibilityLabel={accessibilityLabel}
+        fallbackSex={fallbackSex}
       />
       {showEditDot && (
         <View style={styles.badge} testID="profile-thumbnail-edit-dot">

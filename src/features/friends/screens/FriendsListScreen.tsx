@@ -96,6 +96,7 @@ export function FriendsListScreen(): React.ReactElement {
               uri={item.photo_url ?? ''}
               size="md"
               accessibilityLabel={fullName}
+              fallbackSex={item.sex}
             />
           }
           onPress={() => handleRowPress(item.user_id)}

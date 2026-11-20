@@ -146,6 +146,7 @@ export function MenuHomeScreen(): React.ReactElement {
           size={64}
           accessibilityLabel={fullName}
           testID="menu-home-avatar"
+          fallbackSex={profile?.sex ?? null}
         />
         <Column gap="sm" flex>
           <Row gap="xs" align="center">

@@ -702,6 +702,7 @@ export function ChatRoomScreen(): React.ReactElement {
           uri={photoPath}
           size={32}
           accessibilityLabel={fullName}
+          fallbackSex={profile.sex}
         />
 
         {/* Name column — grows to fill space */}

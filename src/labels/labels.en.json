@@ -564,6 +564,15 @@
           "light": "Light",
           "dark": "Dark",
           "system": "System"
+        },
+        "account": {
+          "sectionHeading": "Account",
+          "sectionDescription": "Sign out of this device. You can sign back in anytime.",
+          "logoutButton": "Log out",
+          "logoutConfirmTitle": "Log out?",
+          "logoutConfirmMessage": "You will need to sign in again to continue.",
+          "logoutConfirmCancel": "Cancel",
+          "logoutConfirmConfirm": "Log out"
         }
       }
     }

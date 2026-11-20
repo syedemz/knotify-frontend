@@ -4,7 +4,11 @@ import { Image as ExpoImage } from "expo-image";
 import { useTheme } from "@/theme";
 import { textStyles } from "@/theme/typography";
 import type { Theme } from "@/theme/theme";
-import { resolveDummyPhoto } from "@/assets/dummyPhotoRegistry";
+import {
+  resolveDummyPhoto,
+  resolveGenderPlaceholder,
+  type Sex,
+} from "@/assets/dummyPhotoRegistry";
 
 /**
  * Size preset for the avatar.
@@ -41,6 +45,16 @@ export interface AvatarProps {
    * Accessibility label. Required for screen reader support.
    */
   accessibilityLabel: string;
+  /**
+   * Fallback gender placeholder when `uri` does not resolve to an image.
+   *
+   * When the dummy-photo registry lookup misses (e.g., `photo_url` is `null`
+   * on a real backend profile) AND `fallbackSex` is set, the avatar renders
+   * the gender-appropriate placeholder image (`Male1.png` / `Female3.png`)
+   * instead of the initials circle. Used until phase-N photo upload ships so
+   * every real profile has something to render.
+   */
+  fallbackSex?: Sex | null;
 }
 
 /** Pixel dimensions for each avatar size preset. */
@@ -70,6 +84,7 @@ export function Avatar({
   initials = "?",
   size = "md",
   accessibilityLabel,
+  fallbackSex,
 }: AvatarProps) {
   const theme = useTheme();
   const px = SIZE_PX[size];
@@ -80,8 +95,12 @@ export function Avatar({
 
   // Dummy-profile JSON stores photos as project-relative asset paths that
   // must be resolved to Metro require handles; real remote URIs pass
-  // straight through as `{ uri }`. `undefined` means we render initials.
-  const source = resolveDummyPhoto(uri);
+  // straight through as `{ uri }`. When the lookup misses AND `fallbackSex`
+  // is provided, use the gender placeholder so real profiles without an
+  // uploaded photo still render an image (not initials). `undefined` from
+  // both paths means we fall back to initials.
+  const source =
+    resolveDummyPhoto(uri) ?? resolveGenderPlaceholder(fallbackSex);
 
   return (
     <View

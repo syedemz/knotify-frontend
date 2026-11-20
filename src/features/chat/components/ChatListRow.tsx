@@ -104,6 +104,7 @@ export function ChatListRow({ room, currentUserId, onPress }: ChatListRowProps):
           uri={photoPath}
           size={48}
           accessibilityLabel={fullName}
+          fallbackSex={profile?.sex ?? null}
           testID={`chat-list-avatar-${room.roomId}`}
         />
 
