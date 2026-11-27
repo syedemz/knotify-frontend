@@ -159,6 +159,7 @@ jest.mock('@/state/bookmarks/BookmarksProvider', () => ({
 // resolveDummyPhoto mock — needed by BookmarkCard rendered inside the grid.
 jest.mock('@/assets/dummyPhotoRegistry', () => ({
   resolveDummyPhoto: () => 42,
+  resolvePhotoOrGenderPlaceholder: () => undefined,
 }));
 
 // ── Navigation mock ────────────────────────────────────────────────────────────

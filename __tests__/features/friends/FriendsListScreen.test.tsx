@@ -56,6 +56,7 @@ import type { UserProfile } from '@/types/api/UserProfile';
 
 jest.mock('@/assets/dummyPhotoRegistry', () => ({
   resolveDummyPhoto: () => 42,
+  resolvePhotoOrGenderPlaceholder: () => undefined,
 }));
 
 // ── Friends query mock ────────────────────────────────────────────────────────

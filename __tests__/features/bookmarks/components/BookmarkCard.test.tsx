@@ -30,6 +30,7 @@ jest.mock('@/assets/dummyPhotoRegistry', () => ({
     }
     return undefined;
   },
+  resolvePhotoOrGenderPlaceholder: () => undefined,
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────

@@ -558,6 +558,15 @@
     },
     "myProfile": {
       "editTab": {
+        "account": {
+          "sectionHeading": "اکاؤنٹ",
+          "sectionDescription": "اس ڈیوائس سے سائن آؤٹ کریں۔ آپ کسی بھی وقت دوبارہ سائن ان کر سکتے ہیں۔",
+          "logoutButton": "لاگ آؤٹ کریں",
+          "logoutConfirmTitle": "لاگ آؤٹ کریں؟",
+          "logoutConfirmMessage": "جاری رکھنے کے لیے آپ کو دوبارہ سائن ان کرنا ہوگا۔",
+          "logoutConfirmCancel": "منسوخ کریں",
+          "logoutConfirmConfirm": "لاگ آؤٹ کریں"
+        },
         "appearance": {
           "sectionHeading": "ظاہری شکل",
           "sectionDescription": "منتخب کریں کہ ایپ کیسی دکھے۔ 'سسٹم' آپ کی ڈیوائس کی ترتیب سے مماثل ہوگا۔",

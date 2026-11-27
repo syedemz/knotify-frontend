@@ -157,6 +157,7 @@ jest.mock('lottie-react-native', () => {
 
 jest.mock('@/assets/dummyPhotoRegistry', () => ({
   resolveDummyPhoto: () => undefined,
+  resolvePhotoOrGenderPlaceholder: () => undefined,
 }));
 
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
