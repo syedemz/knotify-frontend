@@ -37,7 +37,19 @@
       "Bash(export JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-17.0.19.10-hotspot\")",
       "Bash(export PATH=\"/c/Users/syede/AppData/Local/Android/Sdk/platform-tools:$JAVA_HOME/bin:$PATH\")",
       "Bash(export ANDROID_SERIAL=000323572000090)",
-      "Bash(npx expo *)"
+      "Bash(npx expo *)",
+      "Bash(terraform -chdir=infrastructure/modules/appsync fmt main.tf)",
+      "Bash(terraform -chdir=infrastructure/modules/appsync init -backend=false)",
+      "Bash(terraform -chdir=infrastructure/modules/appsync validate)",
+      "Bash(terraform -chdir=infrastructure/modules/appsync test)",
+      "Bash(powershell -NoProfile -Command 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match '\\\\''\\(@expo/cli|@react-native-community/cli|react-native/cli|metro-config|metro\\\\\\\\index\\)'\\\\'' -and $_.CommandLine -notmatch '\\\\''grep'\\\\'' } | Select-Object ProcessId,ParentProcessId,Name,@{n='\\\\''CMD'\\\\'';e={$_.CommandLine.Substring\\(0,[Math]::Min\\(300,$_.CommandLine.Length\\)\\)}} | Format-Table -AutoSize -Wrap')",
+      "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter 'ProcessId=46160' | Select-Object ProcessId,ParentProcessId,Name,CommandLine | Format-List\")",
+      "Bash(adb -s 000323572000090 shell getprop ro.product.model)",
+      "Bash(adb -s 000323572000090 shell pm list packages)",
+      "Bash(adb devices *)",
+      "Bash(adb -s 000323572000090 shell \"dumpsys activity activities 2>/dev/null | grep topResumedActivity | head -1\")",
+      "Bash(adb -s emulator-5554 shell \"dumpsys activity activities 2>/dev/null | grep topResumedActivity | head -1\")",
+      "mcp__supabase__execute_sql"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -1,5 +1,5 @@
 project: knotify-frontend
-last_updated: 2026-11-17 (phase 16 complete — all 14 stories (16.1, 16.FR1-3, 16.2, 16.3, 16.4, 16.5, 16.6, 16.CH1, 16.CH2, 16.8, 16.9, 16.10) shipped; 2796 tests passing (+120 net over phase); phase-level teardown gate passes; PR #159 ready for review)
+last_updated: 2026-11-27 (new phase 17 "Core feature round-up" added per `docs/superpowers/specs/2026-11-27-phase-17-core-features-design.md`; previous phase 17 Settings renumbered to phase 18 — story IDs 17.1–17.5 preserved verbatim inside the renamed PRD)
 
 phases:
 
@@ -100,7 +100,13 @@ phases:
   done: true
 
 - phase: 17
+  title: Core feature round-up — notifications, chat pagination, blocking UX, filtering, deck shuffle, profile edit, registration S3 uploads
+  file: implementationplan/phase-17-core-features.md
+  ready: false
+  done: false
+
+- phase: 18
   title: Settings + deep-link scaffolding - notifications, theme, language, account deletion, all app deep-links
-  file: implementationplan/phase-17-settings.md
+  file: implementationplan/phase-18-settings.md
   ready: false
   done: false

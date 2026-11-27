@@ -1,15 +1,30 @@
-phase: 17
+phase: 18
 title: Settings + deep-link scaffolding - notifications, theme, language, account deletion, all app deep-links
-last_updated: 2026-11-15 (brainstorm-driven update — absorbed chat + profile deep-link scope from phase 16 per BLOCKING 6; story 17.5 expanded to own the whole linking bootstrap)
+last_updated: 2026-11-27 (renumbered from phase 17 → phase 18 on creation of the new phase-17-core-features PRD; story contents unchanged — but see story-17.2 note below: the push-token registration bootstrap is now delivered by phase 17 F2.3, so this phase only owns the notification-preference toggle UI)
 
 context_summary: |
-  Phase 17 is the final **thin** post-onboarding phase per §11.2.8. Renumbered on
-  2026-11-15 from the original phase 19 when original phases 16 (Friends) + 17
-  (Chat backend) + 18 (Blocks) were merged into a single phase 16. Owns the
-  settings hub, notification preferences + push token registration (folded in per
-  §11.2.8 cross-phase decision), theme toggle, language toggle (which triggers
+  Phase 18 is the final **thin** post-onboarding phase per §11.2.8. Renumbered
+  from phase 17 → 18 on 2026-11-27 when the new phase 17 "Core feature round-up"
+  PRD was created. Story content is unchanged from its previous phase-17
+  incarnation; story IDs (17.1 → 17.5) are preserved verbatim to avoid churn in
+  existing cross-references. (This phase still exports `phase: 18` as its index
+  entry; story IDs retain their historical `17.x` numbering purely as labels —
+  do NOT read `17.1` as "story 1 of phase 17".) Owns the settings hub,
+  notification preferences, theme toggle, language toggle (which triggers
   `I18nManager.forceRTL` + `Updates.reloadAsync()` per §17.26), and account
   deletion with the polling flow per §17.19.
+
+  **Push-token registration overlap with phase 17 (2026-11-27).** The original
+  story 17.2 ("NotificationSettingsScreen + push token registration") included
+  calling `registerForPushNotifications()` on first entry to the settings
+  notification screen. That bootstrap is now delivered earlier by phase-17
+  story 17.F2.3 — registration fires on first authenticated boot inside
+  `AuthProvider`, not on first entry to settings. By the time this phase runs,
+  device tokens are already registered. Story 17.2 in this PRD now effectively
+  only owns the notification-preference toggle UI + `PATCH
+  /users/me/notification-prefs` wiring. Treat the "On first entry, calls
+  requestNotificationPermission()" acceptance criterion in that story as
+  satisfied-by-phase-17 — do not re-wire it here.
 
   **Deep-link scope absorbed from phase 16 (post-brainstorm decision 2026-11-15).**
   Phase 16 originally owned a single chat deep-link story (ex-16.7,
